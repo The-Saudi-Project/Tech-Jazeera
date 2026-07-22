@@ -46,11 +46,23 @@ function requiredPort(name) {
   return port;
 }
 
+/** Require a secret with enough entropy to resist brute-forcing. */
+function requiredSecret(name) {
+  const value = required(name);
+  if (value !== undefined && value.length < 32) {
+    problems.push(`${name} must be at least 32 characters. Generate one with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`);
+    return undefined;
+  }
+  return value;
+}
+
 const env = Object.freeze({
   nodeEnv: requiredEnum('NODE_ENV', ['development', 'production']),
   port: requiredPort('PORT'),
   mongodbUri: required('MONGODB_URI'),
   clientUrl: required('CLIENT_URL'),
+  jwtAccessSecret: requiredSecret('JWT_ACCESS_SECRET'),
+  jwtRefreshSecret: requiredSecret('JWT_REFRESH_SECRET'),
   isProduction: process.env.NODE_ENV === 'production',
 });
 

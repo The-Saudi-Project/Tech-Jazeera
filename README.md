@@ -40,6 +40,19 @@ npm run dev     # auto-restarts on file changes
 Check it's alive: open http://localhost:5000/api/health — you should see
 `{ "success": true, ... "database": "connected" }`.
 
+## First login
+
+Create (or reset) the Admin account, then log in with it:
+
+```bash
+npm run seed:admin -- you@company.com YourStrongPassword "Your Name"
+```
+
+Auth endpoints: `POST /api/auth/login` `{ email, password }` →
+`{ user, accessToken }` + httpOnly refresh cookie; `POST /api/auth/refresh`;
+`POST /api/auth/logout`. Roles: Admin, Manager, HR, Operations, Accounts,
+Viewer. See `docs/M2-notes.md` for the full token flow.
+
 ## Documentation
 
 Each milestone writes `docs/M<N>-notes.md` explaining how that slice works,

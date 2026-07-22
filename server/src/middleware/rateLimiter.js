@@ -21,3 +21,21 @@ export const apiLimiter = rateLimit({
   legacyHeaders: false,
   message: limitReached,
 });
+
+/**
+ * Login-only limiter. 30/15min still lets a whole office log in during the
+ * morning rush (one shared IP), but caps a password-guessing bot at a rate
+ * where bcrypt + this limit make brute force hopeless. Applied ONLY to
+ * POST /api/auth/login — refresh is self-throttling (it already requires a
+ * validly signed token) and stays under the general limiter.
+ */
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many login attempts. Please wait 15 minutes and try again.',
+  },
+});

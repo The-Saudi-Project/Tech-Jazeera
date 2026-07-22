@@ -18,13 +18,20 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import env from './config/env.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import ApiResponse from './utils/ApiResponse.js';
+import authRoutes from './modules/auth/auth.routes.js';
+import auditRoutes from './modules/audit/audit.routes.js';
 
 const app = express();
+
+// Behind a reverse proxy (production), trust it so req.ip is the real client
+// IP — otherwise rate limiting and audit logs would see the proxy's IP.
+if (env.isProduction) app.set('trust proxy', 1);
 
 app.use(helmet());
 app.use(
@@ -34,6 +41,7 @@ app.use(
   })
 );
 app.use(express.json({ limit: '1mb' }));
+app.use(cookieParser()); // parses the httpOnly refresh-token cookie
 app.use('/api', apiLimiter);
 
 /**
@@ -53,7 +61,9 @@ app.get('/api/health', (req, res) => {
   );
 });
 
-// Feature modules (auth, employees, clients, ...) mount here from M2 onward.
+// Feature modules — each module mounts its own router.
+app.use('/api/auth', authRoutes);
+app.use('/api/audit', auditRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
