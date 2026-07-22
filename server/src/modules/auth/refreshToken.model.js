@@ -20,6 +20,10 @@ const refreshTokenSchema = new mongoose.Schema(
     tokenHash: { type: String, required: true, unique: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     expiresAt: { type: Date, required: true },
+    // Set when this token is rotated. A rotated token may be presented again
+    // within a short grace window (concurrent browser tabs racing to refresh
+    // share one cookie); reuse AFTER the window is treated as theft.
+    rotatedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

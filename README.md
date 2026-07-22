@@ -9,7 +9,7 @@ documents, quotations, and a management dashboard.
 
 ```
 company-erp/
-├── client/   # React app (from M3)
+├── client/   # React app (Vite + Tailwind)
 ├── server/   # Express API
 └── docs/     # per-milestone developer notes — read these to learn the system
 ```
@@ -52,6 +52,19 @@ Auth endpoints: `POST /api/auth/login` `{ email, password }` →
 `{ user, accessToken }` + httpOnly refresh cookie; `POST /api/auth/refresh`;
 `POST /api/auth/logout`. Roles: Admin, Manager, HR, Operations, Accounts,
 Viewer. See `docs/M2-notes.md` for the full token flow.
+
+## Client setup
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Open http://localhost:5173 and sign in with the seeded admin account. The
+client expects the API at `http://localhost:5000/api`; override with
+`VITE_API_URL` in `client/.env` when deploying. Both servers must run
+together during development (two terminals).
 
 ## Documentation
 

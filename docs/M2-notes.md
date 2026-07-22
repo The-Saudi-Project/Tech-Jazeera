@@ -39,10 +39,15 @@ Roles: `Admin, Manager, HR, Operations, Accounts, Viewer`.
    The cookie's token is verified, its DB row is **atomically deleted**
    (`findOneAndDelete`), and a brand-new pair is issued. Each refresh token
    is single-use — that's *rotation*.
-4. **Theft detection:** a validly-signed refresh token with no DB row was
-   already spent. Someone is replaying a stolen cookie. Response: delete ALL
-   of that user's sessions, audit `auth.refresh.reuse_detected`, force
-   re-login everywhere.
+4. **Theft detection (with a grace window):** every browser tab shares ONE
+   refresh cookie, so concurrent tabs race to refresh and the losers present
+   an already-rotated token. A rotated token may therefore be re-exchanged
+   for **30 seconds** (`REFRESH_REUSE_GRACE_MS`). Reuse AFTER that window
+   means someone is replaying a stolen cookie long after its owner rotated
+   it: delete ALL of that user's sessions, audit
+   `auth.refresh.reuse_detected`, force re-login everywhere. (M3's page-load
+   bootstrap under React StrictMode fires double refreshes — this window is
+   what makes rotation coexist with real browsers.)
 5. **Logout** deletes that one device's session row and clears the cookie;
    other devices stay logged in.
 

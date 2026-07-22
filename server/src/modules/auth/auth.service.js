@@ -26,6 +26,17 @@ import { logAudit } from '../audit/audit.service.js';
 const ACCESS_TOKEN_TTL = '15m';
 export const REFRESH_TOKEN_TTL_DAYS = 7;
 
+/**
+ * How long a just-rotated refresh token may still be exchanged. All browser
+ * tabs share ONE refresh cookie; when the access token expires they race to
+ * refresh, and every loser presents an already-rotated token. Without this
+ * window that race trips theft detection and randomly logs users out.
+ * 30s comfortably covers tab races while keeping the theft-detection story:
+ * a genuinely stolen cookie is almost never replayed within 30s of a
+ * legitimate rotation.
+ */
+const REFRESH_REUSE_GRACE_MS = 30 * 1000;
+
 /** bcrypt cost factor: ~100ms per hash — slow for attackers, fine for users. */
 const BCRYPT_ROUNDS = 12;
 
@@ -48,9 +59,14 @@ async function issueTokens(user) {
   const accessToken = jwt.sign({ sub: user._id.toString(), role: user.role }, env.jwtAccessSecret, {
     expiresIn: ACCESS_TOKEN_TTL,
   });
-  const refreshToken = jwt.sign({ sub: user._id.toString() }, env.jwtRefreshSecret, {
-    expiresIn: `${REFRESH_TOKEN_TTL_DAYS}d`,
-  });
+  // jti (random UUID) makes every refresh token unique BY CONSTRUCTION.
+  // Without it, two tokens for the same user signed in the same second have
+  // identical claims → identical JWT string → tokenHash unique-index clash.
+  const refreshToken = jwt.sign(
+    { sub: user._id.toString(), jti: crypto.randomUUID() },
+    env.jwtRefreshSecret,
+    { expiresIn: `${REFRESH_TOKEN_TTL_DAYS}d` }
+  );
   await RefreshToken.create({
     tokenHash: hashToken(refreshToken),
     user: user._id,
@@ -101,17 +117,31 @@ export async function refresh({ refreshToken, ip }) {
     throw new ApiError(401, 'Session expired. Please log in again.');
   }
 
-  // Atomically find-and-delete: the token is spent the instant it is used,
-  // even if two requests race with the same token.
-  const stored = await RefreshToken.findOneAndDelete({ tokenHash: hashToken(refreshToken) });
+  const stored = await RefreshToken.findOne({ tokenHash: hashToken(refreshToken) });
 
+  // Unknown token: its row already expired (TTL) or was revoked. A validly
+  // signed token can't be fabricated, so this is just a stale session.
   if (!stored) {
-    // Validly signed but not in the DB → already rotated → replay/theft.
-    // Kill every session this user has and make them log in again.
-    await RefreshToken.deleteMany({ user: payload.sub });
-    await logAudit({ user: payload.sub, action: 'auth.refresh.reuse_detected', ip });
-    logger.warn(`Refresh token reuse detected for user ${payload.sub} — all sessions revoked.`);
+    throw new ApiError(401, 'Session expired. Please log in again.');
+  }
+
+  // Rotated AND past the grace window → someone is replaying an old token
+  // long after its legitimate owner already exchanged it. Treat as theft:
+  // kill every session this user has and make them log in again.
+  if (stored.rotatedAt && Date.now() - stored.rotatedAt.getTime() > REFRESH_REUSE_GRACE_MS) {
+    await RefreshToken.deleteMany({ user: stored.user });
+    await logAudit({ user: stored.user, action: 'auth.refresh.reuse_detected', ip });
+    logger.warn(`Refresh token reuse detected for user ${stored.user} — all sessions revoked.`);
     throw new ApiError(401, 'Session invalidated. Please log in again.');
+  }
+
+  // First use: mark it rotated and let it die shortly after the grace window
+  // (the TTL index cleans it up). Reuse WITHIN the window (tab races) falls
+  // through and mints its own new pair.
+  if (!stored.rotatedAt) {
+    stored.rotatedAt = new Date();
+    stored.expiresAt = new Date(Date.now() + 2 * REFRESH_REUSE_GRACE_MS);
+    await stored.save();
   }
 
   const user = await User.findById(stored.user);
