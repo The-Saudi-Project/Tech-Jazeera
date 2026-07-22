@@ -1,0 +1,67 @@
+/**
+ * Central environment configuration.
+ *
+ * Why this file exists: reading `process.env` all over the codebase makes it
+ * impossible to know what configuration the app actually needs, and a missing
+ * variable then fails at some random moment deep in a request. Instead, this
+ * file is the ONLY place that touches `process.env`. It validates everything
+ * once, at boot, and the rest of the app imports the frozen `env` object.
+ * If configuration is broken the process exits immediately with a message
+ * that tells you exactly which variable to fix.
+ */
+import 'dotenv/config';
+
+/** Accumulates human-readable problems so we can report them all at once. */
+const problems = [];
+
+/** Require a variable to be present and non-empty. */
+function required(name) {
+  const value = process.env[name];
+  if (!value || value.trim() === '') {
+    problems.push(`${name} is missing. See server/.env.example for the expected format.`);
+    return undefined;
+  }
+  return value.trim();
+}
+
+/** Require a variable to be one of an allowed set of values. */
+function requiredEnum(name, allowed) {
+  const value = required(name);
+  if (value !== undefined && !allowed.includes(value)) {
+    problems.push(`${name} must be one of: ${allowed.join(', ')} (got "${value}").`);
+    return undefined;
+  }
+  return value;
+}
+
+/** Require a variable to be a valid TCP port number. */
+function requiredPort(name) {
+  const value = required(name);
+  if (value === undefined) return undefined;
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    problems.push(`${name} must be an integer between 1 and 65535 (got "${value}").`);
+    return undefined;
+  }
+  return port;
+}
+
+const env = Object.freeze({
+  nodeEnv: requiredEnum('NODE_ENV', ['development', 'production']),
+  port: requiredPort('PORT'),
+  mongodbUri: required('MONGODB_URI'),
+  clientUrl: required('CLIENT_URL'),
+  isProduction: process.env.NODE_ENV === 'production',
+});
+
+// Fail fast: refuse to boot with broken configuration. We deliberately use
+// console.error here (not the Winston logger) because the logger itself may
+// depend on configuration.
+if (problems.length > 0) {
+  console.error('\n[env] Server cannot start — invalid environment configuration:\n');
+  for (const problem of problems) console.error(`  ✗ ${problem}`);
+  console.error('\nFix server/.env and try again.\n');
+  process.exit(1);
+}
+
+export default env;
