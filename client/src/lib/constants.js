@@ -29,3 +29,18 @@ export const DEPLOYMENT_STATUSES = ['Active', 'Ended'];
 
 /** Mirror of the deployment route guards (server enforces). */
 export const DEPLOYMENT_WRITE_ROLES = ['Admin', 'Manager', 'Operations'];
+
+/** Mirrors the Attendance model enum, with display metadata used by the
+ *  marking grid and summary. `letter` labels grid cells; `variant` is the
+ *  Badge variant; `cell` is the grid-cell colour. */
+export const ATTENDANCE_STATUS_META = {
+  Present: { letter: 'P', variant: 'success', cell: 'bg-success/15 text-success' },
+  Absent: { letter: 'A', variant: 'danger', cell: 'bg-danger/15 text-danger' },
+  Leave: { letter: 'L', variant: 'warning', cell: 'bg-warning/15 text-warning' },
+  Sick: { letter: 'S', variant: 'primary', cell: 'bg-primary/15 text-primary' },
+  Off: { letter: 'O', variant: 'default', cell: 'bg-border/60 text-muted' },
+};
+export const ATTENDANCE_STATUSES = Object.keys(ATTENDANCE_STATUS_META);
+
+/** Mirror of the attendance write guard (server enforces). */
+export const ATTENDANCE_WRITE_ROLES = ['Admin', 'Manager', 'HR', 'Operations'];

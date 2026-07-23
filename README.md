@@ -82,6 +82,10 @@ together during development (two terminals).
   a worker is never actively deployed in two places at once, and each
   operation is transactional. Managed from the register and each worker's
   profile. Write: Admin/Manager/Operations. See `docs/M6-notes.md`.
+- **Attendance** (`/attendance`) — daily marking, a weekly/monthly grid, and
+  per-worker summaries with **Excel/PDF export** (generated server-side via
+  exceljs/pdfkit). One record per worker per day (upsert). Mark: Admin/
+  Manager/HR/Operations; read/export: all. See `docs/M7-notes.md`.
 
 ## Documentation
 
