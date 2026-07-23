@@ -14,6 +14,10 @@ import AuthLayout from './layouts/AuthLayout.jsx';
 import DashboardLayout from './layouts/DashboardLayout.jsx';
 import LoginPage from '../features/auth/pages/LoginPage.jsx';
 import DashboardPage from '../features/dashboard/pages/DashboardPage.jsx';
+import EmployeeListPage from '../features/employees/pages/EmployeeListPage.jsx';
+import EmployeeNewPage from '../features/employees/pages/EmployeeNewPage.jsx';
+import EmployeeProfilePage from '../features/employees/pages/EmployeeProfilePage.jsx';
+import EmployeeEditPage from '../features/employees/pages/EmployeeEditPage.jsx';
 import Spinner from '../components/ui/Spinner.jsx';
 
 function RequireAuth() {
@@ -42,7 +46,10 @@ export const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { path: '/', element: <DashboardPage /> },
-          // Feature routes (employees, clients, ...) are added here from M4 on.
+          { path: '/employees', element: <EmployeeListPage /> },
+          { path: '/employees/new', element: <EmployeeNewPage /> },
+          { path: '/employees/:id', element: <EmployeeProfilePage /> },
+          { path: '/employees/:id/edit', element: <EmployeeEditPage /> },
         ],
       },
     ],

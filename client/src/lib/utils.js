@@ -16,3 +16,23 @@ export function cn(...parts) {
 export function apiMessage(error, fallback = 'Something went wrong. Please try again.') {
   return error?.response?.data?.message ?? fallback;
 }
+
+/** Display format: "23 Jul 2026". Em-dash for missing values. */
+export function formatDate(value) {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+/** ISO date → the "YYYY-MM-DD" format <input type="date"> requires. */
+export function toDateInput(value) {
+  return value ? new Date(value).toISOString().slice(0, 10) : '';
+}
+
+/** Whole days from now until a date; negative = already past. */
+export function daysUntil(value) {
+  return Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
+}

@@ -1,0 +1,111 @@
+/**
+ * Table — THE data-list component for the whole app (spec: responsive tables,
+ * cards on mobile). Screens describe columns; this component renders:
+ *   - ≥md: a real <table> inside its own horizontal-scroll container
+ *   - <md: stacked cards — first column becomes the card title, the rest
+ *     become label/value rows (except columns marked hideOnMobile)
+ * Loading renders skeleton rows (no layout jump); empty renders the given
+ * empty state.
+ *
+ * Column shape: { key, header, render(row), sortable?, className?, hideOnMobile? }
+ */
+import { cn } from '../../lib/utils.js';
+import Skeleton from './Skeleton.jsx';
+
+function SortableHeader({ column, sortBy, sortOrder, onSort }) {
+  if (!column.sortable) return column.header;
+  const active = sortBy === column.key;
+  return (
+    <button
+      onClick={() => onSort(column.key)}
+      className={cn('inline-flex items-center gap-1 hover:text-text', active && 'text-text')}
+    >
+      {column.header}
+      <span className="text-xs">{active ? (sortOrder === 'asc' ? '▲' : '▼') : ''}</span>
+    </button>
+  );
+}
+
+export default function Table({
+  columns,
+  rows,
+  rowKey,
+  loading = false,
+  skeletonRows = 5,
+  emptyState = null,
+  sortBy,
+  sortOrder,
+  onSort,
+}) {
+  if (!loading && rows.length === 0) return emptyState;
+
+  return (
+    <>
+      {/* Desktop */}
+      <div className="hidden overflow-x-auto rounded-xl border border-border bg-surface md:block">
+        <table className="w-full text-sm">
+          <thead className="border-b border-border text-left">
+            <tr>
+              {columns.map((col) => (
+                <th key={col.key} className="whitespace-nowrap px-4 py-3 font-medium text-muted">
+                  <SortableHeader column={col} sortBy={sortBy} sortOrder={sortOrder} onSort={onSort} />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {loading
+              ? Array.from({ length: skeletonRows }, (_, i) => (
+                  <tr key={i}>
+                    {columns.map((col) => (
+                      <td key={col.key} className="px-4 py-3.5">
+                        <Skeleton className="h-4 w-3/4" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : rows.map((row) => (
+                  <tr key={rowKey(row)} className="transition-colors hover:bg-bg/60">
+                    {columns.map((col) => (
+                      <td key={col.key} className={cn('px-4 py-3', col.className)}>
+                        {col.render(row)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {loading
+          ? Array.from({ length: 3 }, (_, i) => (
+              <div key={i} className="space-y-3 rounded-xl border border-border bg-surface p-4">
+                <Skeleton className="h-5 w-1/2" />
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-4 w-1/3" />
+              </div>
+            ))
+          : rows.map((row) => {
+              const [titleCol, ...rest] = columns;
+              return (
+                <div key={rowKey(row)} className="rounded-xl border border-border bg-surface p-4">
+                  <div className="mb-3">{titleCol.render(row)}</div>
+                  <dl className="space-y-2">
+                    {rest
+                      .filter((col) => !col.hideOnMobile)
+                      .map((col) => (
+                        <div key={col.key} className="flex items-center justify-between gap-3">
+                          <dt className="text-xs uppercase tracking-wide text-muted">{col.header}</dt>
+                          <dd className="text-right text-sm">{col.render(row)}</dd>
+                        </div>
+                      ))}
+                  </dl>
+                </div>
+              );
+            })}
+      </div>
+    </>
+  );
+}

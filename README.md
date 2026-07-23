@@ -66,6 +66,13 @@ client expects the API at `http://localhost:5000/api`; override with
 `VITE_API_URL` in `client/.env` when deploying. Both servers must run
 together during development (two terminals).
 
+## Modules
+
+- **Employees** (`/employees`) — workforce register: full CRUD, search,
+  status & expiring-document filters, sortable list, pagination, per-employee
+  profile with passport/visa/iqama/medical/licence expiry tracking. Write
+  access: Admin/Manager/HR; delete: Admin/HR. See `docs/M4-notes.md`.
+
 ## Documentation
 
 Each milestone writes `docs/M<N>-notes.md` explaining how that slice works,

@@ -26,6 +26,7 @@ import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import ApiResponse from './utils/ApiResponse.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
+import employeeRoutes from './modules/employees/employee.routes.js';
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.get('/api/health', (req, res) => {
 // Feature modules — each module mounts its own router.
 app.use('/api/auth', authRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/employees', employeeRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
