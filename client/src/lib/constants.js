@@ -15,3 +15,10 @@ export const EMPLOYEE_STATUSES = ['Active', 'On Leave', 'Exited'];
  *  reject anyway. The server is the real enforcement. */
 export const EMPLOYEE_WRITE_ROLES = ['Admin', 'Manager', 'HR'];
 export const EMPLOYEE_DELETE_ROLES = ['Admin', 'HR'];
+
+/** Mirrors the Client model's status enum. */
+export const CLIENT_STATUSES = ['Active', 'Inactive'];
+
+/** Mirror of the client route guards (server enforces). */
+export const CLIENT_WRITE_ROLES = ['Admin', 'Manager', 'Operations'];
+export const CLIENT_DELETE_ROLES = ['Admin', 'Manager'];

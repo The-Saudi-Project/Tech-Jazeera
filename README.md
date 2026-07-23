@@ -72,6 +72,11 @@ together during development (two terminals).
   status & expiring-document filters, sortable list, pagination, per-employee
   profile with passport/visa/iqama/medical/licence expiry tracking. Write
   access: Admin/Manager/HR; delete: Admin/HR. See `docs/M4-notes.md`.
+- **Clients** (`/clients`) — customer register: company/contact/VAT/CR/
+  industry/notes, a dynamic list of sites, and a tabbed profile (Overview +
+  live Assigned-Workers). Delete is guarded against clients with assigned
+  workers. Write: Admin/Manager/Operations; delete: Admin/Manager. See
+  `docs/M5-notes.md`.
 
 ## Documentation
 

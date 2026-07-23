@@ -18,6 +18,10 @@ import EmployeeListPage from '../features/employees/pages/EmployeeListPage.jsx';
 import EmployeeNewPage from '../features/employees/pages/EmployeeNewPage.jsx';
 import EmployeeProfilePage from '../features/employees/pages/EmployeeProfilePage.jsx';
 import EmployeeEditPage from '../features/employees/pages/EmployeeEditPage.jsx';
+import ClientListPage from '../features/clients/pages/ClientListPage.jsx';
+import ClientNewPage from '../features/clients/pages/ClientNewPage.jsx';
+import ClientProfilePage from '../features/clients/pages/ClientProfilePage.jsx';
+import ClientEditPage from '../features/clients/pages/ClientEditPage.jsx';
 import Spinner from '../components/ui/Spinner.jsx';
 
 function RequireAuth() {
@@ -50,6 +54,10 @@ export const router = createBrowserRouter([
           { path: '/employees/new', element: <EmployeeNewPage /> },
           { path: '/employees/:id', element: <EmployeeProfilePage /> },
           { path: '/employees/:id/edit', element: <EmployeeEditPage /> },
+          { path: '/clients', element: <ClientListPage /> },
+          { path: '/clients/new', element: <ClientNewPage /> },
+          { path: '/clients/:id', element: <ClientProfilePage /> },
+          { path: '/clients/:id/edit', element: <ClientEditPage /> },
         ],
       },
     ],

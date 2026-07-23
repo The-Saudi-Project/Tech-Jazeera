@@ -34,8 +34,18 @@ function escapeRegex(text) {
  * status  → exact match
  * alerts  → 'true' keeps only employees with a document expiring within
  *           EXPIRY_WARNING_DAYS (or already expired)
+ * client  → only employees currently assigned to that client
  */
-export async function listEmployees({ page, limit, search, status, alerts, sortBy, sortOrder }) {
+export async function listEmployees({
+  page,
+  limit,
+  search,
+  status,
+  alerts,
+  client,
+  sortBy,
+  sortOrder,
+}) {
   // Each condition is AND-ed; search and alerts are each internally OR-ed.
   const conditions = [];
   if (search) {
@@ -45,6 +55,7 @@ export async function listEmployees({ page, limit, search, status, alerts, sortB
     });
   }
   if (status) conditions.push({ status });
+  if (client) conditions.push({ currentClient: client });
   if (alerts === 'true') {
     const threshold = new Date(Date.now() + EXPIRY_WARNING_DAYS * 24 * 60 * 60 * 1000);
     // $lte against a Date matches only real dates — documents with no expiry

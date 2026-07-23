@@ -82,6 +82,12 @@ export const listEmployeesSchema = z.object({
   // String enum, NOT z.coerce.boolean() — that coerces the string "false" to
   // true (any non-empty string is truthy), a classic query-string trap.
   alerts: z.preprocess(emptyToUndef, z.enum(['true', 'false']).optional()),
+  // Filter to one client's workforce — powers the client profile's
+  // "Assigned Workers" tab (M5). Set by the deployment workflow (M6).
+  client: z.preprocess(
+    emptyToUndef,
+    z.string().regex(/^[a-f0-9]{24}$/i, 'Invalid client id.').optional()
+  ),
   sortBy: z.enum(['fullName', 'joiningDate', 'createdAt']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
