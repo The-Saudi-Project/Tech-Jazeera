@@ -144,6 +144,7 @@ export default function DeploymentListPage() {
             rows={data?.items ?? []}
             rowKey={(d) => d._id}
             loading={isPending}
+            onRowClick={(d) => d.worker?._id && navigate(`/employees/${d.worker._id}`)}
             emptyState={
               <EmptyState
                 title={params.status || params.client ? 'No deployments match' : 'No deployments yet'}

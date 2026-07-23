@@ -9,10 +9,18 @@
 import { useEffect, useState } from 'react';
 import { fetchFileBlob, downloadDocumentFile } from '../documents.api.js';
 import { currentVersion } from '../documents.schema.js';
-import { apiMessage } from '../../../lib/utils.js';
+import { apiMessage, formatDate } from '../../../lib/utils.js';
 import Modal from '../../../components/ui/Modal.jsx';
 import Button from '../../../components/ui/Button.jsx';
+import Badge from '../../../components/ui/Badge.jsx';
+import ExpiryBadge from '../../../components/shared/ExpiryBadge.jsx';
 import Spinner from '../../../components/ui/Spinner.jsx';
+
+/** Bytes → "1.2 MB" / "340 KB". */
+function fileSize(bytes) {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
 
 export default function DocumentPreviewModal({ doc, open, onClose }) {
   const [url, setUrl] = useState(null);
@@ -63,16 +71,46 @@ export default function DocumentPreviewModal({ doc, open, onClose }) {
             </p>
           )}
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted">
-            Version {version.version} · {version.originalName}
+        {/* Details */}
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Badge variant="primary">{doc.category}</Badge>
+          <ExpiryBadge date={doc.expiryDate} />
+          <span className="ml-auto">
+            <Button
+              variant="secondary"
+              onClick={() => downloadDocumentFile(doc._id, version.version, version.originalName)}
+            >
+              Download current
+            </Button>
           </span>
-          <Button
-            variant="secondary"
-            onClick={() => downloadDocumentFile(doc._id, version.version, version.originalName)}
-          >
-            Download
-          </Button>
+        </div>
+
+        {/* Version history */}
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
+            Versions ({doc.versions.length})
+          </p>
+          <div className="divide-y divide-border rounded-lg border border-border">
+            {[...doc.versions].reverse().map((v) => (
+              <div key={v.version} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate">
+                    v{v.version} · {v.originalName}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {formatDate(v.uploadedAt)} · {fileSize(v.size)}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => downloadDocumentFile(doc._id, v.version, v.originalName)}
+                >
+                  Download
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </Modal>

@@ -86,6 +86,7 @@ export default function QuotationListPage() {
             rows={data?.items ?? []}
             rowKey={(q) => q._id}
             loading={isPending}
+            onRowClick={(q) => navigate(`/quotations/${q._id}`)}
             emptyState={
               <EmptyState
                 title={noFilters ? 'No quotations yet' : 'No quotations match'}

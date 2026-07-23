@@ -26,24 +26,23 @@ export default function ExpiringDocuments({ items }) {
         <div className="divide-y divide-border">
           {items.map((item, i) => {
             const label = `${item.label}${item.source === 'Employee' ? '' : ` · ${item.ref}`}`;
-            const owner =
-              item.source === 'Employee' ? (
-                <Link to={`/employees/${item.ownerId}`} className="font-medium hover:text-primary">
-                  {item.ownerName}
-                </Link>
-              ) : (
-                <span className="font-medium">{item.ownerName}</span>
-              );
+            // Employee items link to the worker's profile; uploaded documents
+            // link to the Document Center (no per-file page).
+            const to = item.source === 'Employee' ? `/employees/${item.ownerId}` : '/documents';
             return (
-              <div key={i} className="flex items-center justify-between gap-3 py-2.5 text-sm first:pt-0 last:pb-0">
+              <Link
+                key={i}
+                to={to}
+                className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-sm transition-colors hover:bg-bg/60"
+              >
                 <div>
-                  <p>{owner}</p>
+                  <p className="font-medium">{item.ownerName}</p>
                   <p className="text-xs text-muted">
                     {label} · expires {formatDate(item.expiry)}
                   </p>
                 </div>
                 <ExpiryTag daysLeft={item.daysLeft} />
-              </div>
+              </Link>
             );
           })}
         </div>

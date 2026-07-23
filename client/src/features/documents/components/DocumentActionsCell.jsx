@@ -60,8 +60,8 @@ export default function DocumentActionsCell({ doc }) {
 
   return (
     <span className="flex justify-end gap-1">
-      <Button size="sm" variant="ghost" onClick={() => setPreviewing(true)}>
-        Preview
+      <Button size="sm" variant="secondary" onClick={() => setPreviewing(true)}>
+        View
       </Button>
       <Button
         size="sm"

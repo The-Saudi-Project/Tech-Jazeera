@@ -145,27 +145,28 @@ export default function EmployeeListPage() {
       render: (e) => <Badge variant={STATUS_VARIANT[e.status]}>{e.status}</Badge>,
     },
     { key: 'docs', header: 'Documents', render: docsBadge },
-    ...(canWrite
-      ? [
-          {
-            key: 'actions',
-            header: '',
-            className: 'text-right',
-            render: (e) => (
-              <span className="flex justify-end gap-1">
-                <Button size="sm" variant="ghost" onClick={() => navigate(`/employees/${e._id}/edit`)}>
-                  Edit
-                </Button>
-                {canDelete && (
-                  <Button size="sm" variant="ghost" className="hover:text-danger" onClick={() => setToDelete(e)}>
-                    Delete
-                  </Button>
-                )}
-              </span>
-            ),
-          },
-        ]
-      : []),
+    {
+      key: 'actions',
+      header: '',
+      className: 'text-right',
+      render: (e) => (
+        <span className="flex justify-end gap-2">
+          <Button size="sm" variant="secondary" onClick={() => navigate(`/employees/${e._id}`)}>
+            View
+          </Button>
+          {canWrite && (
+            <Button size="sm" variant="ghost" onClick={() => navigate(`/employees/${e._id}/edit`)}>
+              Edit
+            </Button>
+          )}
+          {canDelete && (
+            <Button size="sm" variant="ghost" className="hover:text-danger" onClick={() => setToDelete(e)}>
+              Delete
+            </Button>
+          )}
+        </span>
+      ),
+    },
   ];
 
   const noFilters = !params.search && !params.status && !params.alerts;
@@ -227,6 +228,7 @@ export default function EmployeeListPage() {
             sortBy={params.sortBy}
             sortOrder={params.sortOrder}
             onSort={toggleSort}
+            onRowClick={(e) => navigate(`/employees/${e._id}`)}
             emptyState={
               <EmptyState
                 title={noFilters ? 'No employees yet' : 'No employees match'}

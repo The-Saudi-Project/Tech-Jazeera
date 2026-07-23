@@ -112,27 +112,28 @@ export default function ClientListPage() {
       header: 'Status',
       render: (c) => <Badge variant={STATUS_VARIANT[c.status]}>{c.status}</Badge>,
     },
-    ...(canWrite
-      ? [
-          {
-            key: 'actions',
-            header: '',
-            className: 'text-right',
-            render: (c) => (
-              <span className="flex justify-end gap-1">
-                <Button size="sm" variant="ghost" onClick={() => navigate(`/clients/${c._id}/edit`)}>
-                  Edit
-                </Button>
-                {canDelete && (
-                  <Button size="sm" variant="ghost" className="hover:text-danger" onClick={() => setToDelete(c)}>
-                    Delete
-                  </Button>
-                )}
-              </span>
-            ),
-          },
-        ]
-      : []),
+    {
+      key: 'actions',
+      header: '',
+      className: 'text-right',
+      render: (c) => (
+        <span className="flex justify-end gap-2">
+          <Button size="sm" variant="secondary" onClick={() => navigate(`/clients/${c._id}`)}>
+            View
+          </Button>
+          {canWrite && (
+            <Button size="sm" variant="ghost" onClick={() => navigate(`/clients/${c._id}/edit`)}>
+              Edit
+            </Button>
+          )}
+          {canDelete && (
+            <Button size="sm" variant="ghost" className="hover:text-danger" onClick={() => setToDelete(c)}>
+              Delete
+            </Button>
+          )}
+        </span>
+      ),
+    },
   ];
 
   const noFilters = !params.search && !params.status;
@@ -188,6 +189,7 @@ export default function ClientListPage() {
             sortBy={params.sortBy}
             sortOrder={params.sortOrder}
             onSort={toggleSort}
+            onRowClick={(c) => navigate(`/clients/${c._id}`)}
             emptyState={
               <EmptyState
                 title={noFilters ? 'No clients yet' : 'No clients match'}

@@ -8,9 +8,22 @@
  * empty state.
  *
  * Column shape: { key, header, render(row), sortable?, className?, hideOnMobile? }
+ *
+ * onRowClick(row): makes each row/card clickable (e.g. open the detail view).
+ * Clicks that land on a <button> or <a> are ignored, so action buttons and
+ * inline links keep working without every caller wiring stopPropagation.
  */
 import { cn } from '../../lib/utils.js';
 import Skeleton from './Skeleton.jsx';
+
+/** Only fire the row handler when the click wasn't on an interactive child. */
+function rowClickHandler(onRowClick, row) {
+  if (!onRowClick) return undefined;
+  return (e) => {
+    if (e.target.closest('button, a')) return;
+    onRowClick(row);
+  };
+}
 
 function SortableHeader({ column, sortBy, sortOrder, onSort }) {
   if (!column.sortable) return column.header;
@@ -36,6 +49,7 @@ export default function Table({
   sortBy,
   sortOrder,
   onSort,
+  onRowClick,
 }) {
   if (!loading && rows.length === 0) return emptyState;
 
@@ -65,7 +79,14 @@ export default function Table({
                   </tr>
                 ))
               : rows.map((row) => (
-                  <tr key={rowKey(row)} className="transition-colors hover:bg-bg/60">
+                  <tr
+                    key={rowKey(row)}
+                    onClick={rowClickHandler(onRowClick, row)}
+                    className={cn(
+                      'transition-colors hover:bg-bg/60',
+                      onRowClick && 'cursor-pointer'
+                    )}
+                  >
                     {columns.map((col) => (
                       <td key={col.key} className={cn('px-4 py-3', col.className)}>
                         {col.render(row)}
@@ -90,7 +111,14 @@ export default function Table({
           : rows.map((row) => {
               const [titleCol, ...rest] = columns;
               return (
-                <div key={rowKey(row)} className="rounded-xl border border-border bg-surface p-4">
+                <div
+                  key={rowKey(row)}
+                  onClick={rowClickHandler(onRowClick, row)}
+                  className={cn(
+                    'rounded-xl border border-border bg-surface p-4',
+                    onRowClick && 'cursor-pointer transition-colors hover:border-primary/40'
+                  )}
+                >
                   <div className="mb-3">{titleCol.render(row)}</div>
                   <dl className="space-y-2">
                     {rest

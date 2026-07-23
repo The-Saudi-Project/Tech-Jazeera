@@ -6,6 +6,7 @@
 import { Link } from 'react-router-dom';
 import { formatDate, formatMoney } from '../../../lib/utils.js';
 import Badge from '../../../components/ui/Badge.jsx';
+import Button from '../../../components/ui/Button.jsx';
 import QuotationPdfButton from './QuotationPdfButton.jsx';
 
 export const STATUS_VARIANT = { Draft: 'default', Approved: 'success', Rejected: 'danger' };
@@ -40,7 +41,16 @@ export function buildQuotationColumns({ showClient = false } = {}) {
       key: 'actions',
       header: '',
       className: 'text-right',
-      render: (q) => <QuotationPdfButton id={q._id} number={q.quotationNumber} size="sm" variant="ghost" />,
+      render: (q) => (
+        <span className="flex justify-end gap-2">
+          <Link to={`/quotations/${q._id}`}>
+            <Button size="sm" variant="secondary">
+              View
+            </Button>
+          </Link>
+          <QuotationPdfButton id={q._id} number={q.quotationNumber} size="sm" variant="ghost" />
+        </span>
+      ),
     },
   ];
 }
