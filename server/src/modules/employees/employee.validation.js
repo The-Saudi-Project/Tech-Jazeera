@@ -88,6 +88,9 @@ export const listEmployeesSchema = z.object({
     emptyToUndef,
     z.string().regex(/^[a-f0-9]{24}$/i, 'Invalid client id.').optional()
   ),
+  // 'true' → only workers with no current client (assignable). Powers the
+  // deployment assign form's worker picker (M6).
+  unassigned: z.preprocess(emptyToUndef, z.enum(['true', 'false']).optional()),
   sortBy: z.enum(['fullName', 'joiningDate', 'createdAt']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });

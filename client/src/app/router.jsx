@@ -22,6 +22,8 @@ import ClientListPage from '../features/clients/pages/ClientListPage.jsx';
 import ClientNewPage from '../features/clients/pages/ClientNewPage.jsx';
 import ClientProfilePage from '../features/clients/pages/ClientProfilePage.jsx';
 import ClientEditPage from '../features/clients/pages/ClientEditPage.jsx';
+import DeploymentListPage from '../features/deployments/pages/DeploymentListPage.jsx';
+import DeploymentNewPage from '../features/deployments/pages/DeploymentNewPage.jsx';
 import Spinner from '../components/ui/Spinner.jsx';
 
 function RequireAuth() {
@@ -58,6 +60,8 @@ export const router = createBrowserRouter([
           { path: '/clients/new', element: <ClientNewPage /> },
           { path: '/clients/:id', element: <ClientProfilePage /> },
           { path: '/clients/:id/edit', element: <ClientEditPage /> },
+          { path: '/deployments', element: <DeploymentListPage /> },
+          { path: '/deployments/new', element: <DeploymentNewPage /> },
         ],
       },
     ],

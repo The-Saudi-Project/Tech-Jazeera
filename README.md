@@ -77,6 +77,11 @@ together during development (two terminals).
   live Assigned-Workers). Delete is guarded against clients with assigned
   workers. Write: Admin/Manager/Operations; delete: Admin/Manager. See
   `docs/M5-notes.md`.
+- **Deployments** (`/deployments`) — place workers at client sites: assign,
+  transfer, and unassign, with full history. A partial-unique index guarantees
+  a worker is never actively deployed in two places at once, and each
+  operation is transactional. Managed from the register and each worker's
+  profile. Write: Admin/Manager/Operations. See `docs/M6-notes.md`.
 
 ## Documentation
 

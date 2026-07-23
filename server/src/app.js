@@ -28,6 +28,7 @@ import authRoutes from './modules/auth/auth.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import employeeRoutes from './modules/employees/employee.routes.js';
 import clientRoutes from './modules/clients/client.routes.js';
+import deploymentRoutes from './modules/deployments/deployment.routes.js';
 
 const app = express();
 
@@ -68,6 +69,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/clients', clientRoutes);
+app.use('/api/deployments', deploymentRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

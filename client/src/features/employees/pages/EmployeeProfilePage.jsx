@@ -19,6 +19,7 @@ import Badge from '../../../components/ui/Badge.jsx';
 import Button from '../../../components/ui/Button.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
+import WorkerDeploymentPanel from '../../deployments/components/WorkerDeploymentPanel.jsx';
 
 const STATUS_VARIANT = { Active: 'success', 'On Leave': 'warning', Exited: 'default' };
 
@@ -124,14 +125,12 @@ export default function EmployeeProfilePage() {
             <Field label="Department">{employee.department}</Field>
             <Field label="Salary">SAR {employee.salary?.toLocaleString()}</Field>
             <Field label="Accommodation">{employee.accommodation}</Field>
-            <Field label="Current client">
-              {/* Assignment is managed via Deployments (M6); until then this
-                  reads Unassigned for everyone. */}
-              {employee.currentClient ? String(employee.currentClient) : 'Unassigned'}
-            </Field>
-            <Field label="Current site">{employee.currentSite}</Field>
           </dl>
         </Card>
+
+        {/* Current deployment, actions (transfer/end/assign) and history —
+            owns its own data; populates from the M6 deployment workflow. */}
+        <WorkerDeploymentPanel employee={employee} />
 
         <Card>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Documents</h2>

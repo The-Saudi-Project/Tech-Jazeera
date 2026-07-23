@@ -43,6 +43,7 @@ export async function listEmployees({
   status,
   alerts,
   client,
+  unassigned,
   sortBy,
   sortOrder,
 }) {
@@ -56,6 +57,7 @@ export async function listEmployees({
   }
   if (status) conditions.push({ status });
   if (client) conditions.push({ currentClient: client });
+  if (unassigned === 'true') conditions.push({ currentClient: null });
   if (alerts === 'true') {
     const threshold = new Date(Date.now() + EXPIRY_WARNING_DAYS * 24 * 60 * 60 * 1000);
     // $lte against a Date matches only real dates — documents with no expiry
@@ -76,7 +78,9 @@ export async function listEmployees({
 }
 
 export async function getEmployee(id) {
-  const employee = await Employee.findById(id).lean();
+  // Populate the current client's name so the profile can show/link it rather
+  // than a raw id. currentClient is set by the deployment workflow (M6).
+  const employee = await Employee.findById(id).populate('currentClient', 'companyName').lean();
   if (!employee) throw new ApiError(404, 'Employee not found.');
   return employee;
 }
