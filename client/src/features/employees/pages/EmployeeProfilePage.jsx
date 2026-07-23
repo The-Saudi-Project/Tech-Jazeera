@@ -20,6 +20,7 @@ import Button from '../../../components/ui/Button.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 import WorkerDeploymentPanel from '../../deployments/components/WorkerDeploymentPanel.jsx';
+import DocumentsPanel from '../../documents/components/DocumentsPanel.jsx';
 
 const STATUS_VARIANT = { Active: 'success', 'On Leave': 'warning', Exited: 'default' };
 
@@ -133,7 +134,11 @@ export default function EmployeeProfilePage() {
         <WorkerDeploymentPanel employee={employee} />
 
         <Card>
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Documents</h2>
+          {/* Identity metadata (numbers + expiry) — distinct from uploaded
+              files, which live in the Documents panel below. */}
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">
+            Identity documents
+          </h2>
           <div className="divide-y divide-border">
             {DOCUMENTS.map(([key, label]) => {
               const doc = employee[key];
@@ -151,6 +156,9 @@ export default function EmployeeProfilePage() {
             })}
           </div>
         </Card>
+
+        {/* Uploaded files (scans, contracts, certificates) via the M8 center. */}
+        <DocumentsPanel ownerType="Employee" ownerId={employee._id} ownerName={employee.fullName} />
 
         <Card>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">

@@ -44,3 +44,28 @@ export const ATTENDANCE_STATUSES = Object.keys(ATTENDANCE_STATUS_META);
 
 /** Mirror of the attendance write guard (server enforces). */
 export const ATTENDANCE_WRITE_ROLES = ['Admin', 'Manager', 'HR', 'Operations'];
+
+/** Mirrors the Document model enums. */
+export const DOCUMENT_OWNER_TYPES = ['Employee', 'Client'];
+export const DOCUMENT_CATEGORIES = [
+  'Passport',
+  'Visa',
+  'Iqama',
+  'Medical',
+  'Driving License',
+  'Contract',
+  'Certificate',
+  'Commercial Registration',
+  'VAT Certificate',
+  'Agreement',
+  'Invoice',
+  'Other',
+];
+
+/** Mirror of the document route guards (server enforces). */
+export const DOCUMENT_WRITE_ROLES = ['Admin', 'Manager', 'HR', 'Operations'];
+export const DOCUMENT_DELETE_ROLES = ['Admin', 'Manager', 'HR'];
+
+/** Upload limits, mirrored from server/src/middleware/upload.js. */
+export const DOCUMENT_MAX_MB = 10;
+export const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx';

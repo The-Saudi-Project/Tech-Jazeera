@@ -10,6 +10,8 @@
  * that tells you exactly which variable to fix.
  */
 import 'dotenv/config';
+import path from 'node:path';
+import fs from 'node:fs';
 
 /** Accumulates human-readable problems so we can report them all at once. */
 const problems = [];
@@ -56,6 +58,18 @@ function requiredSecret(name) {
   return value;
 }
 
+/**
+ * Require a filesystem path and return it ABSOLUTE. A relative value (e.g.
+ * `./uploads`) is resolved against the process working directory (the server/
+ * folder, since npm scripts run there). Storing the absolute path means the
+ * rest of the app never has to reason about cwd.
+ */
+function requiredDir(name) {
+  const value = required(name);
+  if (value === undefined) return undefined;
+  return path.resolve(value);
+}
+
 const env = Object.freeze({
   nodeEnv: requiredEnum('NODE_ENV', ['development', 'production']),
   port: requiredPort('PORT'),
@@ -63,6 +77,7 @@ const env = Object.freeze({
   clientUrl: required('CLIENT_URL'),
   jwtAccessSecret: requiredSecret('JWT_ACCESS_SECRET'),
   jwtRefreshSecret: requiredSecret('JWT_REFRESH_SECRET'),
+  uploadDir: requiredDir('UPLOAD_DIR'),
   isProduction: process.env.NODE_ENV === 'production',
 });
 
@@ -73,6 +88,15 @@ if (problems.length > 0) {
   console.error('\n[env] Server cannot start — invalid environment configuration:\n');
   for (const problem of problems) console.error(`  ✗ ${problem}`);
   console.error('\nFix server/.env and try again.\n');
+  process.exit(1);
+}
+
+// Ensure the upload directory exists (create it if missing). Done here, once,
+// so upload handlers can assume the destination is ready.
+try {
+  fs.mkdirSync(env.uploadDir, { recursive: true });
+} catch (err) {
+  console.error(`\n[env] Could not create UPLOAD_DIR at ${env.uploadDir}: ${err.message}\n`);
   process.exit(1);
 }
 

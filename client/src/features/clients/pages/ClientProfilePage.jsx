@@ -1,20 +1,13 @@
 /**
  * Client profile — tabbed view.
  *
- * Tabs are built for data we can show for REAL right now:
- *   - Overview — the client record, including its sites.
- *   - Workers  — employees currently assigned here (a live query on the
- *                employee endpoint filtered by client). Empty until the
- *                deployment workflow (M6) assigns anyone — and it shows a
- *                genuine empty state, backed by a real request, not a stub.
+ * Tabs, each backed by REAL data (no placeholder tabs):
+ *   - Overview  — the client record, including its sites.
+ *   - Workers   — employees currently assigned here (live query on the
+ *                 employee endpoint filtered by client).
+ *   - Documents — this client's files (added in M8).
  *
- * Documents (M8) and Quotations (M9) will add their own tabs here when those
- * modules exist and there is real data to query — we do not ship empty
- * placeholder tabs for features that aren't built yet (project hard rule).
- *
- * The tab bar is kept inline: it is used only on this screen so far, so a
- * shared <Tabs> abstraction would be premature. It gets extracted the day a
- * second screen needs one.
+ * Quotations (M9) will add its tab here when that module exists.
  */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -33,6 +26,7 @@ import Button from '../../../components/ui/Button.jsx';
 import Table from '../../../components/ui/Table.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
+import DocumentsPanel from '../../documents/components/DocumentsPanel.jsx';
 
 const STATUS_VARIANT = { Active: 'success', Inactive: 'default' };
 
@@ -191,6 +185,7 @@ export default function ClientProfilePage() {
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'workers', label: 'Workers' },
+    { key: 'documents', label: 'Documents' },
   ];
 
   return (
@@ -234,7 +229,11 @@ export default function ClientProfilePage() {
         ))}
       </div>
 
-      {tab === 'overview' ? <OverviewTab client={client} /> : <WorkersTab clientId={id} />}
+      {tab === 'overview' && <OverviewTab client={client} />}
+      {tab === 'workers' && <WorkersTab clientId={id} />}
+      {tab === 'documents' && (
+        <DocumentsPanel ownerType="Client" ownerId={id} ownerName={client.companyName} />
+      )}
 
       <ConfirmDialog
         open={confirmingDelete}

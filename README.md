@@ -86,6 +86,11 @@ together during development (two terminals).
   per-worker summaries with **Excel/PDF export** (generated server-side via
   exceljs/pdfkit). One record per worker per day (upsert). Mark: Admin/
   Manager/HR/Operations; read/export: all. See `docs/M7-notes.md`.
+- **Documents** (`/documents`) — upload files against employees and clients
+  with categories, expiry dates, version history, inline preview, download,
+  and search. Files stored on disk at `UPLOAD_DIR`; served authenticated.
+  Upload: Admin/Manager/HR/Operations; delete: Admin/Manager/HR. See
+  `docs/M8-notes.md`.
 
 ## Documentation
 
