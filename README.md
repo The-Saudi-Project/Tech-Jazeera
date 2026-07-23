@@ -96,6 +96,11 @@ together during development (two terminals).
   statuses, duplicate, and PDF generation. Sequential numbers via an atomic
   counter. Write: Admin/Manager/Accounts; delete: Admin/Manager. See
   `docs/M9-notes.md`.
+- **Dashboard** (`/`) — a management overview aggregating every module in one
+  endpoint: headline stats, a finance summary, workforce/quotation
+  breakdowns, expiring-document alerts, recent activity from the audit log,
+  and role-aware quick actions. Available to all signed-in users. See
+  `docs/M10-notes.md`.
 
 ## Documentation
 
