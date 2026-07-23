@@ -26,6 +26,10 @@ import DeploymentListPage from '../features/deployments/pages/DeploymentListPage
 import DeploymentNewPage from '../features/deployments/pages/DeploymentNewPage.jsx';
 import AttendancePage from '../features/attendance/pages/AttendancePage.jsx';
 import DocumentListPage from '../features/documents/pages/DocumentListPage.jsx';
+import QuotationListPage from '../features/quotations/pages/QuotationListPage.jsx';
+import QuotationNewPage from '../features/quotations/pages/QuotationNewPage.jsx';
+import QuotationViewPage from '../features/quotations/pages/QuotationViewPage.jsx';
+import QuotationEditPage from '../features/quotations/pages/QuotationEditPage.jsx';
 import Spinner from '../components/ui/Spinner.jsx';
 
 function RequireAuth() {
@@ -66,6 +70,10 @@ export const router = createBrowserRouter([
           { path: '/deployments/new', element: <DeploymentNewPage /> },
           { path: '/attendance', element: <AttendancePage /> },
           { path: '/documents', element: <DocumentListPage /> },
+          { path: '/quotations', element: <QuotationListPage /> },
+          { path: '/quotations/new', element: <QuotationNewPage /> },
+          { path: '/quotations/:id', element: <QuotationViewPage /> },
+          { path: '/quotations/:id/edit', element: <QuotationEditPage /> },
         ],
       },
     ],

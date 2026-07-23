@@ -2,12 +2,11 @@
  * Client profile — tabbed view.
  *
  * Tabs, each backed by REAL data (no placeholder tabs):
- *   - Overview  — the client record, including its sites.
- *   - Workers   — employees currently assigned here (live query on the
- *                 employee endpoint filtered by client).
- *   - Documents — this client's files (added in M8).
- *
- * Quotations (M9) will add its tab here when that module exists.
+ *   - Overview   — the client record, including its sites.
+ *   - Workers    — employees currently assigned here (live query on the
+ *                  employee endpoint filtered by client).
+ *   - Documents  — this client's files (M8).
+ *   - Quotations — priced offers to this client (M9).
  */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -27,6 +26,7 @@ import Table from '../../../components/ui/Table.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 import DocumentsPanel from '../../documents/components/DocumentsPanel.jsx';
+import QuotationsPanel from '../../quotations/components/QuotationsPanel.jsx';
 
 const STATUS_VARIANT = { Active: 'success', Inactive: 'default' };
 
@@ -186,6 +186,7 @@ export default function ClientProfilePage() {
     { key: 'overview', label: 'Overview' },
     { key: 'workers', label: 'Workers' },
     { key: 'documents', label: 'Documents' },
+    { key: 'quotations', label: 'Quotations' },
   ];
 
   return (
@@ -234,6 +235,7 @@ export default function ClientProfilePage() {
       {tab === 'documents' && (
         <DocumentsPanel ownerType="Client" ownerId={id} ownerName={client.companyName} />
       )}
+      {tab === 'quotations' && <QuotationsPanel clientId={id} />}
 
       <ConfirmDialog
         open={confirmingDelete}

@@ -36,3 +36,11 @@ export function toDateInput(value) {
 export function daysUntil(value) {
   return Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
 }
+
+/** Format a number as SAR currency: 1234.5 → "SAR 1,234.50". */
+export function formatMoney(value) {
+  return `SAR ${Number(value || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}

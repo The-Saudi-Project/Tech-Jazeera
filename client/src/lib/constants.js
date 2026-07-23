@@ -69,3 +69,14 @@ export const DOCUMENT_DELETE_ROLES = ['Admin', 'Manager', 'HR'];
 /** Upload limits, mirrored from server/src/middleware/upload.js. */
 export const DOCUMENT_MAX_MB = 10;
 export const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx';
+
+/** Mirrors the Quotation model enums. */
+export const QUOTATION_STATUSES = ['Draft', 'Approved', 'Rejected'];
+export const QUOTATION_LINE_TYPES = ['Labour', 'Trading'];
+
+/** Mirror of the quotation route guards (server enforces). */
+export const QUOTATION_WRITE_ROLES = ['Admin', 'Manager', 'Accounts'];
+export const QUOTATION_DELETE_ROLES = ['Admin', 'Manager'];
+
+/** Default KSA VAT rate for new line items. */
+export const DEFAULT_TAX_RATE = 15;

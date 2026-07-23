@@ -31,6 +31,7 @@ import clientRoutes from './modules/clients/client.routes.js';
 import deploymentRoutes from './modules/deployments/deployment.routes.js';
 import attendanceRoutes from './modules/attendance/attendance.routes.js';
 import documentRoutes from './modules/documents/document.routes.js';
+import quotationRoutes from './modules/quotations/quotation.routes.js';
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/deployments', deploymentRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/quotations', quotationRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

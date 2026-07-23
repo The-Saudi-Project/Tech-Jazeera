@@ -91,6 +91,11 @@ together during development (two terminals).
   and search. Files stored on disk at `UPLOAD_DIR`; served authenticated.
   Upload: Admin/Manager/HR/Operations; delete: Admin/Manager/HR. See
   `docs/M8-notes.md`.
+- **Quotations** (`/quotations`) — labour/trading line items with per-line
+  discount and tax, **server-computed** totals, Draft/Approved/Rejected
+  statuses, duplicate, and PDF generation. Sequential numbers via an atomic
+  counter. Write: Admin/Manager/Accounts; delete: Admin/Manager. See
+  `docs/M9-notes.md`.
 
 ## Documentation
 
