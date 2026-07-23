@@ -98,3 +98,15 @@ export const listEmployeesSchema = z.object({
 export const employeeIdParamSchema = z.object({
   id: z.string().regex(/^[a-f0-9]{24}$/i, 'Invalid employee id.'),
 });
+
+/**
+ * Body for provisioning a Worker login (P2-M1). `email` is optional: the
+ * service defaults to the employee's own email and only needs this when the
+ * record has none. Same preprocess as the employee email so "" → undefined.
+ */
+export const createLoginSchema = z.object({
+  email: z.preprocess(
+    (v) => (typeof v === 'string' ? emptyToUndef(v.trim().toLowerCase()) : v),
+    z.email('Enter a valid email address.').optional()
+  ),
+});

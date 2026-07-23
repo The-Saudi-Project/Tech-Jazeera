@@ -9,7 +9,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getEmployee, deleteEmployee } from '../employees.api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { useToast } from '../../../components/ui/Toast.jsx';
-import { EMPLOYEE_WRITE_ROLES, EMPLOYEE_DELETE_ROLES } from '../../../lib/constants.js';
+import {
+  EMPLOYEE_WRITE_ROLES,
+  EMPLOYEE_DELETE_ROLES,
+  ACCOUNT_PROVISION_ROLES,
+} from '../../../lib/constants.js';
 import { apiMessage, formatDate } from '../../../lib/utils.js';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
@@ -21,6 +25,7 @@ import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 import WorkerDeploymentPanel from '../../deployments/components/WorkerDeploymentPanel.jsx';
 import DocumentsPanel from '../../documents/components/DocumentsPanel.jsx';
+import WorkerLoginPanel from '../components/WorkerLoginPanel.jsx';
 
 const STATUS_VARIANT = { Active: 'success', 'On Leave': 'warning', Exited: 'default' };
 
@@ -52,6 +57,7 @@ export default function EmployeeProfilePage() {
 
   const canWrite = EMPLOYEE_WRITE_ROLES.includes(user.role);
   const canDelete = EMPLOYEE_DELETE_ROLES.includes(user.role);
+  const canProvisionAccount = ACCOUNT_PROVISION_ROLES.includes(user.role);
 
   const { data: employee, isPending, isError } = useQuery({
     queryKey: ['employee', id],
@@ -128,6 +134,10 @@ export default function EmployeeProfilePage() {
             <Field label="Accommodation">{employee.accommodation}</Field>
           </dl>
         </Card>
+
+        {/* Worker login (P2-M1) — Admin/HR only. Create/inspect this
+            employee's self-service account. */}
+        {canProvisionAccount && <WorkerLoginPanel employee={employee} />}
 
         {/* Current deployment, actions (transfer/end/assign) and history —
             owns its own data; populates from the M6 deployment workflow. */}

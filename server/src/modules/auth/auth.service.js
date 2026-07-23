@@ -44,6 +44,21 @@ export function hashPassword(password) {
   return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
+/**
+ * Generate a random temporary password for a provisioned account (P2-M1).
+ * 14 characters from an alphabet that excludes look-alikes (0/O, 1/l/I) so an
+ * admin can read it aloud or type it without ambiguity — ~80 bits of entropy.
+ * It is returned to the admin ONCE to hand over and is never stored in
+ * plaintext (only its bcrypt hash) nor written to logs/audit.
+ */
+export function generateTempPassword() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = crypto.randomBytes(14);
+  let out = '';
+  for (const byte of bytes) out += alphabet[byte % alphabet.length];
+  return out;
+}
+
 /** SHA-256 of the refresh token — what we store/look up instead of the token. */
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');

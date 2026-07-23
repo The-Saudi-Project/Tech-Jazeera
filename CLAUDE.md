@@ -112,3 +112,9 @@ Each milestone documented in `docs/M<N>-notes.md`.
 **Phase 2 — planned in `docs/PHASE2-PLAN.md`**: worker accounts + self-service
 portal, timesheets + approval, payroll + payslips, invoices + payments,
 expenses, and a real profit dashboard. Same stack, same rules, same discipline.
+
+- **P2-M1 COMPLETE** — worker accounts & account linking: `Worker` role,
+  `User.employee` link (partial unique index), `requireStaff` locking all admin
+  modules against Workers, admin-only login provisioning (temp password surfaced
+  once), and a staff-only web gate. Web ESS portal + the reusable ownership-guard
+  middleware are P2-M2. See `docs/P2-M1-notes.md`.

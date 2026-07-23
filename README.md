@@ -51,7 +51,9 @@ npm run seed:admin -- you@company.com YourStrongPassword "Your Name"
 Auth endpoints: `POST /api/auth/login` `{ email, password }` →
 `{ user, accessToken }` + httpOnly refresh cookie; `POST /api/auth/refresh`;
 `POST /api/auth/logout`. Roles: Admin, Manager, HR, Operations, Accounts,
-Viewer. See `docs/M2-notes.md` for the full token flow.
+Viewer, Worker. (Worker is the Phase 2 self-service persona — see
+`docs/P2-M1-notes.md`; the admin modules are staff-only.) See `docs/M2-notes.md`
+for the full token flow.
 
 ## Client setup
 

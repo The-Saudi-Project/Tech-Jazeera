@@ -35,6 +35,15 @@ export const requireAuth = asyncHandler(async (req, res, next) => {
     throw new ApiError(401, 'This account no longer exists or is deactivated.');
   }
 
-  req.user = { id: user._id.toString(), name: user.name, email: user.email, role: user.role };
+  // `employee` (P2-M1) is the linked workforce record, or null for staff. It
+  // is the anchor for ownership checks — an ESS route (P2-M2) will compare a
+  // resource's owner against req.user.employee. Stringified for easy ===.
+  req.user = {
+    id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    employee: user.employee ? user.employee.toString() : null,
+  };
   next();
 });

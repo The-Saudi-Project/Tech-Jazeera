@@ -27,3 +27,13 @@ export async function updateEmployee(id, payload) {
 export async function deleteEmployee(id) {
   await api.delete(`/employees/${id}`);
 }
+
+/**
+ * POST /employees/:id/user — provision a Worker login (Admin/HR).
+ * Returns { user, tempPassword }; the temp password is shown ONCE.
+ * `payload.email` is optional — only needed when the employee has no email.
+ */
+export async function createEmployeeLogin(id, payload = {}) {
+  const { data } = await api.post(`/employees/${id}/user`, payload);
+  return data.data;
+}

@@ -30,3 +30,17 @@ export const requireRoles = (...allowedRoles) => {
     next();
   };
 };
+
+/**
+ * Staff = every role EXCEPT the self-service Worker (P2-M1). The admin modules
+ * (employees, clients, deployments, attendance, documents, quotations,
+ * dashboard) are staff-only; a Worker uses the ESS portal (P2-M2), never these.
+ *
+ * Derived from ROLES rather than hard-coded so a future staff role is included
+ * automatically. Mounted at the router level (`router.use(requireStaff)`) so it
+ * covers every route in a module — including the READ routes that otherwise ask
+ * only for requireAuth, which is exactly where a Worker would leak into
+ * company-wide data.
+ */
+export const STAFF_ROLES = ROLES.filter((role) => role !== 'Worker');
+export const requireStaff = requireRoles(...STAFF_ROLES);

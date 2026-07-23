@@ -16,6 +16,10 @@ export const EMPLOYEE_STATUSES = ['Active', 'On Leave', 'Exited'];
 export const EMPLOYEE_WRITE_ROLES = ['Admin', 'Manager', 'HR'];
 export const EMPLOYEE_DELETE_ROLES = ['Admin', 'HR'];
 
+/** Who may provision a worker login for an employee (P2-M1). Mirror of the
+ *  server guard on POST /employees/:id/user — the server enforces. */
+export const ACCOUNT_PROVISION_ROLES = ['Admin', 'HR'];
+
 /** Mirrors the Client model's status enum. */
 export const CLIENT_STATUSES = ['Active', 'Inactive'];
 

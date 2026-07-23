@@ -3,7 +3,9 @@
  * HTTP; nothing in here touches req/res.
  */
 import Employee from './employee.model.js';
+import User from '../auth/user.model.js';
 import ApiError from '../../utils/ApiError.js';
+import { hashPassword, generateTempPassword } from '../auth/auth.service.js';
 import { logAudit } from '../audit/audit.service.js';
 
 /**
@@ -82,7 +84,70 @@ export async function getEmployee(id) {
   // than a raw id. currentClient is set by the deployment workflow (M6).
   const employee = await Employee.findById(id).populate('currentClient', 'companyName').lean();
   if (!employee) throw new ApiError(404, 'Employee not found.');
+  // P2-M1: surface whether this employee has a login so the profile can show
+  // account status (and hide "create login" once one exists) without a second
+  // round-trip. Minimal, non-sensitive fields only — never the hash.
+  const login = await User.findOne({ employee: id }).select('email role isActive').lean();
+  employee.login = login
+    ? { id: login._id.toString(), email: login.email, role: login.role, isActive: login.isActive }
+    : null;
   return employee;
+}
+
+/**
+ * Provision a Worker login for an existing employee (P2-M1). Admin/HR only
+ * (enforced on the route). Generates a temporary password, returns it ONCE to
+ * the caller to hand over, and never stores or logs it in plaintext.
+ *
+ * Guards:
+ *  - employee must exist (404)
+ *  - employee must not already have a login (409) — the one-to-one link
+ *  - a login needs an email: use the employee's, or one the admin supplies
+ *    when the record has none (400 if neither)
+ *  - that email must be free (409) — checked here for a clear message, with
+ *    the User email/employee unique indexes as the final backstop on a race
+ */
+export async function createEmployeeLogin(employeeId, { email }, actor) {
+  const employee = await Employee.findById(employeeId).lean();
+  if (!employee) throw new ApiError(404, 'Employee not found.');
+
+  const existing = await User.findOne({ employee: employeeId }).lean();
+  if (existing) throw new ApiError(409, 'This employee already has a login.');
+
+  const loginEmail = email ?? employee.email;
+  if (!loginEmail) {
+    throw new ApiError(
+      400,
+      'This employee has no email on file — add one, or provide an email for the login.'
+    );
+  }
+
+  const emailTaken = await User.findOne({ email: loginEmail }).lean();
+  if (emailTaken) throw new ApiError(409, 'A user with this email already exists.');
+
+  const tempPassword = generateTempPassword();
+  const user = await User.create({
+    name: employee.fullName,
+    email: loginEmail,
+    passwordHash: await hashPassword(tempPassword),
+    role: 'Worker',
+    employee: employee._id,
+  });
+
+  await logAudit({
+    user: actor.userId,
+    action: 'user.provision.worker',
+    targetType: 'User',
+    targetId: user._id,
+    // Password is NEVER logged — only the identity of the account created.
+    meta: { employeeId: employee.employeeId, email: loginEmail },
+    ip: actor.ip,
+  });
+
+  return {
+    user: { id: user._id.toString(), name: user.name, email: user.email, role: user.role },
+    tempPassword,
+  };
 }
 
 /** Duplicate employeeId is caught by the unique index → 409 via errorHandler. */

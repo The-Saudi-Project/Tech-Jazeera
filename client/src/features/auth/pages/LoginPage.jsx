@@ -34,7 +34,9 @@ export default function LoginPage() {
       await login(values);
       navigate('/', { replace: true });
     } catch (error) {
-      setServerError(apiMessage(error, 'Could not log in. Is the server running?'));
+      // A client-side block (e.g. the P2-M1 worker web gate) carries a ready
+      // message; otherwise fall back to the server's message.
+      setServerError(error.userMessage ?? apiMessage(error, 'Could not log in. Is the server running?'));
     }
   }
 

@@ -14,7 +14,7 @@ import { Router } from 'express';
 import fs from 'node:fs';
 import asyncHandler from '../../utils/asyncHandler.js';
 import { requireAuth } from '../../middleware/auth.js';
-import { requireRoles } from '../../middleware/rbac.js';
+import { requireRoles, requireStaff } from '../../middleware/rbac.js';
 import { validate } from '../../middleware/validate.js';
 import { uploadSingle } from '../../middleware/upload.js';
 import {
@@ -28,6 +28,7 @@ import * as documentController from './document.controller.js';
 const router = Router();
 
 router.use(requireAuth);
+router.use(requireStaff); // staff-only module; Workers use the ESS portal (P2-M2)
 
 const canWrite = requireRoles('Admin', 'Manager', 'HR', 'Operations');
 const canDelete = requireRoles('Admin', 'Manager', 'HR');

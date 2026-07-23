@@ -53,3 +53,14 @@ export async function remove(req, res) {
   await employeeService.deleteEmployee(req.params.id, actor(req));
   res.json(new ApiResponse('Employee deleted.'));
 }
+
+/**
+ * POST /api/employees/:id/user   (Admin, HR)
+ * Provisions a Worker login for this employee.
+ * 201 → data: { user, tempPassword } — tempPassword is shown ONCE, hand it over
+ * 400 no email on file · 404 unknown employee · 409 already has a login / email taken
+ */
+export async function createLogin(req, res) {
+  const data = await employeeService.createEmployeeLogin(req.params.id, req.body, actor(req));
+  res.status(201).json(new ApiResponse('Worker login created.', data));
+}
