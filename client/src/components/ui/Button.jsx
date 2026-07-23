@@ -7,13 +7,14 @@ import { cn } from '../../lib/utils.js';
 import Spinner from './Spinner.jsx';
 
 const variants = {
-  primary: 'bg-primary text-white hover:bg-primary-hover',
-  secondary: 'bg-surface text-text border border-border hover:bg-bg',
+  primary: 'bg-primary text-white shadow-sm hover:bg-primary-hover hover:shadow-glow',
+  secondary: 'bg-surface text-text border border-border shadow-xs hover:bg-bg hover:border-muted/40',
   ghost: 'text-muted hover:bg-border/40 hover:text-text',
-  danger: 'bg-danger text-white hover:bg-danger-hover',
+  danger: 'bg-danger text-white shadow-sm hover:bg-danger-hover',
 };
 
 const sizes = {
+  lg: 'h-11 px-5 text-sm',
   md: 'h-10 px-4 text-sm', // 40px tall — comfortably touch-friendly
   sm: 'h-8 px-3 text-sm',
 };
@@ -34,7 +35,8 @@ export default function Button({
       disabled={disabled || isLoading}
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-lg font-medium',
-        'transition-colors disabled:pointer-events-none disabled:opacity-60',
+        'transition-all duration-200 ease-out-expo active:scale-[0.97]',
+        'disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none',
         variants[variant],
         sizes[size],
         className

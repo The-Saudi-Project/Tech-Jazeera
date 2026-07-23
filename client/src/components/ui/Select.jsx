@@ -21,8 +21,10 @@ const Select = forwardRef(function Select({ label, error, className, children, .
         ref={ref}
         aria-invalid={Boolean(error) || undefined}
         className={cn(
-          'h-10 w-full rounded-lg border bg-surface px-3 text-sm text-text transition-colors',
-          error ? 'border-danger' : 'border-border hover:border-muted/50'
+          'h-10 w-full rounded-lg border bg-surface px-3 text-sm text-text shadow-xs transition-colors',
+          error
+            ? 'border-danger'
+            : 'border-border hover:border-muted/50 focus:border-primary'
         )}
         {...props}
       >

@@ -20,9 +20,11 @@ const Textarea = forwardRef(function Textarea({ label, error, className, rows = 
         rows={rows}
         aria-invalid={Boolean(error) || undefined}
         className={cn(
-          'w-full rounded-lg border bg-surface px-3 py-2 text-sm text-text',
+          'w-full rounded-lg border bg-surface px-3 py-2 text-sm text-text shadow-xs',
           'placeholder:text-muted/70 transition-colors',
-          error ? 'border-danger' : 'border-border hover:border-muted/50'
+          error
+            ? 'border-danger'
+            : 'border-border hover:border-muted/50 focus:border-primary'
         )}
         {...props}
       />

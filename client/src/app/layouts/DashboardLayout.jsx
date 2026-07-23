@@ -66,7 +66,7 @@ function Sidebar({ onNavigate }) {
   return (
     <div className="flex h-full flex-col border-r border-border bg-surface">
       <div className="flex h-16 items-center gap-2.5 border-b border-border px-5">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-sm font-bold text-white">
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary-hover text-sm font-bold text-white shadow-glow">
           AJ
         </div>
         <span className="font-semibold tracking-tight">Al Jazeera ERP</span>
@@ -80,10 +80,10 @@ function Sidebar({ onNavigate }) {
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ease-out-expo',
                 isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted hover:bg-border/40 hover:text-text'
+                  ? 'bg-primary/10 font-semibold text-primary shadow-xs ring-1 ring-inset ring-primary/10'
+                  : 'font-medium text-muted hover:bg-border/40 hover:text-text'
               )
             }
           >
@@ -92,6 +92,13 @@ function Sidebar({ onNavigate }) {
           </NavLink>
         ))}
       </nav>
+      <div className="border-t border-border p-4">
+        <p className="text-[11px] leading-relaxed text-muted/70">
+          Manpower supply &amp; trading
+          <br />
+          Operating system
+        </p>
+      </div>
     </div>
   );
 }
@@ -128,7 +135,7 @@ export default function DashboardLayout() {
       )}
 
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface/80 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface/70 px-4 backdrop-blur-xl sm:px-6">
           <button
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
@@ -144,7 +151,7 @@ export default function DashboardLayout() {
               <p className="text-sm font-medium leading-tight">{user.name}</p>
               <p className="text-xs text-muted">{user.role}</p>
             </div>
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/20">
               {user.name.charAt(0).toUpperCase()}
             </div>
             <button

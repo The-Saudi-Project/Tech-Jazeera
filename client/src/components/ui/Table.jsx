@@ -56,12 +56,15 @@ export default function Table({
   return (
     <>
       {/* Desktop */}
-      <div className="hidden overflow-x-auto rounded-xl border border-border bg-surface md:block">
+      <div className="hidden overflow-x-auto rounded-2xl border border-border bg-surface shadow-sm md:block">
         <table className="w-full text-sm">
-          <thead className="border-b border-border text-left">
+          <thead className="border-b border-border bg-bg/40 text-left">
             <tr>
               {columns.map((col) => (
-                <th key={col.key} className="whitespace-nowrap px-4 py-3 font-medium text-muted">
+                <th
+                  key={col.key}
+                  className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted"
+                >
                   <SortableHeader column={col} sortBy={sortBy} sortOrder={sortOrder} onSort={onSort} />
                 </th>
               ))}
@@ -83,7 +86,7 @@ export default function Table({
                     key={rowKey(row)}
                     onClick={rowClickHandler(onRowClick, row)}
                     className={cn(
-                      'transition-colors hover:bg-bg/60',
+                      'transition-colors hover:bg-primary/[0.035]',
                       onRowClick && 'cursor-pointer'
                     )}
                   >
@@ -102,7 +105,7 @@ export default function Table({
       <div className="space-y-3 md:hidden">
         {loading
           ? Array.from({ length: 3 }, (_, i) => (
-              <div key={i} className="space-y-3 rounded-xl border border-border bg-surface p-4">
+              <div key={i} className="space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-sm">
                 <Skeleton className="h-5 w-1/2" />
                 <Skeleton className="h-4 w-2/3" />
                 <Skeleton className="h-4 w-1/3" />
@@ -115,7 +118,7 @@ export default function Table({
                   key={rowKey(row)}
                   onClick={rowClickHandler(onRowClick, row)}
                   className={cn(
-                    'rounded-xl border border-border bg-surface p-4',
+                    'rounded-2xl border border-border bg-surface p-4 shadow-sm',
                     onRowClick && 'cursor-pointer transition-colors hover:border-primary/40'
                   )}
                 >

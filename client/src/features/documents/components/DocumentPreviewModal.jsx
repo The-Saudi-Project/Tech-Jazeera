@@ -52,17 +52,18 @@ export default function DocumentPreviewModal({ doc, open, onClose }) {
   const isImage = version.mimeType.startsWith('image/');
 
   return (
-    <Modal open={open} onClose={onClose} title={doc.title}>
-      <div className="space-y-3">
-        <div className="grid min-h-[16rem] place-items-center overflow-hidden rounded-lg border border-border bg-bg">
+    <Modal open={open} onClose={onClose} title={doc.title} size="xl">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+        {/* Preview — the star of the dialog */}
+        <div className="grid h-[52vh] min-w-0 place-items-center overflow-hidden rounded-xl border border-border bg-bg lg:h-[70vh] lg:flex-1">
           {error ? (
             <p className="p-6 text-sm text-danger">{error}</p>
           ) : !url ? (
             <Spinner className="h-6 w-6 text-primary" />
           ) : isPdf ? (
-            <iframe title={doc.title} src={url} className="h-[60vh] w-full" />
+            <iframe title={doc.title} src={url} className="h-full w-full" />
           ) : isImage ? (
-            <img src={url} alt={doc.title} className="max-h-[60vh] w-auto object-contain" />
+            <img src={url} alt={doc.title} className="max-h-full w-auto object-contain" />
           ) : (
             <p className="p-6 text-center text-sm text-muted">
               This file type can’t be previewed in the browser.
@@ -71,45 +72,48 @@ export default function DocumentPreviewModal({ doc, open, onClose }) {
             </p>
           )}
         </div>
-        {/* Details */}
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Badge variant="primary">{doc.category}</Badge>
-          <ExpiryBadge date={doc.expiryDate} />
-          <span className="ml-auto">
+
+        {/* Details + version history */}
+        <div className="space-y-5 lg:w-80 lg:shrink-0">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="primary">{doc.category}</Badge>
+              <ExpiryBadge date={doc.expiryDate} />
+            </div>
             <Button
-              variant="secondary"
+              variant="primary"
+              className="mt-3 w-full"
               onClick={() => downloadDocumentFile(doc._id, version.version, version.originalName)}
             >
-              Download current
+              Download current version
             </Button>
-          </span>
-        </div>
+          </div>
 
-        {/* Version history */}
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
-            Versions ({doc.versions.length})
-          </p>
-          <div className="divide-y divide-border rounded-lg border border-border">
-            {[...doc.versions].reverse().map((v) => (
-              <div key={v.version} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                <div className="min-w-0">
-                  <p className="truncate">
-                    v{v.version} · {v.originalName}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {formatDate(v.uploadedAt)} · {fileSize(v.size)}
-                  </p>
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+              Versions ({doc.versions.length})
+            </p>
+            <div className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {[...doc.versions].reverse().map((v) => (
+                <div key={v.version} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      v{v.version} · {v.originalName}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {formatDate(v.uploadedAt)} · {fileSize(v.size)}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => downloadDocumentFile(doc._id, v.version, v.originalName)}
+                  >
+                    Download
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => downloadDocumentFile(doc._id, v.version, v.originalName)}
-                >
-                  Download
-                </Button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>

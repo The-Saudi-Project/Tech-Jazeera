@@ -33,6 +33,42 @@ export default {
         success: 'rgb(var(--color-success) / <alpha-value>)',
         warning: 'rgb(var(--color-warning) / <alpha-value>)',
       },
+      /**
+       * Elevation scale — soft, indigo-tinted shadows (never pure black, per
+       * our design laws). Depth is how the "elevated minimal" look reads on a
+       * light surface; components pick a rung (shadow-xs … shadow-xl) instead
+       * of hand-rolling box-shadows.
+       */
+      boxShadow: {
+        xs: '0 1px 2px 0 rgb(30 27 75 / 0.05)',
+        sm: '0 1px 3px 0 rgb(30 27 75 / 0.07), 0 1px 2px -1px rgb(30 27 75 / 0.06)',
+        md: '0 4px 14px -3px rgb(30 27 75 / 0.10), 0 2px 6px -3px rgb(30 27 75 / 0.06)',
+        lg: '0 14px 32px -8px rgb(30 27 75 / 0.16), 0 6px 14px -8px rgb(30 27 75 / 0.10)',
+        xl: '0 28px 56px -14px rgb(30 27 75 / 0.26)',
+        // A focused glow for the primary CTA — used sparingly.
+        glow: '0 8px 24px -8px rgb(79 70 229 / 0.50)',
+      },
+      // Exponential ease-outs only (no bounce/elastic) — see design laws.
+      transitionTimingFunction: {
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'out-quint': 'cubic-bezier(0.22, 1, 0.36, 1)',
+      },
+      keyframes: {
+        'overlay-in': { from: { opacity: '0' }, to: { opacity: '1' } },
+        'dialog-in': {
+          from: { opacity: '0', transform: 'translateY(10px) scale(0.98)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        'rise-in': {
+          from: { opacity: '0', transform: 'translateY(8px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'overlay-in': 'overlay-in 0.2s ease-out',
+        'dialog-in': 'dialog-in 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+        'rise-in': 'rise-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both',
+      },
     },
   },
   plugins: [],

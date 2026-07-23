@@ -5,11 +5,11 @@
 import { cn } from '../../lib/utils.js';
 
 const variants = {
-  default: 'bg-border/50 text-muted',
-  primary: 'bg-primary/10 text-primary',
-  success: 'bg-success/10 text-success',
-  warning: 'bg-warning/10 text-warning',
-  danger: 'bg-danger/10 text-danger',
+  default: 'bg-border/50 text-muted ring-1 ring-inset ring-border',
+  primary: 'bg-primary/10 text-primary ring-1 ring-inset ring-primary/20',
+  success: 'bg-success/10 text-success ring-1 ring-inset ring-success/20',
+  warning: 'bg-warning/10 text-warning ring-1 ring-inset ring-warning/25',
+  danger: 'bg-danger/10 text-danger ring-1 ring-inset ring-danger/20',
 };
 
 export default function Badge({ variant = 'default', className, children }) {

@@ -26,9 +26,11 @@ const Input = forwardRef(function Input({ label, error, type = 'text', className
         type={type}
         aria-invalid={Boolean(error) || undefined}
         className={cn(
-          'h-10 w-full rounded-lg border bg-surface px-3 text-sm text-text',
+          'h-10 w-full rounded-lg border bg-surface px-3 text-sm text-text shadow-xs',
           'placeholder:text-muted/70 transition-colors',
-          error ? 'border-danger' : 'border-border hover:border-muted/50'
+          error
+            ? 'border-danger'
+            : 'border-border hover:border-muted/50 focus:border-primary'
         )}
         {...props}
       />
