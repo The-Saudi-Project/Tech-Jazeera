@@ -15,7 +15,7 @@ import { requireRoles } from '../../middleware/rbac.js';
 import { validate } from '../../middleware/validate.js';
 import { processTimesheetSchema } from './timesheet.validation.js';
 import * as timesheetController from './timesheet.controller.js';
-import { XLSX_MIME, MAX_FILE_BYTES } from './timesheet.constants.js';
+import { XLSX_MIME, XLS_MIME, MAX_FILE_BYTES } from './timesheet.constants.js';
 
 const router = Router();
 
@@ -26,15 +26,13 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_BYTES },
   fileFilter: (req, file, cb) => {
-    const nameIsXlsx = /\.xlsx$/i.test(file.originalname || '');
-    // Browsers sometimes mislabel .xlsx as octet-stream/zip; accept those when
-    // the name says .xlsx. The parser still rejects anything that isn't a real
-    // workbook, so this is safe.
-    const looseTypes = ['application/octet-stream', 'application/zip', 'application/vnd.ms-excel'];
-    if (file.mimetype === XLSX_MIME || (nameIsXlsx && looseTypes.includes(file.mimetype))) {
-      return cb(null, true);
-    }
-    return cb(new ApiError(400, 'Please upload a .xlsx Excel file.'));
+    // Accept by extension — attendance-device exports carry unreliable MIME
+    // labels (often octet-stream). The parser is the real gate: it rejects
+    // anything that isn't a genuine .xls/.xlsx workbook.
+    const nameOk = /\.(xls|xlsx)$/i.test(file.originalname || '');
+    const mimeOk = file.mimetype === XLSX_MIME || file.mimetype === XLS_MIME;
+    if (nameOk || mimeOk) return cb(null, true);
+    return cb(new ApiError(400, 'Please upload a .xls or .xlsx Excel file.'));
   },
 }).single('file');
 

@@ -39,7 +39,10 @@ Hook Form, Zod, Axios. Backend: Node.js, Express. DB: MongoDB Atlas via
 Mongoose. Auth: JWT access token (in memory) + refresh token (httpOnly cookie)
 with rotation. Utilities: Helmet, Winston, Multer, express-rate-limit, CORS,
 dotenv. Added with justification in Phase 1: exceljs + pdfkit (exports), bcrypt
-/ jsonwebtoken / cookie-parser. No component libraries (Tailwind only).
+/ jsonwebtoken / cookie-parser. Post-Phase-1: `xlsx` (SheetJS, patched 0.20.3
+from the vendor CDN, not the vulnerable npm 0.18.5) to READ legacy `.xls`
+attendance-device exports in the Timesheet Processor; exceljs still writes. No
+component libraries (Tailwind only).
 
 ## Architecture (decided — do not relitigate)
 

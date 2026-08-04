@@ -1,33 +1,31 @@
 /**
- * Timesheet parser — turns a raw .xlsx buffer into normalized punch records.
+ * Timesheet parser — turns a raw workbook buffer into normalized punch records.
  *
- * Responsibilities (and nothing else — no attendance math lives here):
+ * Reads with SheetJS so BOTH modern `.xlsx` and legacy BIFF `.xls` (the raw
+ * format attendance devices like ZKTeco export) work through one path. It does
+ * no attendance math — only:
  *  - open the workbook defensively (corrupt files become a friendly 400)
- *  - find the header row and map columns by ALIAS, not by fixed position, so
- *    slightly different device exports still work
- *  - read each data row tolerantly: Date cells, string dates/times, and Excel
- *    numeric serials are all handled; unreadable rows are skipped and reported
+ *  - find the header row and map columns by ALIAS, not position
+ *  - read each data row tolerantly: real Date cells, Excel serials, and text
+ *    date/times are all handled; unreadable rows are skipped and reported
  *  - keep only punches inside the requested month/year
  *
- * A punch is reduced to `{ day, minutes }` (minutes = minute-of-day) because the
- * month and year are already fixed by the caller's selection.
+ * Date text is often ambiguous (7/1 vs 1/7). Device exports store the timestamp
+ * as text, so we AUTO-DETECT day/month order per file: a real month always
+ * contains a day > 12 (e.g. the 30th), which disambiguates; we fall back to
+ * month-first (the common device default) only if a file is entirely ambiguous.
+ *
+ * A punch reduces to `{ day, minutes }` (minutes = minute-of-day) since the
+ * month and year are fixed by the caller's selection.
  */
-import ExcelJS from 'exceljs';
+import * as XLSX from 'xlsx';
 import ApiError from '../../utils/ApiError.js';
 import { COLUMN_ALIASES } from './timesheet.constants.js';
 
-/** Best-effort display text for any exceljs cell value (rich text, formula, …). */
+/** Plain text for any cell value (SheetJS gives Date / number / string). */
 function cellText(value) {
   if (value == null) return '';
-  if (typeof value === 'string') return value.trim();
-  if (typeof value === 'number') return String(value);
   if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'object') {
-    if (typeof value.text === 'string') return value.text.trim();
-    if (Array.isArray(value.richText)) return value.richText.map((r) => r.text).join('').trim();
-    if ('result' in value) return cellText(value.result);
-    if ('hyperlink' in value && typeof value.text === 'string') return value.text.trim();
-  }
   return String(value).trim();
 }
 
@@ -36,63 +34,15 @@ function normHeader(value) {
   return cellText(value).toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-/** { y, m, d } from a Date cell (read in UTC — exceljs stores wall-clock as UTC)
- *  or a string. String dates assume DAY-first (DD/MM/YYYY) when ambiguous. */
-function toDateParts(value) {
-  if (value instanceof Date) {
-    return { y: value.getUTCFullYear(), m: value.getUTCMonth() + 1, d: value.getUTCDate() };
-  }
-  const text = cellText(value);
-  if (!text) return null;
-  let m = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/); // ISO: YYYY-MM-DD
-  if (m) return { y: +m[1], m: +m[2], d: +m[3] };
-  m = text.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/); // DD/MM/YYYY (day first)
-  if (m) {
-    const y = m[3].length === 2 ? 2000 + +m[3] : +m[3];
-    return { y, m: +m[2], d: +m[1] };
-  }
-  return null;
-}
-
-/** Minute-of-day (0..1439) from a Date, an Excel numeric serial, or "HH:MM". */
-function toMinutesOfDay(value) {
-  if (value instanceof Date) return value.getUTCHours() * 60 + value.getUTCMinutes();
-  if (typeof value === 'number') {
-    // Excel stores a time as a fraction of a day; a datetime keeps it in the
-    // fractional part. Either way the fraction is the clock time.
-    const frac = value - Math.floor(value);
-    return Math.round(frac * 1440) % 1440;
-  }
-  const text = cellText(value);
-  if (!text) return null;
-  const m = text.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?/);
-  if (!m) return null;
-  let hh = +m[1];
-  const mm = +m[2];
-  const ampm = m[3] ? m[3].toLowerCase() : null;
-  if (ampm === 'pm' && hh < 12) hh += 12;
-  if (ampm === 'am' && hh === 12) hh = 0;
-  if (hh > 23 || mm > 59) return null;
-  return hh * 60 + mm;
-}
-
-/** Combined { y, m, d, minutes } from a single timestamp cell. */
-function toTimestampParts(value) {
-  const date = toDateParts(value);
-  if (!date) return null;
-  const minutes = toMinutesOfDay(value);
-  if (minutes == null) return null;
-  return { ...date, minutes };
-}
-
-/** Map a candidate header row to column indexes by exact alias match. */
+/** Map a candidate header row (array) to column indexes by exact alias match. */
 function mapHeaderRow(row) {
   const map = {};
-  row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-    const header = normHeader(cell.value);
+  row.forEach((cell, idx) => {
+    const header = normHeader(cell);
+    if (!header) return;
     for (const [field, aliases] of Object.entries(COLUMN_ALIASES)) {
       if (map[field] == null && aliases.includes(header)) {
-        map[field] = colNumber;
+        map[field] = idx;
         break;
       }
     }
@@ -105,6 +55,90 @@ function hasRequiredColumns(map) {
   return map.timestamp != null || (map.date != null && map.time != null);
 }
 
+/** The first three integers of a date-like string, or null. */
+function dateTriplet(text) {
+  const m = String(text).match(/(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,4})/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+
+/**
+ * Decide day/month order from the file's string dates. Any component > 12 fixes
+ * the order; a full month of data effectively always contains one. Defaults to
+ * month-first (MDY) when a file is genuinely ambiguous.
+ */
+function detectDateOrder(sampleStrings) {
+  for (const value of sampleStrings) {
+    const triplet = dateTriplet(value);
+    if (!triplet) continue;
+    const [a, b] = triplet;
+    if (a > 12 && a <= 31) return 'DMY'; // first field must be the day
+    if (b > 12 && b <= 31) return 'MDY'; // second field must be the day
+  }
+  return 'MDY';
+}
+
+/** { y, m, d } from a date string, honoring the detected order (or ISO if year-first). */
+function partsFromDateString(text, order) {
+  const triplet = dateTriplet(text);
+  if (!triplet) return null;
+  const [a, b, c] = triplet;
+  if (a > 31) return { y: a, m: b, d: c }; // YYYY-MM-DD
+  const y = c < 100 ? 2000 + c : c;
+  return order === 'DMY' ? { y, m: b, d: a } : { y, m: a, d: b };
+}
+
+/** Minute-of-day (0..1439) from "HH:MM(:SS) [AM/PM]", or null. */
+function minutesFromTimeString(text) {
+  const m = String(text).match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?/);
+  if (!m) return null;
+  let hh = Number(m[1]);
+  const mm = Number(m[2]);
+  const ampm = m[3] ? m[3].toLowerCase() : null;
+  if (ampm === 'pm' && hh < 12) hh += 12;
+  if (ampm === 'am' && hh === 12) hh = 0;
+  if (hh > 23 || mm > 59) return null;
+  return hh * 60 + mm;
+}
+
+/** { y, m, d } from a Date / Excel serial / string date value. */
+function dateParts(value, order) {
+  if (value instanceof Date) {
+    return { y: value.getUTCFullYear(), m: value.getUTCMonth() + 1, d: value.getUTCDate() };
+  }
+  if (typeof value === 'number') {
+    const parsed = XLSX.SSF?.parse_date_code(value);
+    return parsed ? { y: parsed.y, m: parsed.m, d: parsed.d } : null;
+  }
+  return partsFromDateString(cellText(value), order);
+}
+
+/** Minute-of-day from a Date / Excel serial / time string. */
+function minutesOfDay(value) {
+  if (value instanceof Date) return value.getUTCHours() * 60 + value.getUTCMinutes();
+  if (typeof value === 'number') return Math.round((value - Math.floor(value)) * 1440) % 1440;
+  return minutesFromTimeString(cellText(value));
+}
+
+/** Combined { y, m, d, minutes } from a single timestamp cell. */
+function timestampParts(value, order) {
+  if (value instanceof Date) {
+    return {
+      y: value.getUTCFullYear(),
+      m: value.getUTCMonth() + 1,
+      d: value.getUTCDate(),
+      minutes: value.getUTCHours() * 60 + value.getUTCMinutes(),
+    };
+  }
+  if (typeof value === 'number') {
+    const parsed = XLSX.SSF?.parse_date_code(value);
+    return parsed ? { y: parsed.y, m: parsed.m, d: parsed.d, minutes: parsed.H * 60 + parsed.M } : null;
+  }
+  const text = cellText(value);
+  const date = partsFromDateString(text, order);
+  const minutes = minutesFromTimeString(text);
+  return date && minutes != null ? { ...date, minutes } : null;
+}
+
 /**
  * Parse a buffer into punches for the given month/year.
  * @returns {{ punches: {day:number, minutes:number}[], warnings: string[],
@@ -113,22 +147,26 @@ function hasRequiredColumns(map) {
 export async function parseAttendanceWorkbook(buffer, { month, year }) {
   if (!buffer || buffer.length === 0) throw new ApiError(400, 'The uploaded file is empty.');
 
-  const workbook = new ExcelJS.Workbook();
+  let workbook;
   try {
-    await workbook.xlsx.load(buffer);
+    workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
   } catch {
     throw new ApiError(400, 'The file is not a valid Excel workbook, or it is corrupted.');
   }
 
-  const ws = workbook.worksheets.find((w) => w.rowCount > 0) ?? workbook.worksheets[0];
-  if (!ws || ws.rowCount === 0) throw new ApiError(400, 'The workbook has no data.');
+  const sheet = workbook.SheetNames[0] ? workbook.Sheets[workbook.SheetNames[0]] : null;
+  if (!sheet) throw new ApiError(400, 'The workbook has no sheets.');
 
-  // Locate the header row within the first rows (some exports have a title band).
+  // Array-of-arrays; keeps real Dates (cellDates) and raw values.
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, blankrows: false, defval: null });
+  if (!rows.length) throw new ApiError(400, 'The workbook has no data.');
+
+  // Locate the header row (some exports carry a title band above it).
   let headerMap = null;
-  let headerRow = 0;
-  const scanLimit = Math.min(ws.rowCount, 15);
-  for (let r = 1; r <= scanLimit; r++) {
-    const map = mapHeaderRow(ws.getRow(r));
+  let headerRow = -1;
+  const scanLimit = Math.min(rows.length, 15);
+  for (let r = 0; r < scanLimit; r++) {
+    const map = mapHeaderRow(rows[r] ?? []);
     if (hasRequiredColumns(map)) {
       headerMap = map;
       headerRow = r;
@@ -138,10 +176,19 @@ export async function parseAttendanceWorkbook(buffer, { month, year }) {
   if (!headerMap) {
     throw new ApiError(
       400,
-      'Could not find the attendance columns. The sheet needs a Date and Time column, or a single Timestamp column.'
+      'Could not find the attendance columns. The sheet needs a Date and Time column, or a single Date/Time (Timestamp) column.'
     );
   }
 
+  const dataRows = rows.slice(headerRow + 1);
+
+  // Pass 1: determine day/month order from the string timestamps present.
+  const sampleColumn = headerMap.timestamp ?? headerMap.date;
+  const order = detectDateOrder(
+    dataRows.map((row) => row?.[sampleColumn]).filter((v) => typeof v === 'string')
+  );
+
+  // Pass 2: extract punches.
   const punches = [];
   const warnings = [];
   let detectedEmployee = null;
@@ -149,32 +196,31 @@ export async function parseAttendanceWorkbook(buffer, { month, year }) {
   let skipWarnShown = 0;
   let outOfMonth = 0;
 
-  for (let r = headerRow + 1; r <= ws.rowCount; r++) {
-    const row = ws.getRow(r);
+  for (let i = 0; i < dataRows.length; i++) {
+    const row = dataRows[i] ?? [];
+    const excelRowNumber = headerRow + i + 2; // 1-based row number in the sheet
 
-    // Capture the employee identity from the first row that carries it.
-    if (!detectedEmployee && (headerMap.employeeId || headerMap.employeeName)) {
-      const id = headerMap.employeeId ? cellText(row.getCell(headerMap.employeeId).value) : '';
-      const name = headerMap.employeeName ? cellText(row.getCell(headerMap.employeeName).value) : '';
+    if (!detectedEmployee && (headerMap.employeeId != null || headerMap.employeeName != null)) {
+      const id = headerMap.employeeId != null ? cellText(row[headerMap.employeeId]) : '';
+      const name = headerMap.employeeName != null ? cellText(row[headerMap.employeeName]) : '';
       if (id || name) detectedEmployee = { id, name };
     }
 
     let parts;
-    if (headerMap.timestamp) {
-      parts = toTimestampParts(row.getCell(headerMap.timestamp).value);
+    if (headerMap.timestamp != null) {
+      parts = timestampParts(row[headerMap.timestamp], order);
     } else {
-      const date = toDateParts(row.getCell(headerMap.date).value);
-      const minutes = toMinutesOfDay(row.getCell(headerMap.time).value);
+      const date = dateParts(row[headerMap.date], order);
+      const minutes = minutesOfDay(row[headerMap.time]);
       parts = date && minutes != null ? { ...date, minutes } : null;
     }
 
     if (!parts) {
-      // Only warn about rows that actually have content (ignore blank spacers).
-      const hasContent = Array.isArray(row.values) && row.values.some((v) => cellText(v) !== '');
+      const hasContent = Array.isArray(row) && row.some((c) => cellText(c) !== '');
       if (hasContent) {
         skipped++;
         if (skipWarnShown < 15) {
-          warnings.push(`Row ${r}: could not read the date/time — skipped.`);
+          warnings.push(`Row ${excelRowNumber}: could not read the date/time — skipped.`);
           skipWarnShown++;
         }
       }

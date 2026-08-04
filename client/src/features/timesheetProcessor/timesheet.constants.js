@@ -21,8 +21,8 @@ export const MONTHS = [
 /** Default required working time per day (matches the server default). */
 export const DEFAULT_REQUIRED_HHMM = '08:00';
 
-/** Only .xlsx is supported (see the server file filter). */
-export const TIMESHEET_ACCEPT = '.xlsx';
+/** Both legacy .xls (device exports) and .xlsx are supported (see the server). */
+export const TIMESHEET_ACCEPT = '.xls,.xlsx';
 
 /** Minutes → "HH:MM" for display. */
 export function minutesToHHMM(minutes) {

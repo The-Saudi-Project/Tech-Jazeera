@@ -8,9 +8,9 @@ stateless (nothing is persisted), and fully isolated from the rest of the ERP.
 
 **Backend** (`server/src/modules/timesheetProcessor/`) — layered, small files
 ```
-timesheet.constants.js   # 08:00 default (configurable), column aliases, mime/size limits, status enum
+timesheet.constants.js   # 08:00 default (configurable), column aliases, accepted types, status enum
 timesheet.time.js        # minute math + HH:MM + daysInMonth + weekday
-timesheet.parser.js      # exceljs read → normalized punches; alias column mapping; tolerant row parsing
+timesheet.parser.js      # SheetJS read (.xls + .xlsx) → normalized punches; alias mapping; tolerant parsing
 timesheet.processor.js   # PURE attendance rules (login/logout, worked, deficiency, overtime, summary)
 timesheet.export.js      # exceljs → professionally formatted .xlsx (theme colours, borders, summary)
 timesheet.validation.js  # Zod for the multipart text fields
@@ -59,18 +59,31 @@ the server recomputes authoritatively and stores nothing.
 
 ## Key decisions & why
 
-- **Column mapping by alias, not position** (`COLUMN_ALIASES`). A file may have a
-  single `Timestamp` column OR separate `Date` + `Time`; both work. New device
-  dialects are added in one constant, never in the parser.
-- **Tolerant parsing.** Date cells (read in UTC to avoid tz drift), string
-  dates/times, and Excel numeric serials are all handled; unreadable rows are
-  **skipped and reported** as warnings, never fatal. Punches outside the selected
-  month are ignored (reported).
+- **Reads both `.xls` and `.xlsx` via SheetJS.** Attendance devices (ZKTeco etc.)
+  export a raw legacy BIFF `.xls`, which exceljs cannot read at all, so the
+  parser uses SheetJS (`xlsx`). Justification for the dependency: parsing BIFF by
+  hand is infeasible and SheetJS is the standard reader. **Security:** the npm
+  `xlsx` is pinned at a vulnerable 0.18.5; we install the patched **0.20.3 from
+  the SheetJS vendor CDN** (`package.json` points at the CDN tarball). exceljs
+  still writes the formatted export.
+- **Column mapping by alias, not position** (`COLUMN_ALIASES`). Real device
+  headers (`Date/Time`, `No.`, `ID Number`, `CardNo`) are covered; a file may
+  carry a single combined timestamp OR separate `Date` + `Time`. New dialects are
+  added in one constant, never in the parser.
+- **Ambiguous text dates are auto-resolved.** Devices often store the timestamp
+  as TEXT like `7/1/2026 8:02:24 AM` (US month-first). The parser scans the
+  file's dates and infers day/month order from any value with a component > 12
+  (a real month always has one, e.g. the 30th), defaulting to month-first only if
+  a file is entirely ambiguous. Real `Date` cells and Excel serials are also
+  handled.
+- **Tolerant parsing.** Unreadable rows are **skipped and reported** as warnings,
+  never fatal. Punches outside the selected month are ignored (reported).
 - **Pure processor.** All the maths lives in pure functions with no I/O, so it's
   trivial to test and to extend (shift timings, holiday calendar, custom rules).
 - **Memory-storage Multer, separate instance.** The file is parsed and discarded
   (never written to disk), and the module's own Multer can't affect the document
-  upload middleware. `.xlsx` only (exceljs can't read legacy `.xls`); 5 MB cap.
+  upload middleware. Accepts `.xls` and `.xlsx` **by extension** (device MIME
+  labels are unreliable); the parser is the real gate. 5 MB cap.
 - **Configurable required hours.** One constant (`DEFAULT_REQUIRED_MINUTES`) plus
   an optional per-run override field; never hard-coded around the codebase.
 - **Nothing persisted.** No new Mongoose model → zero migration risk and no
@@ -78,8 +91,8 @@ the server recomputes authoritatively and stores nothing.
 
 ## Validation & security
 
-Rejects (friendly messages): empty file, non-.xlsx, corrupted workbook, missing
-Date/Time (or Timestamp) columns, and no punches for the chosen month. File type
+Rejects (friendly messages): empty file, non-.xls/.xlsx, corrupted workbook,
+missing Date/Time columns, and no punches for the chosen month. File type
 + size enforced by Multer; uploaded content is only ever parsed as data (never
 executed); every text input is Zod-validated; the route is Admin-only server-side.
 
@@ -105,3 +118,10 @@ empty month 400, non-xlsx 400, corrupted 400, bad month 400, no auth 401,
 roles) · form (employee/month/year/required-hours/file) · Process renders the
 warnings, summary, and 31-day table identical to the API · **Export → 200**, no
 console errors.
+
+**Real device file (`.xls`, added 2026-08-04):** a genuine ZKTeco BIFF export
+(RIYAJ LOG, 82 `C/In` punches, July 2026, text `Date/Time` in `M/d/yyyy h:mm:ss
+AM/PM`) parsed with **0 warnings** — dates auto-resolved to month-first, worked
+spans correct (e.g. 1 Jul 08:02→19:35 = 11:33), summary Present 26 / No-Attendance
+5 (the Fridays) / Worked 301:14 / Overtime 93:14 — verified via curl (preview +
+`.xlsx` export) and through the browser UI end to end.

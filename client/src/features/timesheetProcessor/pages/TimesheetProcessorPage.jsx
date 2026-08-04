@@ -153,7 +153,7 @@ export default function TimesheetProcessorPage() {
               placeholder="08:00"
             />
             <div className="flex flex-col gap-1.5 lg:col-span-3">
-              <label className="text-sm font-medium text-text">Attendance file (.xlsx)</label>
+              <label className="text-sm font-medium text-text">Attendance file (.xls / .xlsx)</label>
               <input
                 type="file"
                 accept={TIMESHEET_ACCEPT}
@@ -163,7 +163,7 @@ export default function TimesheetProcessorPage() {
                 }}
                 className="text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary-hover"
               />
-              <p className="text-xs text-muted">Door-access punch log · .xlsx up to {MAX_MB} MB</p>
+              <p className="text-xs text-muted">Door-access punch log · .xls or .xlsx up to {MAX_MB} MB</p>
             </div>
           </div>
 

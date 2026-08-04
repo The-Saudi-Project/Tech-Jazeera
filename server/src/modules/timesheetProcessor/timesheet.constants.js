@@ -16,13 +16,15 @@ export const MIN_REQUIRED_MINUTES = 1;
 export const MAX_REQUIRED_MINUTES = 24 * 60;
 
 /**
- * The Excel type we accept. Legacy `.xls` is intentionally excluded — exceljs
- * does not reliably read the old binary format. Browsers occasionally label an
- * .xlsx as octet-stream/zip, so the file filter also accepts those when the
- * name ends in .xlsx (the parser still rejects anything that isn't a real
- * workbook).
+ * Accepted uploads. We take BOTH modern `.xlsx` and legacy `.xls` — attendance
+ * devices (e.g. ZKTeco) export a raw BIFF `.xls`, which the SheetJS reader in
+ * the parser handles. Acceptance is by extension (device MIME labels are
+ * unreliable — often octet-stream); the parser is the real gate, rejecting
+ * anything that isn't a genuine workbook. `.xlsx` is also the export MIME.
  */
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+export const XLS_MIME = 'application/vnd.ms-excel';
+export const ACCEPTED_EXTENSIONS = ['.xls', '.xlsx'];
 export const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB — a month of punches is tiny
 
 /** Per-day statuses. Frozen so the UI can import the exact labels/order. */
@@ -41,9 +43,15 @@ export const STATUS = Object.freeze({
  * parser handles both, preferring a timestamp when present.
  */
 export const COLUMN_ALIASES = Object.freeze({
-  timestamp: ['timestamp', 'time stamp', 'date time', 'datetime', 'punch time', 'access time', 'event time'],
+  timestamp: [
+    'timestamp', 'time stamp', 'date time', 'datetime', 'date/time',
+    'punch time', 'access time', 'event time',
+  ],
   date: ['date', 'punch date', 'log date', 'access date', 'att date', 'attendance date'],
   time: ['time', 'log time', 'in/out time', 'clocking'],
-  employeeId: ['employee id', 'emp id', 'employee code', 'emp code', 'user id', 'badge', 'card no', 'ac-no', 'ac no'],
+  employeeId: [
+    'employee id', 'emp id', 'employee code', 'emp code', 'user id', 'badge',
+    'card no', 'cardno', 'ac-no', 'ac no', 'no.', 'no', 'id number',
+  ],
   employeeName: ['employee name', 'name', 'emp name', 'user name', 'full name'],
 });
