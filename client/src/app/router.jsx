@@ -30,6 +30,7 @@ import QuotationListPage from '../features/quotations/pages/QuotationListPage.js
 import QuotationNewPage from '../features/quotations/pages/QuotationNewPage.jsx';
 import QuotationViewPage from '../features/quotations/pages/QuotationViewPage.jsx';
 import QuotationEditPage from '../features/quotations/pages/QuotationEditPage.jsx';
+import TimesheetProcessorPage from '../features/timesheetProcessor/pages/TimesheetProcessorPage.jsx';
 import Spinner from '../components/ui/Spinner.jsx';
 
 function RequireAuth() {
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
           { path: '/quotations/new', element: <QuotationNewPage /> },
           { path: '/quotations/:id', element: <QuotationViewPage /> },
           { path: '/quotations/:id/edit', element: <QuotationEditPage /> },
+          { path: '/timesheet-processor', element: <TimesheetProcessorPage /> },
         ],
       },
     ],
