@@ -83,6 +83,7 @@ export default function TimesheetResults({ result, onExport, exporting }) {
         </h3>
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Working Days" value={s.workingDays} />
+          <Stat label="Holidays" value={s.holidayDays} />
           <Stat label="Present Days" value={s.presentDays} />
           <Stat label="Single Punch" value={s.singlePunchDays} />
           <Stat label="No Attendance" value={s.noAttendanceDays} />

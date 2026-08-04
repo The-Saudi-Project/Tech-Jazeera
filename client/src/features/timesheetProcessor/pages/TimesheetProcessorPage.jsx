@@ -30,19 +30,21 @@ import Input from '../../../components/ui/Input.jsx';
 import Button from '../../../components/ui/Button.jsx';
 import Spinner from '../../../components/ui/Spinner.jsx';
 import TimesheetResults from '../components/TimesheetResults.jsx';
+import HolidayCalendar from '../components/HolidayCalendar.jsx';
 
 const MAX_MB = 5;
 const now = new Date();
 const YEARS = Array.from({ length: 7 }, (_, i) => now.getFullYear() + 1 - i); // next year … 5 back
 
 /** Assemble the multipart payload shared by preview and export. */
-function buildFormData({ file, employeeId, month, year, requiredMinutes }) {
+function buildFormData({ file, employeeId, month, year, requiredMinutes, holidays }) {
   const fd = new FormData();
   fd.append('file', file);
   fd.append('employeeId', employeeId);
   fd.append('month', String(month));
   fd.append('year', String(year));
   if (requiredMinutes != null) fd.append('requiredMinutes', String(requiredMinutes));
+  if (holidays && holidays.length) fd.append('holidays', holidays.join(','));
   return fd;
 }
 
@@ -55,6 +57,7 @@ export default function TimesheetProcessorPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [requiredHHMM, setRequiredHHMM] = useState(DEFAULT_REQUIRED_HHMM);
+  const [holidays, setHolidays] = useState(() => new Set());
   const [file, setFile] = useState(null);
   const [formError, setFormError] = useState(null);
   const [result, setResult] = useState(null);
@@ -90,7 +93,14 @@ export default function TimesheetProcessorPage() {
     if (file.size > MAX_MB * 1024 * 1024) return setFormError(`File is too large (maximum ${MAX_MB} MB).`);
     const requiredMinutes = hhmmToMinutes(requiredHHMM);
     if (requiredMinutes == null) return setFormError('Required hours must look like HH:MM (e.g. 08:00).');
-    previewMutation.mutate({ file, employeeId, month: Number(month), year: Number(year), requiredMinutes });
+    previewMutation.mutate({
+      file,
+      employeeId,
+      month: Number(month),
+      year: Number(year),
+      requiredMinutes,
+      holidays: Array.from(holidays),
+    });
   }
 
   async function handleExport() {
@@ -129,14 +139,28 @@ export default function TimesheetProcessorPage() {
                 </option>
               ))}
             </Select>
-            <Select label="Month" value={month} onChange={(e) => setMonth(e.target.value)}>
+            <Select
+              label="Month"
+              value={month}
+              onChange={(e) => {
+                setMonth(e.target.value);
+                setHolidays(new Set()); // day numbers don't carry across months
+              }}
+            >
               {MONTHS.map((name, i) => (
                 <option key={name} value={i + 1}>
                   {name}
                 </option>
               ))}
             </Select>
-            <Select label="Year" value={year} onChange={(e) => setYear(e.target.value)}>
+            <Select
+              label="Year"
+              value={year}
+              onChange={(e) => {
+                setYear(e.target.value);
+                setHolidays(new Set());
+              }}
+            >
               {YEARS.map((y) => (
                 <option key={y} value={y}>
                   {y}
@@ -166,6 +190,13 @@ export default function TimesheetProcessorPage() {
               <p className="text-xs text-muted">Door-access punch log · .xls or .xlsx up to {MAX_MB} MB</p>
             </div>
           </div>
+
+          <HolidayCalendar
+            year={Number(year)}
+            month={Number(month)}
+            value={holidays}
+            onChange={setHolidays}
+          />
 
           {formError && (
             <p role="alert" className="rounded-lg bg-danger/10 p-3 text-sm text-danger">

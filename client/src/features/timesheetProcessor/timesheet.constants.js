@@ -11,6 +11,8 @@ export const TIMESHEET_STATUS_META = {
   Deficient: { variant: 'danger' },
   'Single Punch': { variant: 'primary' },
   'No Attendance': { variant: 'default' },
+  Holiday: { variant: 'primary' },
+  'Holiday (Worked)': { variant: 'warning' },
 };
 
 export const MONTHS = [

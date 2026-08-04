@@ -19,7 +19,7 @@ const MONTH_NAMES = [
  * @param {{buffer:Buffer, employeeId:string, month:number, year:number, requiredMinutes?:number}} input
  * @returns the full computed timesheet (employee, rows, summary, warnings).
  */
-export async function processTimesheet({ buffer, employeeId, month, year, requiredMinutes }) {
+export async function processTimesheet({ buffer, employeeId, month, year, requiredMinutes, holidays = [] }) {
   const employee = await Employee.findById(employeeId).select('fullName employeeId').lean();
   if (!employee) throw new ApiError(404, 'Employee not found.');
 
@@ -47,7 +47,7 @@ export async function processTimesheet({ buffer, employeeId, month, year, requir
     }
   }
 
-  const { rows, summary } = buildTimesheet(punches, { year, month, requiredMinutes: required });
+  const { rows, summary } = buildTimesheet(punches, { year, month, requiredMinutes: required, holidays });
 
   return {
     employee: {

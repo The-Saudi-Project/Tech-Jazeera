@@ -25,6 +25,7 @@ Mounted with one additive line in `app.js` at `/api/timesheet-processor`.
 timesheet.api.js                    # preview (JSON) + export (authenticated Blob download)
 timesheet.constants.js              # status→Badge variant, months, HH:MM helpers
 components/TimesheetResults.jsx      # warnings + summary + day table (reuses the Table primitive)
+components/HolidayCalendar.jsx        # inline month grid: click days to mark holidays (+ "mark all Fridays")
 pages/TimesheetProcessorPage.jsx     # form + orchestration + Admin route guard
 ```
 Plus one route in `router.jsx` and one **Admin-only** nav item in
@@ -35,7 +36,7 @@ Plus one route in `router.jsx` and one **Admin-only** nav item in
 
 | Method | Path | Roles | Purpose |
 |--------|------|-------|---------|
-| POST | `/api/timesheet-processor/preview` | Admin | multipart (file + employeeId, month, year, requiredMinutes?) → computed JSON |
+| POST | `/api/timesheet-processor/preview` | Admin | multipart (file + employeeId, month, year, requiredMinutes?, holidays?) → computed JSON |
 | POST | `/api/timesheet-processor/export`  | Admin | same input → streamed formatted `.xlsx` |
 
 Both stateless: the client keeps the file and posts it to whichever endpoint, so
@@ -50,12 +51,17 @@ the server recomputes authoritatively and stores nothing.
   overridable per run). `Deficiency = max(0, Required − Worked)` and
   `Overtime = max(0, Worked − Required)` on **every** day — so a No-Attendance or
   Single-Punch day shows a full-day deficiency.
-- Summary: `Working Days` = all days in the month; `Present Days` = days with a
-  complete login+logout pair; `Single Punch Days` = exactly one punch; plus the
-  four totals.
-- **Known limitation (by design):** weekends/holidays are not modelled yet, so
-  they count as deficiency until a holiday calendar is added. This is the
-  documented consequence of the "literal" policy and the natural extension point.
+- **Holidays** (admin-marked dates, per run): a holiday requires **0 hours**, so
+  it never adds a deficiency whether the person shows up or not. If they DO work
+  a holiday, the **entire worked span counts as overtime** (status
+  `Holiday (Worked)`); an unworked holiday is `Holiday`. `Working Days` and
+  `Total Required` exclude holidays, and the summary gains a `Holidays` count.
+- Summary buckets are non-overlapping: every day is exactly one of Holiday /
+  Present (complete pair) / Single Punch / No Attendance. `Working Days` =
+  calendar days − holidays.
+- **Remaining limitation:** there is no *automatic* weekend/holiday detection or
+  saved company calendar yet — the admin marks holidays by hand each run on the
+  month calendar. A persisted holiday calendar is the natural next step.
 
 ## Key decisions & why
 
@@ -118,6 +124,13 @@ empty month 400, non-xlsx 400, corrupted 400, bad month 400, no auth 401,
 roles) · form (employee/month/year/required-hours/file) · Process renders the
 warnings, summary, and 31-day table identical to the API · **Export → 200**, no
 console errors.
+
+**Holidays (added 2026-08-04):** marking RIYAJ's 5 Fridays as holidays (via the
+calendar's "mark all Fridays") drops Total Deficiency **40:00 → 00:00**, sets
+Working Days 26 / Holidays 5, and leaves overtime unchanged; a holiday that is
+worked shows `Holiday (Worked)` with the whole span as overtime. Verified in the
+processor, via the API (`holidays=3,10,17,24,31`), through the browser calendar,
+and by reading the exported `.xlsx` back (Holiday rows + a `Holidays` summary line).
 
 **Real device file (`.xls`, added 2026-08-04):** a genuine ZKTeco BIFF export
 (RIYAJ LOG, 82 `C/In` punches, July 2026, text `Date/Time` in `M/d/yyyy h:mm:ss

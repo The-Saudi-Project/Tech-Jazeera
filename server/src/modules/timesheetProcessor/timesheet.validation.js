@@ -17,4 +17,14 @@ export const processTimesheetSchema = z.object({
     .min(MIN_REQUIRED_MINUTES)
     .max(MAX_REQUIRED_MINUTES)
     .optional(),
+  // Days of the selected month marked as holidays. Arrives multipart as a
+  // comma-separated string (e.g. "3,10,17"); parsed to a de-duplicated int[].
+  holidays: z.preprocess(
+    (v) => {
+      if (v == null || v === '') return [];
+      const list = Array.isArray(v) ? v : String(v).split(',');
+      return [...new Set(list.map((n) => Number(String(n).trim())).filter((n) => !Number.isNaN(n)))];
+    },
+    z.array(z.number().int().min(1).max(31)).max(31)
+  ).default([]),
 });

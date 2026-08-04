@@ -32,6 +32,8 @@ const STATUS_COLOR = {
   Deficient: 'FFDC2626',
   'Single Punch': INDIGO,
   'No Attendance': 'FF64748B',
+  Holiday: 'FF0D9488', // teal
+  'Holiday (Worked)': 'FFB45309', // amber, like overtime
 };
 
 /** @param {object} result  the object returned by timesheet.service.processTimesheet */
@@ -111,6 +113,7 @@ export async function buildTimesheetXlsx(result) {
 
   const summaryLines = [
     ['Working Days', String(s.workingDays)],
+    ['Holidays', String(s.holidayDays)],
     ['Present Days', String(s.presentDays)],
     ['Single Punch Days', String(s.singlePunchDays)],
     ['No Attendance Days', String(s.noAttendanceDays)],

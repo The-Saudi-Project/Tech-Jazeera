@@ -34,6 +34,9 @@ export const STATUS = Object.freeze({
   OVERTIME: 'Overtime',
   SINGLE_PUNCH: 'Single Punch',
   NO_ATTENDANCE: 'No Attendance',
+  // Holiday: 0 required hours, never a deficiency. Working it earns overtime.
+  HOLIDAY: 'Holiday',
+  HOLIDAY_WORKED: 'Holiday (Worked)',
 });
 
 /**
