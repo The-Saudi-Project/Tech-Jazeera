@@ -26,6 +26,17 @@ export async function deleteNfcCompany(id) {
   await api.delete(`/nfc/companies/${id}`);
 }
 
+export async function uploadNfcCompanyLogo(id, file) {
+  const fd = new FormData();
+  fd.append('image', file);
+  const { data } = await api.post(`/nfc/companies/${id}/logo`, fd);
+  return data.data; // { logoUrl }
+}
+export async function removeNfcCompanyLogo(id) {
+  const { data } = await api.delete(`/nfc/companies/${id}/logo`);
+  return data.data;
+}
+
 // People
 export async function createNfcEmployee(payload) {
   const { data } = await api.post('/nfc/employees', payload);
@@ -37,6 +48,16 @@ export async function updateNfcEmployee(id, payload) {
 }
 export async function deleteNfcEmployee(id) {
   await api.delete(`/nfc/employees/${id}`);
+}
+export async function uploadNfcEmployeePhoto(id, file) {
+  const fd = new FormData();
+  fd.append('image', file);
+  const { data } = await api.post(`/nfc/employees/${id}/photo`, fd);
+  return data.data; // { photoUrl }
+}
+export async function removeNfcEmployeePhoto(id) {
+  const { data } = await api.delete(`/nfc/employees/${id}/photo`);
+  return data.data;
 }
 
 // Batches
