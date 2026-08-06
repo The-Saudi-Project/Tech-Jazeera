@@ -34,6 +34,7 @@ import documentRoutes from './modules/documents/document.routes.js';
 import quotationRoutes from './modules/quotations/quotation.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import timesheetProcessorRoutes from './modules/timesheetProcessor/timesheet.routes.js';
+import nfcRoutes from './modules/nfc/nfc.routes.js';
 
 const app = express();
 
@@ -80,6 +81,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/quotations', quotationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/timesheet-processor', timesheetProcessorRoutes);
+app.use('/api/nfc', nfcRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
