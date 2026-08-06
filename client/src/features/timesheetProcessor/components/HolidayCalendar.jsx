@@ -31,7 +31,7 @@ export default function HolidayCalendar({ year, month, value, onChange }) {
   };
 
   return (
-    <div>
+    <div className="max-w-sm">
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-text">
           Holidays <span className="font-normal text-muted">({value.size} selected)</span>

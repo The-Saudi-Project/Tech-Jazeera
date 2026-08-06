@@ -191,29 +191,30 @@ export default function TimesheetProcessorPage() {
             </div>
           </div>
 
-          <HolidayCalendar
-            year={Number(year)}
-            month={Number(month)}
-            value={holidays}
-            onChange={setHolidays}
-          />
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+            <HolidayCalendar
+              year={Number(year)}
+              month={Number(month)}
+              value={holidays}
+              onChange={setHolidays}
+            />
+            <div className="flex items-center gap-3">
+              <Button type="submit" isLoading={previewMutation.isPending}>
+                Process
+              </Button>
+              {previewMutation.isPending && (
+                <span className="flex items-center gap-2 text-sm text-muted">
+                  <Spinner className="h-4 w-4 text-primary" /> Reading punches…
+                </span>
+              )}
+            </div>
+          </div>
 
           {formError && (
             <p role="alert" className="rounded-lg bg-danger/10 p-3 text-sm text-danger">
               {formError}
             </p>
           )}
-
-          <div className="flex items-center gap-3">
-            <Button type="submit" isLoading={previewMutation.isPending}>
-              Process
-            </Button>
-            {previewMutation.isPending && (
-              <span className="flex items-center gap-2 text-sm text-muted">
-                <Spinner className="h-4 w-4 text-primary" /> Reading punches…
-              </span>
-            )}
-          </div>
         </form>
       </Card>
 
