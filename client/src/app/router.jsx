@@ -33,6 +33,8 @@ import QuotationEditPage from '../features/quotations/pages/QuotationEditPage.js
 import TimesheetProcessorPage from '../features/timesheetProcessor/pages/TimesheetProcessorPage.jsx';
 import NfcCompanyListPage from '../features/nfc/pages/NfcCompanyListPage.jsx';
 import NfcCompanyProfilePage from '../features/nfc/pages/NfcCompanyProfilePage.jsx';
+import NfcCardListPage from '../features/nfc/pages/NfcCardListPage.jsx';
+import NfcCardDetailPage from '../features/nfc/pages/NfcCardDetailPage.jsx';
 import Spinner from '../components/ui/Spinner.jsx';
 
 function RequireAuth() {
@@ -79,6 +81,8 @@ export const router = createBrowserRouter([
           { path: '/quotations/:id/edit', element: <QuotationEditPage /> },
           { path: '/timesheet-processor', element: <TimesheetProcessorPage /> },
           { path: '/nfc', element: <NfcCompanyListPage /> },
+          { path: '/nfc/cards', element: <NfcCardListPage /> },
+          { path: '/nfc/cards/:id', element: <NfcCardDetailPage /> },
           { path: '/nfc/:id', element: <NfcCompanyProfilePage /> },
         ],
       },

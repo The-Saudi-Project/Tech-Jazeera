@@ -1,6 +1,7 @@
 /**
- * NfcCompanyProfilePage — one NFC company: its details (editable) and the people
- * under it, each with their NFC card. Full CRUD on both, Admin-only.
+ * NfcCompanyProfilePage — one company: its brand + details (editable) and the
+ * people under it, each with the NFC card they hold and actions to assign,
+ * change, edit, or remove. Admin-only.
  */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,12 +14,12 @@ import PageHeader from '../../../components/shared/PageHeader.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
 import Card from '../../../components/ui/Card.jsx';
 import Button from '../../../components/ui/Button.jsx';
-import Badge from '../../../components/ui/Badge.jsx';
 import Table from '../../../components/ui/Table.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 import NfcCompanyFormModal from '../components/NfcCompanyFormModal.jsx';
 import NfcEmployeeFormModal from '../components/NfcEmployeeFormModal.jsx';
+import AssignCardModal from '../components/AssignCardModal.jsx';
 
 function Field({ label, children }) {
   return (
@@ -42,6 +43,7 @@ export default function NfcCompanyProfilePage() {
   const [addingPerson, setAddingPerson] = useState(false);
   const [editingPerson, setEditingPerson] = useState(null);
   const [deletingPerson, setDeletingPerson] = useState(null);
+  const [assigningTo, setAssigningTo] = useState(null);
 
   const { data: company, isPending, isError } = useQuery({
     queryKey: ['nfc-company', id],
@@ -64,7 +66,6 @@ export default function NfcCompanyProfilePage() {
     onSuccess: () => {
       toast.success('Person removed.');
       queryClient.invalidateQueries({ queryKey: ['nfc-company', id] });
-      queryClient.invalidateQueries({ queryKey: ['nfc-companies'] });
       setDeletingPerson(null);
     },
     onError: (error) => toast.error(apiMessage(error)),
@@ -97,25 +98,33 @@ export default function NfcCompanyProfilePage() {
 
   const columns = [
     { key: 'name', header: 'Name', render: (p) => <span className="font-medium">{p.name}</span> },
+    { key: 'jobTitle', header: 'Job title', render: (p) => p.jobTitle || '—', hideOnMobile: true },
     {
-      key: 'nfcCardNumber',
-      header: 'NFC card',
+      key: 'card',
+      header: 'Card',
       render: (p) =>
-        p.nfcCardNumber ? (
-          <span className="font-mono text-sm">{p.nfcCardNumber}</span>
+        p.card ? (
+          <span className="flex items-center gap-2">
+            <Link to={`/nfc/cards/${p.card._id}`} className="font-mono text-xs text-primary hover:underline">
+              {p.card.token}
+            </Link>
+            <a href={p.card.url} target="_blank" rel="noopener" title="Open tap page" className="text-muted hover:text-text">
+              ↗
+            </a>
+          </span>
         ) : (
-          <span className="text-muted">—</span>
+          <span className="text-muted">No card</span>
         ),
     },
-    { key: 'designation', header: 'Designation', render: (p) => p.designation || '—', hideOnMobile: true },
-    { key: 'phone', header: 'Phone', render: (p) => p.phone || '—', hideOnMobile: true },
-    { key: 'idNumber', header: 'ID / Iqama', render: (p) => p.idNumber || '—', hideOnMobile: true },
     {
       key: 'actions',
       header: '',
       render: (p) => (
         <div className="flex justify-end gap-2">
-          <Button size="sm" variant="secondary" onClick={() => setEditingPerson(p)}>
+          <Button size="sm" variant="secondary" onClick={() => setAssigningTo(p)}>
+            {p.card ? 'Change card' : 'Assign card'}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setEditingPerson(p)}>
             Edit
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setDeletingPerson(p)}>
@@ -126,10 +135,23 @@ export default function NfcCompanyProfilePage() {
     },
   ];
 
+  const mapsHref =
+    company.mapLink ||
+    (company.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(company.address)}` : '');
+
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader
-        title={company.companyName}
+        title={
+          <span className="flex items-center gap-2.5">
+            <span
+              className="inline-block h-4 w-4 shrink-0 rounded-full ring-1 ring-inset ring-black/10"
+              style={{ backgroundColor: company.brandColour || '#4F46E5' }}
+              aria-hidden="true"
+            />
+            {company.companyName}
+          </span>
+        }
         description={company.city || 'NFC customer'}
         actions={
           <>
@@ -150,7 +172,30 @@ export default function NfcCompanyProfilePage() {
             <Field label="Contact person">{company.contactPerson}</Field>
             <Field label="Phone">{company.phone}</Field>
             <Field label="Email">{company.email}</Field>
-            <Field label="City">{company.city}</Field>
+            <Field label="Website">
+              {company.website ? (
+                <a href={/^https?:\/\//i.test(company.website) ? company.website : `https://${company.website}`} target="_blank" rel="noopener" className="text-primary hover:underline">
+                  {company.website}
+                </a>
+              ) : null}
+            </Field>
+            <Field label="Address">
+              {company.address ? (
+                mapsHref ? (
+                  <a href={mapsHref} target="_blank" rel="noopener" className="text-primary hover:underline">
+                    {company.address}
+                  </a>
+                ) : (
+                  company.address
+                )
+              ) : null}
+            </Field>
+            <Field label="Brand colour">
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-block h-3.5 w-3.5 rounded-full ring-1 ring-inset ring-black/10" style={{ backgroundColor: company.brandColour || '#4F46E5' }} />
+                <span className="font-mono text-xs">{company.brandColour || '#4F46E5'}</span>
+              </span>
+            </Field>
           </dl>
           {company.notes && (
             <div className="mt-4">
@@ -176,7 +221,7 @@ export default function NfcCompanyProfilePage() {
             emptyState={
               <EmptyState
                 title="No people yet"
-                description="Add the first person and their NFC card for this company."
+                description="Add the first person, then assign them a card."
                 action={<Button onClick={() => setAddingPerson(true)}>Add person</Button>}
               />
             }
@@ -184,29 +229,29 @@ export default function NfcCompanyProfilePage() {
         </div>
       </div>
 
-      <NfcCompanyFormModal
-        open={editingCompany}
-        onClose={() => setEditingCompany(false)}
-        company={company}
-      />
-      <NfcEmployeeFormModal
-        open={addingPerson}
-        onClose={() => setAddingPerson(false)}
-        companyId={id}
-      />
+      <NfcCompanyFormModal open={editingCompany} onClose={() => setEditingCompany(false)} company={company} />
+      <NfcEmployeeFormModal open={addingPerson} onClose={() => setAddingPerson(false)} companyId={id} />
       <NfcEmployeeFormModal
         open={Boolean(editingPerson)}
         onClose={() => setEditingPerson(null)}
         companyId={id}
         employee={editingPerson}
       />
+      {assigningTo && (
+        <AssignCardModal
+          open={Boolean(assigningTo)}
+          onClose={() => setAssigningTo(null)}
+          employee={assigningTo}
+          companyId={id}
+        />
+      )}
 
       <ConfirmDialog
         open={deletingCompany}
         title="Delete company?"
         message={`${company.companyName} and its ${company.employees.length} ${
           company.employees.length === 1 ? 'person' : 'people'
-        } will be permanently removed.`}
+        } will be permanently removed. Any cards they hold return to the inventory.`}
         loading={deleteCompanyMutation.isPending}
         onConfirm={() => deleteCompanyMutation.mutate()}
         onCancel={() => setDeletingCompany(false)}
@@ -214,7 +259,7 @@ export default function NfcCompanyProfilePage() {
       <ConfirmDialog
         open={Boolean(deletingPerson)}
         title="Remove person?"
-        message={`${deletingPerson?.name} will be permanently removed from ${company.companyName}.`}
+        message={`${deletingPerson?.name} will be removed. Any card they hold returns to the inventory.`}
         confirmLabel="Remove"
         loading={deletePersonMutation.isPending}
         onConfirm={() => deletePersonMutation.mutate(deletingPerson._id)}

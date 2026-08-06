@@ -26,6 +26,12 @@ function required(name) {
   return value.trim();
 }
 
+/** Optional variable with a fallback — never blocks boot. */
+function optional(name, fallback) {
+  const value = process.env[name];
+  return value && value.trim() !== '' ? value.trim() : fallback;
+}
+
 /** Require a variable to be one of an allowed set of values. */
 function requiredEnum(name, allowed) {
   const value = required(name);
@@ -78,6 +84,10 @@ const env = Object.freeze({
   jwtAccessSecret: requiredSecret('JWT_ACCESS_SECRET'),
   jwtRefreshSecret: requiredSecret('JWT_REFRESH_SECRET'),
   uploadDir: requiredDir('UPLOAD_DIR'),
+  // Public origin the NFC tap pages are served on (goes into card URLs, QR
+  // codes and CSV exports). Defaults to the local API origin; override in
+  // production with the real card domain. Optional so it never blocks boot.
+  publicBaseUrl: optional('PUBLIC_BASE_URL', 'http://localhost:5000').replace(/\/+$/, ''),
   isProduction: process.env.NODE_ENV === 'production',
 });
 

@@ -1,71 +1,72 @@
-# NFC Customers — developer notes
+# NFC Customers — developer notes (Phase A)
 
-An **Admin-only** directory, separate from Clients: a register of customer
-**companies** and the **people** under each, where every person can hold a unique
-**NFC card**. Full CRUD on both. Isolated module, its own collections, no link to
-the existing Clients/Employees.
+An **Admin-only** NFC digital-business-card platform: companies and their people,
+a physical **card inventory** (tokens, batches, assignment lifecycle, history),
+and a **public server-rendered tap page** per active card. Separate from the
+Client/Employee modules. Phase A ships the core + the trial workflow; analytics,
+CSV import, wallet passes, i18n, and lead capture are later phases.
 
-## What was built
-
-**Backend** (`server/src/modules/nfc/`)
+## Data model (`server/src/modules/nfc/`)
 ```
-nfcCompany.model.js    # company record
-nfcEmployee.model.js   # person under a company; partial-unique NFC card index
-nfc.validation.js      # Zod: company + employee create/update, id param, list
-nfc.service.js         # CRUD for both; card-uniqueness pre-check; cascade delete
-nfc.controller.js      # thin HTTP
-nfc.routes.js          # Admin-only; /companies and /employees
+nfcCompany.model.js     # name, contact, phone, email, website, address, mapLink, city, brandColour
+nfcEmployee.model.js    # company ref; name, jobTitle, phone, whatsapp, email, linkedin, bio, idNumber
+nfcCard.model.js        # token (unique), chipUid (partial-unique), batch, status, employee/company, assignedAt
+nfcBatch.model.js       # label, note, count, createdBy  (a run of blank cards)
+nfcAssignment.model.js  # card, employee, company, assignedAt, unassignedAt  (full history; open row = current)
 ```
-Mounted with one additive line in `app.js` at `/api/nfc`.
+Statuses: `unassigned | active | lost | returned | disabled`.
 
-**Frontend** (`client/src/features/nfc/`)
-```
-nfc.api.js / nfc.schema.js
-components/NfcCompanyFormModal.jsx    # add / edit company
-components/NfcEmployeeFormModal.jsx    # add / edit person (NFC card headline field)
-pages/NfcCompanyListPage.jsx           # searchable directory, row-click to a company
-pages/NfcCompanyProfilePage.jsx        # company details + its people (full CRUD)
-```
-Plus two routes in `router.jsx` and an Admin-only "NFC Customers" nav item.
+## Public tap page (server-rendered, NOT the SPA)
+- `GET /c/:token` → mobile HTML (Express, `nfc.publicPage.js`): brand-colour
+  accent, tappable Call/WhatsApp/Email/Website/LinkedIn/Location rows, one-tap
+  **Save Contact**, `noindex`, Open Graph tags. Server-rendered so crawlers get
+  OG/`noindex` without running JS.
+- `GET /c/:token/vcard` → vCard 3.0 (`nfc.vcard.js`), CRLF + escaped, iOS-safe.
+- Mounted at `/c` (own rate limiter `publicCardLimiter`, no auth), before the 404.
+- **Card URLs** use `env.publicBaseUrl` (`PUBLIC_BASE_URL`, default the local API
+  origin) so QR/CSV/tap links point at the right host.
 
-## API (all Admin-only)
+## Admin API (`/api/nfc`, Admin only)
+Companies + people CRUD; `POST /batches` (generate N blank cards),
+`GET /batches`, `GET /batches/:id/cards.csv`; `GET /cards` (search + status +
+company filters), `GET /cards/:id`, `PATCH /cards/:id` (chipUid),
+`GET /cards/:id/qr.png`, and lifecycle POSTs `assign` / `unassign` / `lost` /
+`return` / `disable` / `rotate`.
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/nfc/companies?search` | list companies (+ employeeCount) |
-| POST | `/api/nfc/companies` | create company |
-| GET | `/api/nfc/companies/:id` | company + its employees |
-| PATCH | `/api/nfc/companies/:id` | update company |
-| DELETE | `/api/nfc/companies/:id` | delete company (**cascades** its people) |
-| POST | `/api/nfc/employees` | add a person to a company |
-| PATCH | `/api/nfc/employees/:id` | update a person |
-| DELETE | `/api/nfc/employees/:id` | remove a person |
+## Security & privacy (built in)
+- **Random 12-char base62 tokens** (`nfc.token.js`), never derived from a name.
+- **Identical information-free 404** for unknown / inactive / lost / unassigned /
+  rotated-away tokens — a scanner can't tell them apart.
+- **Whitelisted fields only** in the public payload/vCard (no ids, no internal
+  fields like idNumber/notes).
+- **Rate limiting** on `/c/*`; token format pre-checked before any DB hit.
+- Lifecycle is effectively atomic: assign closes the prior open assignment first
+  (reassign is one step); lost/rotate kill the URL immediately.
 
-## Key decisions & why
+## Key decisions
+- **Cards are inventory, not a field on a person** — one card ↔ (at most) one
+  person at a time, with full history, so lost/rotate/reassign are first-class.
+- **Deleting a company/person frees their cards** back to `unassigned` (physical
+  cards aren't destroyed), and closes their assignment history rows.
+- **QR** via the `qrcode` dependency (encoding QR by hand is infeasible; it's the
+  standard). **No images** in Phase A (logo/photo deferred by product choice).
+- **Map** = an address (opens a Maps search) or an explicit `mapLink`.
 
-- **Separate collections, separate module.** NFC customers are a distinct book
-  from the manpower-supply Clients, so they get their own `NfcCompany` /
-  `NfcEmployee` models and never touch the existing Client/Employee data.
-- **NFC card is uniquely held.** A partial unique index on `nfcCardNumber` (only
-  real string values) stops one card being assigned to two people; the service
-  also pre-checks for a friendly "already assigned" 409. People with no card
-  store the field as **absent** (validation maps "" → undefined) so they never
-  collide.
-- **Reference, not embed.** People reference their company, so each has its own
-  CRUD; a company page fetches company + its people in one call. Deleting a
-  company **cascades** to its people.
-- **Admin-only**, enforced server-side (`requireRoles('Admin')`), with the nav
-  item hidden and a client-side redirect for stray direct visits.
-- **Fields (simple, per request):** company = name, contact, phone, email, city,
-  notes; person = name, NFC card number, designation, phone, ID/Iqama, notes.
+## Admin UI (`client/src/features/nfc/`)
+Companies list (`/nfc`) → company profile (`/nfc/:id`, brand + people + assign) ·
+card inventory (`/nfc/cards`, filters + generate batch) → card detail
+(`/nfc/cards/:id`, URL + QR + status + history + lifecycle). Assignment is done
+from a person's page; card detail manages an existing card.
 
 ## Verified (2026-08-06)
+curl end-to-end: company (brand colour) → person (all fields) → **batch of 10** →
+assign → **public page 200** (name/title/brand/`noindex`) → **vCard** (valid 3.0)
+→ **QR PNG** → **CSV** → rotate (old URL 404, new 200) → mark lost (404) →
+assign-to-lost **400** → unassign (404) → reassign (history grows, one active).
+Identical 404 for unknown tokens; admin 401 without auth. Browser: cards
+inventory, card detail (QR/actions/history), company profile. All test data wiped.
 
-**curl** (throwaway admin, cleaned up): create company · list with employeeCount ·
-add person with card · **duplicate card → 409** · bad company → 404 · missing
-name → 400 · get company with employees · update person · **delete company
-cascades** its people · no auth → 401.
-
-**Browser:** Admin-only nav item · directory empty state → **Add company** modal →
-company row · open company → **Add person** modal (NFC card field) → person listed
-with the card mono-styled · Edit/Delete on both · no functional console errors.
+## Later phases (not built)
+B: analytics (views/saves/clicks, country via GeoIP). C: CSV import, card-request
+workflow, expiry auto-disable, audit-log surfacing, Arabic/English, Wallet passes
+(need Apple/Google certs), lead capture.

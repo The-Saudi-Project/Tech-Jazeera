@@ -35,6 +35,7 @@ import quotationRoutes from './modules/quotations/quotation.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import timesheetProcessorRoutes from './modules/timesheetProcessor/timesheet.routes.js';
 import nfcRoutes from './modules/nfc/nfc.routes.js';
+import nfcPublicRoutes from './modules/nfc/nfc.public.routes.js';
 
 const app = express();
 
@@ -82,6 +83,10 @@ app.use('/api/quotations', quotationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/timesheet-processor', timesheetProcessorRoutes);
 app.use('/api/nfc', nfcRoutes);
+
+// Public NFC tap pages — server-rendered HTML, NOT under /api (no auth, own
+// rate limiter). Must be mounted before the 404 handler.
+app.use('/c', nfcPublicRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

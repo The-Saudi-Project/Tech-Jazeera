@@ -39,3 +39,18 @@ export const loginLimiter = rateLimit({
     message: 'Too many login attempts. Please wait 15 minutes and try again.',
   },
 });
+
+/**
+ * Public NFC card pages (/c/:token). Tokens are 12 random base62 chars (~70
+ * bits), so guessing is already hopeless; this caps automated scanning per IP.
+ * Roomy for real visitors (each tap is a page + maybe a vCard fetch), tight
+ * enough to make enumeration pointless. Returns a plain 429 (these are public
+ * HTML routes, not the JSON API).
+ */
+export const publicCardLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: 'Too many requests. Please try again later.',
+});

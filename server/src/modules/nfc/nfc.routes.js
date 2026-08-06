@@ -1,6 +1,6 @@
 /**
- * NFC Customers routes — an Admin-only directory, separate from Clients.
- * requireRoles('Admin') also excludes Workers, so no requireStaff is needed.
+ * NFC admin routes — the whole platform behind Admin auth. Separate from the
+ * public tap routes (nfc.public.routes.js), which are unauthenticated.
  */
 import { Router } from 'express';
 import asyncHandler from '../../utils/asyncHandler.js';
@@ -12,33 +12,45 @@ import {
   updateCompanySchema,
   createEmployeeSchema,
   updateEmployeeSchema,
+  generateBatchSchema,
+  updateCardSchema,
+  assignCardSchema,
+  listCardsSchema,
   listCompaniesSchema,
   idParamSchema,
 } from './nfc.validation.js';
-import * as nfcController from './nfc.controller.js';
+import * as nfc from './nfc.controller.js';
 
 const router = Router();
-
 router.use(requireAuth, requireRoles('Admin'));
 
 // Companies
-router.get('/companies', validate({ query: listCompaniesSchema }), asyncHandler(nfcController.listCompanies));
-router.post('/companies', validate({ body: createCompanySchema }), asyncHandler(nfcController.createCompany));
-router.get('/companies/:id', validate({ params: idParamSchema }), asyncHandler(nfcController.getCompany));
-router.patch(
-  '/companies/:id',
-  validate({ params: idParamSchema, body: updateCompanySchema }),
-  asyncHandler(nfcController.updateCompany)
-);
-router.delete('/companies/:id', validate({ params: idParamSchema }), asyncHandler(nfcController.deleteCompany));
+router.get('/companies', validate({ query: listCompaniesSchema }), asyncHandler(nfc.listCompanies));
+router.post('/companies', validate({ body: createCompanySchema }), asyncHandler(nfc.createCompany));
+router.get('/companies/:id', validate({ params: idParamSchema }), asyncHandler(nfc.getCompany));
+router.patch('/companies/:id', validate({ params: idParamSchema, body: updateCompanySchema }), asyncHandler(nfc.updateCompany));
+router.delete('/companies/:id', validate({ params: idParamSchema }), asyncHandler(nfc.deleteCompany));
 
-// Employees (belong to a company)
-router.post('/employees', validate({ body: createEmployeeSchema }), asyncHandler(nfcController.createEmployee));
-router.patch(
-  '/employees/:id',
-  validate({ params: idParamSchema, body: updateEmployeeSchema }),
-  asyncHandler(nfcController.updateEmployee)
-);
-router.delete('/employees/:id', validate({ params: idParamSchema }), asyncHandler(nfcController.deleteEmployee));
+// People
+router.post('/employees', validate({ body: createEmployeeSchema }), asyncHandler(nfc.createEmployee));
+router.patch('/employees/:id', validate({ params: idParamSchema, body: updateEmployeeSchema }), asyncHandler(nfc.updateEmployee));
+router.delete('/employees/:id', validate({ params: idParamSchema }), asyncHandler(nfc.deleteEmployee));
+
+// Batches
+router.post('/batches', validate({ body: generateBatchSchema }), asyncHandler(nfc.generateBatch));
+router.get('/batches', asyncHandler(nfc.listBatches));
+router.get('/batches/:id/cards.csv', validate({ params: idParamSchema }), asyncHandler(nfc.batchCsv));
+
+// Cards
+router.get('/cards', validate({ query: listCardsSchema }), asyncHandler(nfc.listCards));
+router.get('/cards/:id', validate({ params: idParamSchema }), asyncHandler(nfc.getCard));
+router.get('/cards/:id/qr.png', validate({ params: idParamSchema }), asyncHandler(nfc.cardQr));
+router.patch('/cards/:id', validate({ params: idParamSchema, body: updateCardSchema }), asyncHandler(nfc.updateCard));
+router.post('/cards/:id/assign', validate({ params: idParamSchema, body: assignCardSchema }), asyncHandler(nfc.assignCard));
+router.post('/cards/:id/unassign', validate({ params: idParamSchema }), asyncHandler(nfc.unassignCard));
+router.post('/cards/:id/lost', validate({ params: idParamSchema }), asyncHandler(nfc.markLost));
+router.post('/cards/:id/return', validate({ params: idParamSchema }), asyncHandler(nfc.markReturned));
+router.post('/cards/:id/disable', validate({ params: idParamSchema }), asyncHandler(nfc.disableCard));
+router.post('/cards/:id/rotate', validate({ params: idParamSchema }), asyncHandler(nfc.rotateToken));
 
 export default router;

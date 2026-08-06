@@ -1,56 +1,99 @@
 /**
- * NFC Customers controller — HTTP translation only. Inputs arrive validated by
- * the Zod middleware; all rules live in the service.
+ * NFC admin controller — HTTP translation only. Two endpoints intentionally
+ * break the JSON envelope: the QR image (PNG) and the CSV export (text/csv),
+ * the documented binary-response exception.
  */
+import QRCode from 'qrcode';
 import ApiResponse from '../../utils/ApiResponse.js';
 import * as nfcService from './nfc.service.js';
 
 const actor = (req) => ({ userId: req.user.id, ip: req.ip });
 
-/** GET /api/nfc/companies?search → data: companies[] (with employeeCount) */
+// Companies
 export async function listCompanies(req, res) {
-  const data = await nfcService.listCompanies(req.query);
-  res.json(new ApiResponse('NFC companies.', data));
+  res.json(new ApiResponse('NFC companies.', await nfcService.listCompanies(req.query)));
 }
-
-/** GET /api/nfc/companies/:id → data: company (+ employees) */
 export async function getCompany(req, res) {
-  const data = await nfcService.getCompany(req.params.id);
-  res.json(new ApiResponse('NFC company.', data));
+  res.json(new ApiResponse('NFC company.', await nfcService.getCompany(req.params.id)));
 }
-
-/** POST /api/nfc/companies → 201 data: company */
 export async function createCompany(req, res) {
-  const data = await nfcService.createCompany(req.body, actor(req));
-  res.status(201).json(new ApiResponse('Company created.', data));
+  res.status(201).json(new ApiResponse('Company created.', await nfcService.createCompany(req.body, actor(req))));
 }
-
-/** PATCH /api/nfc/companies/:id → data: company */
 export async function updateCompany(req, res) {
-  const data = await nfcService.updateCompany(req.params.id, req.body, actor(req));
-  res.json(new ApiResponse('Company updated.', data));
+  res.json(new ApiResponse('Company updated.', await nfcService.updateCompany(req.params.id, req.body, actor(req))));
 }
-
-/** DELETE /api/nfc/companies/:id → data: null (cascades its employees) */
 export async function deleteCompany(req, res) {
   await nfcService.deleteCompany(req.params.id, actor(req));
   res.json(new ApiResponse('Company deleted.'));
 }
 
-/** POST /api/nfc/employees → 201 data: employee */
+// Employees
 export async function createEmployee(req, res) {
-  const data = await nfcService.createEmployee(req.body, actor(req));
-  res.status(201).json(new ApiResponse('Employee added.', data));
+  res.status(201).json(new ApiResponse('Person added.', await nfcService.createEmployee(req.body, actor(req))));
 }
-
-/** PATCH /api/nfc/employees/:id → data: employee */
 export async function updateEmployee(req, res) {
-  const data = await nfcService.updateEmployee(req.params.id, req.body, actor(req));
-  res.json(new ApiResponse('Employee updated.', data));
+  res.json(new ApiResponse('Person updated.', await nfcService.updateEmployee(req.params.id, req.body, actor(req))));
 }
-
-/** DELETE /api/nfc/employees/:id → data: null */
 export async function deleteEmployee(req, res) {
   await nfcService.deleteEmployee(req.params.id, actor(req));
-  res.json(new ApiResponse('Employee removed.'));
+  res.json(new ApiResponse('Person removed.'));
+}
+
+// Batches
+export async function generateBatch(req, res) {
+  res.status(201).json(new ApiResponse('Batch generated.', await nfcService.generateBatch(req.body, actor(req))));
+}
+export async function listBatches(req, res) {
+  res.json(new ApiResponse('Batches.', await nfcService.listBatches()));
+}
+
+/** GET /api/nfc/batches/:id/cards.csv — writing all a batch's chips in one go. */
+export async function batchCsv(req, res) {
+  const { batch, cards } = await nfcService.getBatchCards(req.params.id);
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const header = ['Token', 'URL', 'Chip UID', 'Status', 'Assigned to'];
+  const rows = cards.map((c) => [c.token, c.url, c.chipUid ?? '', c.status, c.employee?.name ?? ''].map(esc).join(','));
+  const csv = [header.map(esc).join(','), ...rows].join('\r\n');
+  const name = `nfc_batch_${(batch.label || batch._id).toString().replace(/[^\w-]/g, '_')}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+  res.send(csv);
+}
+
+// Cards
+export async function listCards(req, res) {
+  res.json(new ApiResponse('Cards.', await nfcService.listCards(req.query)));
+}
+export async function getCard(req, res) {
+  res.json(new ApiResponse('Card.', await nfcService.getCard(req.params.id)));
+}
+export async function updateCard(req, res) {
+  res.json(new ApiResponse('Card updated.', await nfcService.updateCard(req.params.id, req.body, actor(req))));
+}
+export async function assignCard(req, res) {
+  res.json(new ApiResponse('Card assigned.', await nfcService.assignCard(req.params.id, req.body, actor(req))));
+}
+export async function unassignCard(req, res) {
+  res.json(new ApiResponse('Card unassigned.', await nfcService.unassignCard(req.params.id, actor(req))));
+}
+export async function markLost(req, res) {
+  res.json(new ApiResponse('Card marked lost.', await nfcService.markLost(req.params.id, actor(req))));
+}
+export async function markReturned(req, res) {
+  res.json(new ApiResponse('Card returned to inventory.', await nfcService.markReturned(req.params.id, actor(req))));
+}
+export async function disableCard(req, res) {
+  res.json(new ApiResponse('Card disabled.', await nfcService.disableCard(req.params.id, actor(req))));
+}
+export async function rotateToken(req, res) {
+  res.json(new ApiResponse('Token rotated. The old URL no longer works.', await nfcService.rotateToken(req.params.id, actor(req))));
+}
+
+/** GET /api/nfc/cards/:id/qr.png — QR of the card's public URL. */
+export async function cardQr(req, res) {
+  const card = await nfcService.getCard(req.params.id);
+  const png = await QRCode.toBuffer(card.url, { width: 512, margin: 1, errorCorrectionLevel: 'M' });
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Content-Disposition', `inline; filename="nfc_${card.token}.png"`);
+  res.send(png);
 }

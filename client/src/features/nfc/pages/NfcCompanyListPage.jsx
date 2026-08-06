@@ -33,7 +33,20 @@ export default function NfcCompanyListPage() {
   if (!isAdmin) return <Navigate to="/" replace />;
 
   const columns = [
-    { key: 'companyName', header: 'Company', render: (c) => <span className="font-medium">{c.companyName}</span> },
+    {
+      key: 'companyName',
+      header: 'Company',
+      render: (c) => (
+        <span className="flex items-center gap-2">
+          <span
+            className="inline-block h-3 w-3 shrink-0 rounded-full ring-1 ring-inset ring-black/10"
+            style={{ backgroundColor: c.brandColour || '#4F46E5' }}
+            aria-hidden="true"
+          />
+          <span className="font-medium">{c.companyName}</span>
+        </span>
+      ),
+    },
     { key: 'contactPerson', header: 'Contact', render: (c) => c.contactPerson || '—' },
     { key: 'phone', header: 'Phone', render: (c) => c.phone || '—', hideOnMobile: true },
     { key: 'city', header: 'City', render: (c) => c.city || '—', hideOnMobile: true },
@@ -62,7 +75,14 @@ export default function NfcCompanyListPage() {
       <PageHeader
         title="NFC Customers"
         description="Companies and their people, with the NFC card assigned to each."
-        actions={<Button onClick={() => setAdding(true)}>Add company</Button>}
+        actions={
+          <>
+            <Link to="/nfc/cards">
+              <Button variant="secondary">Cards</Button>
+            </Link>
+            <Button onClick={() => setAdding(true)}>Add company</Button>
+          </>
+        }
       />
 
       <div className="mb-4 max-w-sm">
