@@ -21,6 +21,8 @@ const nfcEmployeeSchema = new mongoose.Schema(
     email: { type: String, trim: true, lowercase: true },
     linkedin: { type: String, trim: true },
     bio: { type: String, trim: true, maxlength: 600 },
+    // Stored profile photo filename (served publicly via /nfc-media/<photo>).
+    photo: { type: String, default: null },
     idNumber: { type: String, trim: true }, // Iqama / national ID (internal only)
     notes: { type: String, trim: true, maxlength: 2000 }, // internal only
   },

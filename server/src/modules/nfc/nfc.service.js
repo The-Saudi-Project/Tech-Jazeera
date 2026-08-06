@@ -12,6 +12,7 @@ import ApiError from '../../utils/ApiError.js';
 import env from '../../config/env.js';
 import { logAudit } from '../audit/audit.service.js';
 import { generateToken, generateTokens } from './nfc.token.js';
+import { deleteNfcMedia } from './nfc.upload.js';
 
 function escapeRegex(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -20,6 +21,11 @@ function escapeRegex(text) {
 /** The public URL a chip is written with. */
 export function cardUrl(token) {
   return `${env.publicBaseUrl}/c/${token}`;
+}
+
+/** Public URL for a stored logo/photo file, or null. */
+export function mediaUrl(filename) {
+  return filename ? `${env.publicBaseUrl}/nfc-media/${filename}` : null;
 }
 
 /** Attach the public URL to a plain card object. */
@@ -38,7 +44,11 @@ export async function listCompanies({ search }) {
   const companies = await NfcCompany.find(filter).sort({ companyName: 1 }).lean();
   const counts = await NfcEmployee.aggregate([{ $group: { _id: '$company', count: { $sum: 1 } } }]);
   const countBy = new Map(counts.map((c) => [c._id.toString(), c.count]));
-  return companies.map((c) => ({ ...c, employeeCount: countBy.get(c._id.toString()) ?? 0 }));
+  return companies.map((c) => ({
+    ...c,
+    employeeCount: countBy.get(c._id.toString()) ?? 0,
+    logoUrl: mediaUrl(c.logo),
+  }));
 }
 
 /** One company + its people, each with their currently-active card (if any). */
@@ -54,10 +64,11 @@ export async function getCompany(id) {
     const card = cardByEmployee.get(e._id.toString());
     return {
       ...e,
+      photoUrl: mediaUrl(e.photo),
       card: card ? { _id: card._id, token: card.token, url: cardUrl(card.token) } : null,
     };
   });
-  return { ...company, employees: withCards };
+  return { ...company, logoUrl: mediaUrl(company.logo), employees: withCards };
 }
 
 export async function createCompany(data, actor) {
@@ -82,6 +93,9 @@ export async function deleteCompany(id, actor) {
     { company: id },
     { $set: { employee: null, company: null, status: 'unassigned', assignedAt: null } }
   );
+  deleteNfcMedia(company.logo);
+  const people = await NfcEmployee.find({ company: id }).select('photo').lean();
+  people.forEach((p) => deleteNfcMedia(p.photo));
   const removed = await NfcEmployee.deleteMany({ company: id });
   await logAudit({ user: actor.userId, action: 'nfc.company.delete', targetType: 'NfcCompany', targetId: id, meta: { companyName: company.companyName, removedEmployees: removed.deletedCount, freedCards: freed.modifiedCount }, ip: actor.ip });
 }
@@ -107,6 +121,7 @@ export async function updateEmployee(id, data, actor) {
 export async function deleteEmployee(id, actor) {
   const employee = await NfcEmployee.findByIdAndDelete(id).lean();
   if (!employee) throw new ApiError(404, 'Employee not found.');
+  deleteNfcMedia(employee.photo);
   await NfcAssignment.updateMany({ employee: id, unassignedAt: null }, { unassignedAt: new Date() });
   await NfcCard.updateMany(
     { employee: id },
@@ -283,7 +298,59 @@ export async function getPublicCardByToken(token) {
       mapLink: c.mapLink ?? '',
       brandColour: c.brandColour ?? '#4F46E5',
     },
+    logoUrl: mediaUrl(c.logo),
+    photoUrl: mediaUrl(e.photo),
   };
+}
+
+// ----------------------------------------------------------------- Images
+
+export async function setCompanyLogo(id, filename, actor) {
+  const company = await NfcCompany.findById(id);
+  if (!company) {
+    deleteNfcMedia(filename); // orphaned upload for a missing company
+    throw new ApiError(404, 'Company not found.');
+  }
+  const old = company.logo;
+  company.logo = filename;
+  await company.save();
+  deleteNfcMedia(old);
+  await logAudit({ user: actor.userId, action: 'nfc.company.logo', targetType: 'NfcCompany', targetId: id, ip: actor.ip });
+  return { logoUrl: mediaUrl(filename) };
+}
+
+export async function removeCompanyLogo(id, actor) {
+  const company = await NfcCompany.findById(id);
+  if (!company) throw new ApiError(404, 'Company not found.');
+  deleteNfcMedia(company.logo);
+  company.logo = null;
+  await company.save();
+  await logAudit({ user: actor.userId, action: 'nfc.company.logo.remove', targetType: 'NfcCompany', targetId: id, ip: actor.ip });
+  return { logoUrl: null };
+}
+
+export async function setEmployeePhoto(id, filename, actor) {
+  const employee = await NfcEmployee.findById(id);
+  if (!employee) {
+    deleteNfcMedia(filename);
+    throw new ApiError(404, 'Person not found.');
+  }
+  const old = employee.photo;
+  employee.photo = filename;
+  await employee.save();
+  deleteNfcMedia(old);
+  await logAudit({ user: actor.userId, action: 'nfc.employee.photo', targetType: 'NfcEmployee', targetId: id, ip: actor.ip });
+  return { photoUrl: mediaUrl(filename), company: employee.company };
+}
+
+export async function removeEmployeePhoto(id, actor) {
+  const employee = await NfcEmployee.findById(id);
+  if (!employee) throw new ApiError(404, 'Person not found.');
+  deleteNfcMedia(employee.photo);
+  employee.photo = null;
+  await employee.save();
+  await logAudit({ user: actor.userId, action: 'nfc.employee.photo.remove', targetType: 'NfcEmployee', targetId: id, ip: actor.ip });
+  return { photoUrl: null, company: employee.company };
 }
 
 export { NFC_CARD_STATUSES };

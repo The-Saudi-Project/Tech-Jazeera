@@ -36,6 +36,7 @@ import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import timesheetProcessorRoutes from './modules/timesheetProcessor/timesheet.routes.js';
 import nfcRoutes from './modules/nfc/nfc.routes.js';
 import nfcPublicRoutes from './modules/nfc/nfc.public.routes.js';
+import { serveNfcMedia } from './modules/nfc/nfc.upload.js';
 
 const app = express();
 
@@ -87,6 +88,9 @@ app.use('/api/nfc', nfcRoutes);
 // Public NFC tap pages — server-rendered HTML, NOT under /api (no auth, own
 // rate limiter). Must be mounted before the 404 handler.
 app.use('/c', nfcPublicRoutes);
+
+// Public NFC media (logos/photos) — random-named files, cached, no auth.
+app.get('/nfc-media/:filename', serveNfcMedia);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

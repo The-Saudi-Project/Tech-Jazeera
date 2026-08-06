@@ -19,6 +19,7 @@ import {
   listCompaniesSchema,
   idParamSchema,
 } from './nfc.validation.js';
+import { uploadNfcImage } from './nfc.upload.js';
 import * as nfc from './nfc.controller.js';
 
 const router = Router();
@@ -30,11 +31,15 @@ router.post('/companies', validate({ body: createCompanySchema }), asyncHandler(
 router.get('/companies/:id', validate({ params: idParamSchema }), asyncHandler(nfc.getCompany));
 router.patch('/companies/:id', validate({ params: idParamSchema, body: updateCompanySchema }), asyncHandler(nfc.updateCompany));
 router.delete('/companies/:id', validate({ params: idParamSchema }), asyncHandler(nfc.deleteCompany));
+router.post('/companies/:id/logo', validate({ params: idParamSchema }), uploadNfcImage, asyncHandler(nfc.uploadCompanyLogo));
+router.delete('/companies/:id/logo', validate({ params: idParamSchema }), asyncHandler(nfc.removeCompanyLogo));
 
 // People
 router.post('/employees', validate({ body: createEmployeeSchema }), asyncHandler(nfc.createEmployee));
 router.patch('/employees/:id', validate({ params: idParamSchema, body: updateEmployeeSchema }), asyncHandler(nfc.updateEmployee));
 router.delete('/employees/:id', validate({ params: idParamSchema }), asyncHandler(nfc.deleteEmployee));
+router.post('/employees/:id/photo', validate({ params: idParamSchema }), uploadNfcImage, asyncHandler(nfc.uploadEmployeePhoto));
+router.delete('/employees/:id/photo', validate({ params: idParamSchema }), asyncHandler(nfc.removeEmployeePhoto));
 
 // Batches
 router.post('/batches', validate({ body: generateBatchSchema }), asyncHandler(nfc.generateBatch));

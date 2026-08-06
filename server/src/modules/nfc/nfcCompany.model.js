@@ -19,6 +19,8 @@ const nfcCompanySchema = new mongoose.Schema(
     city: { type: String, trim: true },
     // Accent colour for this company's tap pages, e.g. "#4F46E5".
     brandColour: { type: String, trim: true, default: '#4F46E5' },
+    // Stored logo image filename (served publicly via /nfc-media/<logo>).
+    logo: { type: String, default: null },
     notes: { type: String, trim: true, maxlength: 2000 },
   },
   { timestamps: true }
