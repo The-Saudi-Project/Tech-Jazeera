@@ -49,8 +49,22 @@ company filters), `GET /cards/:id`, `PATCH /cards/:id` (chipUid),
 - **Deleting a company/person frees their cards** back to `unassigned` (physical
   cards aren't destroyed), and closes their assignment history rows.
 - **QR** via the `qrcode` dependency (encoding QR by hand is infeasible; it's the
-  standard). **No images** in Phase A (logo/photo deferred by product choice).
+  standard).
 - **Map** = an address (opens a Maps search) or an explicit `mapLink`.
+
+## Tap-page design (premium "foil-and-stock")
+`nfc.publicPage.js` renders a mobile-first business card: a foil-stamp loader,
+the card rising with a sheen sweep, staggered actions, pointer-tilt (desktop),
+a faint dot pattern + grain, and a serif name. **Adaptive per brand**: the
+treatment (dark stock vs light ivory stock) is chosen from the brand colour's
+luminance so the colour always reads; the accent is contrast-nudged with
+`color-mix`. `prefers-reduced-motion` disables the motion.
+
+**Images** (`nfc.upload.js`): company **logo** and person **photo** upload
+(PNG/JPG/WEBP ≤ 2 MB, random-named on disk under `UPLOAD_DIR/nfc`), served
+publicly at `/nfc-media/<file>` (basename-guarded, cached). URLs are returned as
+`logoUrl`/`photoUrl`; the photo also becomes the page's `og:image` for rich link
+previews. Replacing/removing/deleting cleans up the old file.
 
 ## Admin UI (`client/src/features/nfc/`)
 Companies list (`/nfc`) → company profile (`/nfc/:id`, brand + people + assign) ·
