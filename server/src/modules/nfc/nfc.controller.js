@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import ApiResponse from '../../utils/ApiResponse.js';
 import ApiError from '../../utils/ApiError.js';
 import * as nfcService from './nfc.service.js';
+import * as analytics from './nfc.analytics.service.js';
 
 const actor = (req) => ({ userId: req.user.id, ip: req.ip });
 
@@ -104,6 +105,21 @@ export async function disableCard(req, res) {
 }
 export async function rotateToken(req, res) {
   res.json(new ApiResponse('Token rotated. The old URL no longer works.', await nfcService.rotateToken(req.params.id, actor(req))));
+}
+
+// Analytics
+export async function overviewAnalytics(req, res) {
+  res.json(new ApiResponse('NFC analytics.', await analytics.getOverviewAnalytics(req.query)));
+}
+export async function cardAnalytics(req, res) {
+  const data = await analytics.getCardAnalytics(req.params.id, req.query);
+  if (!data) throw new ApiError(404, 'Card not found.');
+  res.json(new ApiResponse('Card analytics.', data));
+}
+export async function companyAnalytics(req, res) {
+  const data = await analytics.getCompanyAnalytics(req.params.id, req.query);
+  if (!data) throw new ApiError(404, 'Company not found.');
+  res.json(new ApiResponse('Company analytics.', data));
 }
 
 /** GET /api/nfc/cards/:id/qr.png — QR of the card's public URL. */

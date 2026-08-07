@@ -271,6 +271,11 @@ export async function rotateToken(id, actor) {
  * Resolve a token for the public tap page. Returns whitelisted, already-public
  * fields only, or null for anything that must 404 identically (unknown, not
  * active, or not linked to a person).
+ *
+ * `ref` is the one exception to the whitelist: internal ids the analytics
+ * recorder needs to attribute a tap. It is SERVER-ONLY — the page renderer
+ * destructures the fields it needs by name and never sees it, and no route
+ * serialises this object to the client.
  */
 export async function getPublicCardByToken(token) {
   const card = await NfcCard.findOne({ token, status: 'active', employee: { $ne: null } })
@@ -282,6 +287,7 @@ export async function getPublicCardByToken(token) {
   const e = card.employee;
   const c = card.company || {};
   return {
+    ref: { card: card._id, employee: e._id, company: c._id ?? null },
     employee: {
       name: e.name,
       jobTitle: e.jobTitle ?? '',

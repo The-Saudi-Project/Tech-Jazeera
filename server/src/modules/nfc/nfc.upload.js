@@ -56,7 +56,19 @@ export function deleteNfcMedia(filename) {
 export function serveNfcMedia(req, res) {
   const name = path.basename(req.params.filename);
   if (!/^[\w.-]+$/.test(name)) return res.status(404).end();
-  return res.sendFile(path.join(NFC_MEDIA_DIR, name), { headers: { 'Cache-Control': 'public, max-age=86400' } }, (err) => {
-    if (err && !res.headersSent) res.status(404).end();
-  });
+  return res.sendFile(
+    path.join(NFC_MEDIA_DIR, name),
+    {
+      headers: {
+        'Cache-Control': 'public, max-age=86400',
+        // These files are deliberately public — a person's photo is the tap
+        // page's og:image, which other origins must be able to render.
+        // helmet's app-wide default of `same-origin` would block that.
+        'Cross-Origin-Resource-Policy': 'cross-origin',
+      },
+    },
+    (err) => {
+      if (err && !res.headersSent) res.status(404).end();
+    }
+  );
 }

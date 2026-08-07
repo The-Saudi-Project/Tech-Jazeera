@@ -66,3 +66,14 @@ export const listCardsSchema = z.object({
 });
 
 export const listCompaniesSchema = z.object({ search: optionalStr(100) });
+
+/**
+ * Analytics window. Capped at a year so nobody can ask the database to bucket
+ * an unbounded range, and defaulted so the endpoints work with no query at all.
+ */
+export const analyticsQuerySchema = z.object({
+  days: z.preprocess(
+    emptyToUndef,
+    z.coerce.number().int().min(1, 'Use at least 1 day.').max(365, 'Up to 365 days.').default(30)
+  ),
+});

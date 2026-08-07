@@ -52,9 +52,19 @@ function normalizeError(err) {
 }
 
 /** Express error middleware — must keep all 4 parameters to be recognized. */
-// eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, next) {
   const error = normalizeError(err);
+
+  // If the response already went out (e.g. a route that answers first and
+  // finishes work afterwards), there is no way to send an error body — trying
+  // would throw ERR_HTTP_HEADERS_SENT on top of the original failure. Express
+  // requires delegating to its default handler, which closes the connection.
+  if (res.headersSent) {
+    logger.error(`${req.method} ${req.originalUrl} → error after response sent`, {
+      stack: (error.cause ?? err).stack,
+    });
+    return next(err);
+  }
 
   // Log bugs loudly with the ORIGINAL error and stack; expected failures
   // (404s, bad input) at warn level without stacks to keep logs readable.

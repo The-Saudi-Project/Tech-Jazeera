@@ -54,3 +54,19 @@ export const publicCardLimiter = rateLimit({
   legacyHeaders: false,
   message: 'Too many requests. Please try again later.',
 });
+
+/**
+ * The tap page's click beacon (POST /c/:token/e). Separate from the page
+ * limiter because one visit can fire several of these — tapping Call, then
+ * WhatsApp, then Website is three beacons on top of the page view — and
+ * sharing a budget would let normal use exhaust the page limit. Each one is a
+ * tiny insert, so the cap is higher; it exists to stop a flood of writes, not
+ * to police real visitors.
+ */
+export const publicEventLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 400,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: 'Too many requests. Please try again later.',
+});

@@ -27,13 +27,6 @@ const digits = (v) => String(v ?? '').replace(/[^\d]/g, '');
 const ensureHttp = (url) => (!url ? '' : /^https?:\/\//i.test(url) ? url : `https://${url}`);
 const safeHex = (c) => (/^#[0-9a-fA-F]{6}$/.test(c || '') ? c : '#1f9e78');
 
-/** sRGB relative luminance (0 dark … 1 light). */
-function luminance(hex) {
-  const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-  const lin = ch.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-}
-
 /** Two-letter initials for the monogram fallback. */
 function initials(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
@@ -52,10 +45,15 @@ const ICON = {
 const iconSvg = (path, filled = false) =>
   `<svg viewBox="0 0 24 24" ${filled ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.7"'} aria-hidden="true">${filled ? `<path d="${path}"/>` : `<path stroke-linecap="round" stroke-linejoin="round" d="${path}"/>`}</svg>`;
 
-function action(icon, label, href, filled = false, blank = false) {
+/**
+ * One tappable row. `track` is the analytics key (see NFC_CLICK_TARGETS); the
+ * page script reads it from data-t and beacons it on click. The href stays a
+ * real link, so tapping works exactly the same if the beacon never fires.
+ */
+function action({ icon, label, href, track, filled = false, blank = false }) {
   if (!href) return '';
   const t = blank ? ' target="_blank" rel="noopener"' : '';
-  return `<a class="act" href="${attr(href)}"${t}><span class="ic">${iconSvg(icon, filled)}</span><span>${h(label)}</span></a>`;
+  return `<a class="act" href="${attr(href)}" data-t="${attr(track)}"${t}><span class="ic">${iconSvg(icon, filled)}</span><span>${h(label)}</span></a>`;
 }
 
 /** Palette tokens for the ultra-premium dark aesthetic. */
@@ -154,8 +152,13 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans
 @media (prefers-reduced-motion:reduce){*{animation:none !important}.load{display:none}.card::after{display:none}}
 `;
 
-/** The full profile page. data = { employee, company, cardUrl, vcardUrl, logoUrl, photoUrl }. */
-export function renderProfilePage({ employee, company, cardUrl, vcardUrl, logoUrl, photoUrl }) {
+/**
+ * The full profile page.
+ * data = { employee, company, cardUrl, vcardUrl, logoUrl, photoUrl, token, nonce }
+ * `nonce` is the per-response CSP nonce (see nfc.public.routes.js) — without it
+ * the browser refuses to run the page script at all.
+ */
+export function renderProfilePage({ employee, company, cardUrl, vcardUrl, logoUrl, photoUrl, token, nonce }) {
   const brand = safeHex(company?.brandColour);
   const vars = palette(brand);
   const styleVars = Object.entries(vars).map(([k, v]) => `${k}:${v}`).join(';');
@@ -173,12 +176,12 @@ export function renderProfilePage({ employee, company, cardUrl, vcardUrl, logoUr
   const waNumber = employee.whatsapp || employee.phone;
 
   const rows =
-    action(ICON.phone, 'Call', telHref) +
-    action(ICON.whatsapp, 'WhatsApp', waNumber ? `https://wa.me/${digits(waNumber)}` : '') +
-    action(ICON.email, 'Email', employee.email ? `mailto:${employee.email}` : '') +
-    action(ICON.web, 'Website', website, false, true) +
-    action(ICON.linkedin, 'LinkedIn', linkedin, true, true) +
-    action(ICON.location, 'Location', mapHref, false, true);
+    action({ icon: ICON.phone, label: 'Call', href: telHref, track: 'call' }) +
+    action({ icon: ICON.whatsapp, label: 'WhatsApp', href: waNumber ? `https://wa.me/${digits(waNumber)}` : '', track: 'whatsapp' }) +
+    action({ icon: ICON.email, label: 'Email', href: employee.email ? `mailto:${employee.email}` : '', track: 'email' }) +
+    action({ icon: ICON.web, label: 'Website', href: website, track: 'website', blank: true }) +
+    action({ icon: ICON.linkedin, label: 'LinkedIn', href: linkedin, track: 'linkedin', filled: true, blank: true }) +
+    action({ icon: ICON.location, label: 'Location', href: mapHref, track: 'location', blank: true });
 
   const avatar = photoUrl
     ? `<div class="ava"><img src="${attr(photoUrl)}" alt="${h(employee.name)}"></div>`
@@ -216,7 +219,7 @@ ${ogImage ? `<meta property="og:image" content="${h(ogImage)}">` : ''}
   ${employee.bio ? `<p class="bio">${h(employee.bio)}</p>` : ''}
   <p class="foot">Tap &middot; Connect</p>
 </main>
-<script>
+<script nonce="${attr(nonce)}">
 (function(){
   var card=document.getElementById('card');
   var reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -229,6 +232,23 @@ ${ogImage ? `<meta property="og:image" content="${h(ogImage)}">` : ''}
     });
     document.body.addEventListener('pointerleave',function(){card.style.transform='';});
   }
+
+  /* Click tracking. A RELATIVE url on purpose: the page may be reached on a LAN
+     IP or a tunnel host that differs from the configured public base url, and a
+     relative path always posts back to wherever the page actually came from.
+     sendBeacon survives the page being unloaded by the outgoing tel:/https link;
+     fetch(keepalive) is the fallback. Failure is silent — it must never get in
+     the way of the tap. */
+  var endpoint='/c/'+${JSON.stringify(String(token ?? ''))}+'/e';
+  Array.prototype.forEach.call(document.querySelectorAll('[data-t]'),function(a){
+    a.addEventListener('click',function(){
+      var body=JSON.stringify({target:a.getAttribute('data-t')});
+      try{
+        if(navigator.sendBeacon){navigator.sendBeacon(endpoint,new Blob([body],{type:'application/json'}));}
+        else{fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true});}
+      }catch(e){}
+    });
+  });
 })();
 </script>
 </body></html>`;

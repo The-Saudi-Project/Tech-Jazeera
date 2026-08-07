@@ -18,12 +18,19 @@ import {
   listCardsSchema,
   listCompaniesSchema,
   idParamSchema,
+  analyticsQuerySchema,
 } from './nfc.validation.js';
 import { uploadNfcImage } from './nfc.upload.js';
 import * as nfc from './nfc.controller.js';
 
 const router = Router();
 router.use(requireAuth, requireRoles('Admin'));
+
+// Analytics (see nfc.analytics.service.js). Mounted before the resource routes
+// so /analytics is never mistaken for an id.
+router.get('/analytics', validate({ query: analyticsQuerySchema }), asyncHandler(nfc.overviewAnalytics));
+router.get('/cards/:id/analytics', validate({ params: idParamSchema, query: analyticsQuerySchema }), asyncHandler(nfc.cardAnalytics));
+router.get('/companies/:id/analytics', validate({ params: idParamSchema, query: analyticsQuerySchema }), asyncHandler(nfc.companyAnalytics));
 
 // Companies
 router.get('/companies', validate({ query: listCompaniesSchema }), asyncHandler(nfc.listCompanies));
