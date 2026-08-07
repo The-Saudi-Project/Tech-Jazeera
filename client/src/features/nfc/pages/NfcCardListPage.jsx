@@ -76,6 +76,9 @@ export default function NfcCardListPage() {
         description="Card inventory: tokens, status, and who holds each card."
         actions={
           <>
+            <Link to="/nfc/analytics">
+              <Button variant="secondary">Activity</Button>
+            </Link>
             <Link to="/nfc">
               <Button variant="secondary">Companies</Button>
             </Link>

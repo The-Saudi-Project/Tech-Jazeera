@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { getNfcCompany, deleteNfcCompany, deleteNfcEmployee } from '../nfc.api.js';
+import { getNfcCompany, deleteNfcCompany, deleteNfcEmployee, getNfcCompanyAnalytics } from '../nfc.api.js';
 import { apiMessage } from '../../../lib/utils.js';
 import { useToast } from '../../../components/ui/Toast.jsx';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
@@ -20,6 +20,9 @@ import EmptyState from '../../../components/ui/EmptyState.jsx';
 import NfcCompanyFormModal from '../components/NfcCompanyFormModal.jsx';
 import NfcEmployeeFormModal from '../components/NfcEmployeeFormModal.jsx';
 import AssignCardModal from '../components/AssignCardModal.jsx';
+
+/** Window for the per-person tap counts shown beside each name. */
+const ANALYTICS_DAYS = 30;
 
 function Field({ label, children }) {
   return (
@@ -50,6 +53,15 @@ export default function NfcCompanyProfilePage() {
     queryFn: () => getNfcCompany(id),
     enabled: isAdmin,
   });
+
+  // Loaded separately so the profile is never held up by an aggregation; the
+  // People table simply shows "—" until the counts arrive.
+  const { data: activity } = useQuery({
+    queryKey: ['nfc-company-analytics', id, ANALYTICS_DAYS],
+    queryFn: () => getNfcCompanyAnalytics(id, ANALYTICS_DAYS),
+    enabled: isAdmin,
+  });
+  const tapsByPerson = new Map((activity?.byEmployee ?? []).map((r) => [r.employee, r]));
 
   const deleteCompanyMutation = useMutation({
     mutationFn: () => deleteNfcCompany(id),
@@ -115,6 +127,21 @@ export default function NfcCompanyProfilePage() {
         ) : (
           <span className="text-muted">No card</span>
         ),
+    },
+    {
+      key: 'taps',
+      header: `Taps (${ANALYTICS_DAYS}d)`,
+      hideOnMobile: true,
+      render: (p) => {
+        const t = tapsByPerson.get(p._id);
+        if (!t) return <span className="text-muted">—</span>;
+        return (
+          <span className="tabular-nums" title={`${t.views} taps · ${t.saves} saved · ${t.clicks} link taps`}>
+            {t.views}
+            <span className="text-muted"> · {t.saves} saved</span>
+          </span>
+        );
+      },
     },
     {
       key: 'actions',

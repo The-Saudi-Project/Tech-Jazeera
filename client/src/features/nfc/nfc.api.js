@@ -109,3 +109,17 @@ export async function getCardQrObjectUrl(id) {
   const res = await api.get(`/nfc/cards/${id}/qr.png`, { responseType: 'blob' });
   return URL.createObjectURL(res.data);
 }
+
+// Analytics — `days` is the trailing window (1–365, default 30 server-side).
+export async function getNfcOverviewAnalytics(days) {
+  const { data } = await api.get('/nfc/analytics', { params: { days } });
+  return data.data;
+}
+export async function getNfcCardAnalytics(id, days) {
+  const { data } = await api.get(`/nfc/cards/${id}/analytics`, { params: { days } });
+  return data.data;
+}
+export async function getNfcCompanyAnalytics(id, days) {
+  const { data } = await api.get(`/nfc/companies/${id}/analytics`, { params: { days } });
+  return data.data;
+}

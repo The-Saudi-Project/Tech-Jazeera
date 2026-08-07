@@ -35,6 +35,7 @@ import NfcCompanyListPage from '../features/nfc/pages/NfcCompanyListPage.jsx';
 import NfcCompanyProfilePage from '../features/nfc/pages/NfcCompanyProfilePage.jsx';
 import NfcCardListPage from '../features/nfc/pages/NfcCardListPage.jsx';
 import NfcCardDetailPage from '../features/nfc/pages/NfcCardDetailPage.jsx';
+import NfcAnalyticsPage from '../features/nfc/pages/NfcAnalyticsPage.jsx';
 import Spinner from '../components/ui/Spinner.jsx';
 
 function RequireAuth() {
@@ -83,6 +84,8 @@ export const router = createBrowserRouter([
           { path: '/nfc', element: <NfcCompanyListPage /> },
           { path: '/nfc/cards', element: <NfcCardListPage /> },
           { path: '/nfc/cards/:id', element: <NfcCardDetailPage /> },
+          // Before the /nfc/:id catch-all, or "analytics" is read as a company id.
+          { path: '/nfc/analytics', element: <NfcAnalyticsPage /> },
           { path: '/nfc/:id', element: <NfcCompanyProfilePage /> },
         ],
       },

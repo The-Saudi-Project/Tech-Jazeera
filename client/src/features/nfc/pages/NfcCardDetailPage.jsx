@@ -22,6 +22,7 @@ import Badge from '../../../components/ui/Badge.jsx';
 import Input from '../../../components/ui/Input.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
+import CardAnalyticsPanel from '../components/CardAnalyticsPanel.jsx';
 
 export default function NfcCardDetailPage() {
   const { id } = useParams();
@@ -235,6 +236,8 @@ export default function NfcCardDetailPage() {
             </Button>
           </div>
         </Card>
+
+        <CardAnalyticsPanel cardId={id} />
 
         <Card>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Assignment history</h2>

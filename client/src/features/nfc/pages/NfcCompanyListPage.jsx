@@ -77,6 +77,9 @@ export default function NfcCompanyListPage() {
         description="Companies and their people, with the NFC card assigned to each."
         actions={
           <>
+            <Link to="/nfc/analytics">
+              <Button variant="secondary">Activity</Button>
+            </Link>
             <Link to="/nfc/cards">
               <Button variant="secondary">Cards</Button>
             </Link>
