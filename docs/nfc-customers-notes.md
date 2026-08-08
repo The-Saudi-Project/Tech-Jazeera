@@ -53,12 +53,17 @@ company filters), `GET /cards/:id`, `PATCH /cards/:id` (chipUid),
 - **Map** = an address (opens a Maps search) or an explicit `mapLink`.
 
 ## Tap-page design (premium "foil-and-stock")
-`nfc.publicPage.js` renders a mobile-first business card: a foil-stamp loader,
-the card rising with a sheen sweep, staggered actions, pointer-tilt (desktop),
-a faint dot pattern + grain, and a serif name. **Adaptive per brand**: the
-treatment (dark stock vs light ivory stock) is chosen from the brand colour's
-luminance so the colour always reads; the accent is contrast-nudged with
-`color-mix`. `prefers-reduced-motion` disables the motion.
+`nfc.publicPage.js` renders a mobile-first business card on dark stock: a
+loader, the card rising with a mouse-driven sheen, staggered actions,
+pointer-tilt (desktop), a geometric pattern + grain. The brand colour drives
+the accent, glow, icon tints and Save button via `color-mix`.
+`prefers-reduced-motion` disables the motion.
+
+**CSP**: `/c/*` replaces the app-wide helmet policy with its own
+(`nfc.public.routes.js`). The default `script-src 'self'` silently blocked the
+page's inline script, so each response now carries a nonce. The default also
+included `upgrade-insecure-requests`, which rewrote the page's own image
+requests to https and broke every logo/photo over a plain-http LAN trial.
 
 **Images** (`nfc.upload.js`): company **logo** and person **photo** upload
 (PNG/JPG/WEBP ≤ 2 MB, random-named on disk under `UPLOAD_DIR/nfc`), served
@@ -72,6 +77,80 @@ card inventory (`/nfc/cards`, filters + generate batch) → card detail
 (`/nfc/cards/:id`, URL + QR + status + history + lifecycle). Assignment is done
 from a person's page; card detail manages an existing card.
 
+## Analytics (Phase B)
+
+Answers "is this working?" — taps, contacts saved, which links get used, from
+where, on what.
+
+```
+nfcTapEvent.model.js       # card/employee/company + type/target/at + country/device/platform/referrerHost/visitor
+nfc.visitor.js             # request → privacy-safe context (pure functions, no deps)
+nfc.analytics.service.js   # recordTapEvent + card/company/overview aggregation
+```
+
+**Events**: `view` (page opened) and `save` (vCard fetched) are recorded
+server-side, so they cannot be blocked. `click` (call/whatsapp/email/website/
+linkedin/location) can't be — those links navigate away without touching the
+server — so the page fires `navigator.sendBeacon` to `POST /c/:token/e`. The
+alternative, redirecting every link through the server, breaks `tel:` on iOS and
+kills long-press-to-copy; links stay real links and tracking is best-effort.
+`image` is declared in the enum but not yet emitted (reserved for the
+save-card-as-picture feature).
+
+**Privacy is the design constraint.** Tappers are members of the public, so
+**no IP, no full user agent, no full referrer** is stored. `visitor` is a
+one-way hash salted per UTC day (salt derived from `JWT_ACCESS_SECRET` with
+domain separation — no new secret invented), which makes unique-visitor counts
+possible but cross-day tracking impossible. Only the referrer's *host* is kept.
+Rows self-delete after `RETENTION_DAYS` (400) via a TTL index.
+
+**Country** comes from the CDN/proxy header (`CF-IPCountry`,
+`x-vercel-ip-country`, `x-appengine-country`, `x-geo-country`) — no GeoIP
+database, no dependency, no IP processing. It reads `null` when the server is
+not behind such a proxy, so a LAN trial shows no countries; put it behind the
+`cloudflared` tunnel from the card-writing guide and they appear. Spoofable in
+principle, which is fine for a chart and would not be for anything else.
+
+**Bot filtering** matters more than it sounds: pasting a card URL into WhatsApp
+makes Meta's servers fetch the page to build the link preview. Two rules —
+a known-crawler pattern, plus "user agent does not start with `Mozilla/`",
+which catches every HTTP library without needing to enumerate them. Errs toward
+undercounting.
+
+**Dedupe**: a repeat `view` from the same visitor inside 30 min is ignored (a
+reload is not a second visitor); `save`/`image` 2 min; clicks never.
+
+**Recording never breaks a page** — callers don't await it, and the function
+cannot throw. `POST /c/:token/e` answers 204 before doing any work, and always
+204 even for an unknown token so it can't be used to probe which tokens exist.
+
+**Reads** use one `$facet` per screen (many pipelines, one pass, one round
+trip). Days are bucketed at `+03:00` (Riyadh; KSA has no DST, so a fixed offset
+is exact and the JS range boundary and Mongo's bucketing can never disagree —
+unlike attendance, which stores date-only keys in UTC).
+
+**API** (Admin): `GET /api/nfc/analytics`, `/cards/:id/analytics`,
+`/companies/:id/analytics`, each `?days=1..365` (default 30).
+
+**UI**: `/nfc/analytics` overview (totals, trend, most-tapped cards, countries,
+devices), an Activity panel on card detail, and per-person tap counts on the
+company profile. The trend is CSS bars — one metric over N days is a flexbox
+and a percentage height, not a charting dependency.
+
+## Verified (2026-08-07, Phase B)
+38 automated end-to-end checks (`view`/`save`/`click` recording, nonce matches
+the CSP header, 6 tracking hooks rendered, internal ids not leaked to the page,
+reload dedupe, WhatsApp/facebookexternalhit/no-UA bots ignored, distinct
+visitors, country from both CF and Vercel headers, device+platform split, valid
+vCard, beacon 204 + invalid targets rejected + unknown token still 204, series
+zero-filled to the full window, disabled card 404s and records nothing, company
+per-person breakdown, overview top cards, `days` cap/non-numeric → 400, no token
+→ 401, unknown card → 404, default 30). Browser: overview + card panel + company
+counts at 1280px and 375px (no horizontal scroll), range picker switching
+30→7 days, beacon firing from a real click and landing in the DB, and the
+pointer-tilt script running for the first time (it was CSP-blocked before). All
+test data wiped; only the real company and the owner's account remain.
+
 ## Verified (2026-08-06)
 curl end-to-end: company (brand colour) → person (all fields) → **batch of 10** →
 assign → **public page 200** (name/title/brand/`noindex`) → **vCard** (valid 3.0)
@@ -81,6 +160,9 @@ Identical 404 for unknown tokens; admin 401 without auth. Browser: cards
 inventory, card detail (QR/actions/history), company profile. All test data wiped.
 
 ## Later phases (not built)
-B: analytics (views/saves/clicks, country via GeoIP). C: CSV import, card-request
-workflow, expiry auto-disable, audit-log surfacing, Arabic/English, Wallet passes
-(need Apple/Google certs), lead capture.
+**Next up**: save-the-card-as-an-image button (canvas-drawn card + QR back to
+the live page; Web Share API so it reaches the iPhone camera roll — a plain
+download link does not). The `image` event type is already reserved for it.
+
+C: CSV import, card-request workflow, expiry auto-disable, audit-log surfacing,
+Arabic/English, Wallet passes (need Apple/Google certs), lead capture.
