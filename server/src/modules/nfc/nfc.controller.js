@@ -3,9 +3,19 @@
  * break the JSON envelope: the QR image (PNG) and the CSV export (text/csv),
  * the documented binary-response exception.
  */
-import QRCode from 'qrcode';
+import sharp from 'sharp';
+import { generatePremiumQrSvg } from './nfc.qr.js';
+
+/** Convert an SVG string to a high-quality PNG buffer via sharp. */
+async function svgToPng(svg, size) {
+  return sharp(Buffer.from(svg))
+    .resize(size, size)
+    .png({ quality: 100 })
+    .toBuffer();
+}
 import ApiResponse from '../../utils/ApiResponse.js';
 import ApiError from '../../utils/ApiError.js';
+import { buildCsv } from '../../utils/csv.js';
 import * as nfcService from './nfc.service.js';
 import * as analytics from './nfc.analytics.service.js';
 
@@ -68,10 +78,11 @@ export async function listBatches(req, res) {
 /** GET /api/nfc/batches/:id/cards.csv — writing all a batch's chips in one go. */
 export async function batchCsv(req, res) {
   const { batch, cards } = await nfcService.getBatchCards(req.params.id);
-  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  // csvCell also neutralizes formula triggers — `Assigned to` and `Chip UID`
+  // are free text, and this file is opened in Excel by whoever prints the cards.
   const header = ['Token', 'URL', 'Chip UID', 'Status', 'Assigned to'];
-  const rows = cards.map((c) => [c.token, c.url, c.chipUid ?? '', c.status, c.employee?.name ?? ''].map(esc).join(','));
-  const csv = [header.map(esc).join(','), ...rows].join('\r\n');
+  const rows = cards.map((c) => [c.token, c.url, c.chipUid ?? '', c.status, c.employee?.name ?? '']);
+  const csv = buildCsv(header, rows);
   const name = `nfc_batch_${(batch.label || batch._id).toString().replace(/[^\w-]/g, '_')}.csv`;
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
@@ -129,10 +140,12 @@ export async function companyAnalytics(req, res) {
   res.json(new ApiResponse('Company analytics.', data));
 }
 
-/** GET /api/nfc/cards/:id/qr.png — QR of the card's public URL. */
+/** GET /api/nfc/cards/:id/qr.png — Premium branded QR of the card's public URL. */
 export async function cardQr(req, res) {
   const card = await nfcService.getCard(req.params.id);
-  const png = await QRCode.toBuffer(card.url, { width: 512, margin: 1, errorCorrectionLevel: 'M' });
+  const brandColour = card.company?.brandColour;
+  const svg = generatePremiumQrSvg(card.url, { brandColour, size: 1024 });
+  const png = await svgToPng(svg, 1024);
   res.setHeader('Content-Type', 'image/png');
   res.setHeader('Content-Disposition', `inline; filename="nfc_${card.token}.png"`);
   res.send(png);

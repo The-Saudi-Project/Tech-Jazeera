@@ -50,8 +50,8 @@ npm run seed:admin -- you@company.com YourStrongPassword "Your Name"
 
 Auth endpoints: `POST /api/auth/login` `{ email, password }` →
 `{ user, accessToken }` + httpOnly refresh cookie; `POST /api/auth/refresh`;
-`POST /api/auth/logout`. Roles: Admin, Manager, HR, Operations, Accounts,
-Viewer, Worker. (Worker is the Phase 2 self-service persona — see
+`POST /api/auth/logout`. Roles: Admin, Manager, HR, Accounts, Coordinator,
+Worker. (Worker is the Phase 2 self-service persona — see
 `docs/P2-M1-notes.md`; the admin modules are staff-only.) See `docs/M2-notes.md`
 for the full token flow.
 
@@ -77,21 +77,21 @@ together during development (two terminals).
 - **Clients** (`/clients`) — customer register: company/contact/VAT/CR/
   industry/notes, a dynamic list of sites, and a tabbed profile (Overview +
   live Assigned-Workers). Delete is guarded against clients with assigned
-  workers. Write: Admin/Manager/Operations; delete: Admin/Manager. See
+  workers. Write: Admin/Manager; delete: Admin/Manager. See
   `docs/M5-notes.md`.
 - **Deployments** (`/deployments`) — place workers at client sites: assign,
   transfer, and unassign, with full history. A partial-unique index guarantees
   a worker is never actively deployed in two places at once, and each
   operation is transactional. Managed from the register and each worker's
-  profile. Write: Admin/Manager/Operations. See `docs/M6-notes.md`.
+  profile. Write: Admin/Manager. See `docs/M6-notes.md`.
 - **Attendance** (`/attendance`) — daily marking, a weekly/monthly grid, and
   per-worker summaries with **Excel/PDF export** (generated server-side via
   exceljs/pdfkit). One record per worker per day (upsert). Mark: Admin/
-  Manager/HR/Operations; read/export: all. See `docs/M7-notes.md`.
+  Manager/HR; read/export: all. See `docs/M7-notes.md`.
 - **Documents** (`/documents`) — upload files against employees and clients
   with categories, expiry dates, version history, inline preview, download,
   and search. Files stored on disk at `UPLOAD_DIR`; served authenticated.
-  Upload: Admin/Manager/HR/Operations; delete: Admin/Manager/HR. See
+  Upload: Admin/Manager/HR; delete: Admin/Manager/HR. See
   `docs/M8-notes.md`.
 - **Quotations** (`/quotations`) — labour/trading line items with per-line
   discount and tax, **server-computed** totals, Draft/Approved/Rejected

@@ -192,7 +192,7 @@ export async function listCards({ search, status, company, batch }) {
 export async function getCard(id) {
   const card = await NfcCard.findById(id)
     .populate('employee', 'name jobTitle company')
-    .populate('company', 'companyName')
+    .populate('company', 'companyName brandColour')
     .populate('batch', 'label')
     .lean();
   if (!card) throw new ApiError(404, 'Card not found.');
@@ -324,6 +324,7 @@ export async function getPublicCardByToken(token) {
     },
     company: {
       companyName: c.companyName ?? '',
+      companyNameAr: c.companyNameAr ?? '',
       website: c.website ?? '',
       address: c.address ?? '',
       mapLink: c.mapLink ?? '',

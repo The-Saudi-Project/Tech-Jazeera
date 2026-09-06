@@ -10,11 +10,21 @@ export function cn(...parts) {
 
 /**
  * Extract the server's human-readable message from a failed Axios call.
- * Our API always returns { success:false, message } — this reads it safely,
- * falling back for network-level failures where no response exists.
+ * Our API always returns { success:false, message, details? } — validation
+ * failures (validate.js) carry a generic top-level message ("Validation
+ * failed.") plus per-field reasons in `details`. Prefer those: "Validation
+ * failed." tells the user nothing about what to fix, while the field
+ * messages (e.g. "Tier years and tier days must be set together.") do.
+ * Falls back to the top-level message, then a generic string for
+ * network-level failures where no response exists at all.
  */
 export function apiMessage(error, fallback = 'Something went wrong. Please try again.') {
-  return error?.response?.data?.message ?? fallback;
+  const data = error?.response?.data;
+  if (!data) return fallback;
+  if (Array.isArray(data.details) && data.details.length > 0) {
+    return [...new Set(data.details.map((d) => d.message))].join(' ');
+  }
+  return data.message ?? fallback;
 }
 
 /** Display format: "23 Jul 2026". Em-dash for missing values. */
@@ -25,6 +35,31 @@ export function formatDate(value) {
     month: 'short',
     year: 'numeric',
   });
+}
+
+/** Display format with time: "23 Jul 2026, 14:05". For logs where the exact
+ *  moment matters, not just the day. Em-dash for missing values. */
+export function formatDateTime(value) {
+  if (!value) return '—';
+  return new Date(value).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** Display format: time only, "14:05". Em-dash for missing values. */
+export function formatTime(value) {
+  if (!value) return '—';
+  return new Date(value).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Worked hours to 1 decimal for display: 8.4667 → "8.5". Em-dash for missing values. */
+export function formatHours(value) {
+  if (value == null) return '—';
+  return Number(value).toFixed(1);
 }
 
 /** ISO date → the "YYYY-MM-DD" format <input type="date"> requires. */

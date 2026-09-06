@@ -11,6 +11,14 @@ export async function markBulk(payload) {
   return data.data;
 }
 
+/** PATCH /attendance/adjust { employee, date, status, checkInTime?, checkOutTime?, note? } —
+ *  correct one worker's day, e.g. a missed punch. checkInTime/checkOutTime are full ISO
+ *  datetimes or null; hoursWorked is computed server-side from them. */
+export async function adjustAttendance(payload) {
+  const { data } = await api.patch('/attendance/adjust', payload);
+  return data.data;
+}
+
 /** GET /attendance?from&to[&employee] → records[] (for the grid) */
 export async function listAttendance(params) {
   const { data } = await api.get('/attendance', { params });
@@ -20,6 +28,18 @@ export async function listAttendance(params) {
 /** GET /attendance/summary?from&to → { from, to, statuses, rows } */
 export async function getSummary(params) {
   const { data } = await api.get('/attendance/summary', { params });
+  return data.data;
+}
+
+/** GET /attendance/office-location — the geofence Workers self-mark against (Admin). */
+export async function getOfficeLocation() {
+  const { data } = await api.get('/attendance/office-location');
+  return data.data; // null until first configured
+}
+
+/** PATCH /attendance/office-location (Admin). */
+export async function setOfficeLocation(payload) {
+  const { data } = await api.patch('/attendance/office-location', payload);
   return data.data;
 }
 

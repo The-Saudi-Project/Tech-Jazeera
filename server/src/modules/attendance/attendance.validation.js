@@ -41,3 +41,44 @@ export const exportSchema = z.object({
   from: dateOnly,
   to: dateOnly,
 });
+
+/** P2-M3: the office geofence Admin configures. */
+export const officeLocationSchema = z.object({
+  name: optionalNote,
+  lat: z.coerce.number({ error: 'Latitude is required.' }).min(-90).max(90),
+  lng: z.coerce.number({ error: 'Longitude is required.' }).min(-180).max(180),
+  radiusMeters: z.coerce.number().int().min(10).max(5000).default(150),
+  allowedIps: z.array(z.string().trim().min(3).max(45)).max(10).default([]),
+});
+
+/** P2-M3: a Worker's self-punch (Sign in/Sign out buttons — see selfPunch()).
+ *  lat/lng are optional so an office-IP-only check still works if the
+ *  browser denied location access. */
+export const selfMarkSchema = z.object({
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+  accuracy: z.coerce.number().min(0).optional(),
+});
+
+/** A Worker's own attendance history — range is optional (service defaults it). */
+export const listMyAttendanceSchema = z.object({
+  from: dateOnly.optional(),
+  to: dateOnly.optional(),
+});
+
+/**
+ * Admin/Manager/HR manually correcting ONE worker's day — e.g. they forgot
+ * to sign in/out, or the recorded hours are wrong. Distinct from
+ * markBulkSchema: that's fast status-only marking for many workers at once;
+ * this is a precise single-record fix that can also set the actual
+ * check-in/check-out times. `null` (not omitted) means "clear this time" —
+ * the client always sends both keys.
+ */
+export const adjustAttendanceSchema = z.object({
+  employee: id,
+  date: dateOnly,
+  status: z.enum(ATTENDANCE_STATUSES),
+  checkInTime: z.coerce.date().nullable().optional(),
+  checkOutTime: z.coerce.date().nullable().optional(),
+  note: optionalNote,
+});

@@ -51,10 +51,11 @@ Defined in `server/src/modules/auth/user.model.js:23`:
 | `Admin` | Everything, including the Timesheet Processor and the entire NFC platform (both are `Admin`-only) |
 | `Manager` | Employees (write), clients (write/delete), deployments (write), attendance, documents, quotations (write/delete) |
 | `HR` | Employees (write/delete), attendance, documents, worker-login provisioning |
-| `Operations` | Clients (write), deployments (write), attendance, documents |
 | `Accounts` | Quotations (write) |
-| `Viewer` | Read-only across staff modules |
-| `Worker` | Self-service only. Explicitly excluded from every admin module by `requireStaff`. Has **no UI yet** (P2-M2 unbuilt), so a Worker can authenticate but has nowhere to land. |
+| `Coordinator` (P2-M2) | Staff, but scoped to only the Employees assigned to them (`Employee.coordinator`) — their own team's records, leave decisions, and alerts. Cannot write company-wide data. |
+| `Worker` | Self-service only. Explicitly excluded from every admin module by `requireStaff`. Lands on the ESS portal (`/me`) — My Profile, My Documents, My Leave (P2-M2). |
+
+`Operations` and `Viewer` were removed after P2-M2 — never had a real account and aren't part of the role set going forward.
 
 `STAFF_ROLES` is derived as `ROLES.filter(r => r !== 'Worker')` (`middleware/rbac.js`), so a future staff role is included automatically rather than by editing a list.
 
@@ -573,8 +574,8 @@ Index size dwarfs data size only because each empty index still allocates ~36 KB
 |---|---|---|---|
 | GET | `/` | List (paginated, search, status, industry) | any staff |
 | GET | `/:id` | One client | any staff |
-| POST | `/` | Create | Admin, Manager, Operations |
-| PATCH | `/:id` | Update | Admin, Manager, Operations |
+| POST | `/` | Create | Admin, Manager |
+| PATCH | `/:id` | Update | Admin, Manager |
 | DELETE | `/:id` | Delete | Admin, Manager |
 
 ### Deployments — `/api/deployments` (all: staff only)
@@ -582,14 +583,14 @@ Index size dwarfs data size only because each empty index still allocates ~36 KB
 |---|---|---|---|
 | GET | `/` | List (paginated, worker/client/status filters) | any staff |
 | GET | `/:id` | One deployment | any staff |
-| POST | `/` | Assign a worker to a site | Admin, Manager, Operations |
-| POST | `/:id/transfer` | Move to a different client/site | Admin, Manager, Operations |
-| POST | `/:id/end` | End with a reason | Admin, Manager, Operations |
+| POST | `/` | Assign a worker to a site | Admin, Manager |
+| POST | `/:id/transfer` | Move to a different client/site | Admin, Manager |
+| POST | `/:id/end` | End with a reason | Admin, Manager |
 
 ### Attendance — `/api/attendance` (all: staff only)
 | Method | URL | Purpose | Auth |
 |---|---|---|---|
-| POST | `/bulk` | Mark many employees for a date | Admin, Manager, HR, Operations |
+| POST | `/bulk` | Mark many employees for a date | Admin, Manager, HR |
 | GET | `/` | Records for a date range (hard cap 10,000) | any staff |
 | GET | `/summary` | Aggregated per-employee summary | any staff |
 | GET | `/export` | Excel or PDF export | any staff |
@@ -600,8 +601,8 @@ Index size dwarfs data size only because each empty index still allocates ~36 KB
 | GET | `/` | List (paginated, owner/category/search/expiring) | any staff |
 | GET | `/:id` | One document + versions | any staff |
 | GET | `/:id/file` | Stream the latest (or a specific) version | any staff |
-| POST | `/` | Upload a new document (10 MB) | Admin, Manager, HR, Operations |
-| POST | `/:id/versions` | Upload a new version | Admin, Manager, HR, Operations |
+| POST | `/` | Upload a new document (10 MB) | Admin, Manager, HR |
+| POST | `/:id/versions` | Upload a new version | Admin, Manager, HR |
 | DELETE | `/:id` | Delete document + files | Admin, Manager, HR |
 
 ### Quotations — `/api/quotations` (all: staff only)

@@ -7,12 +7,14 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getEmployee, deleteEmployee } from '../employees.api.js';
+import { listAssetsByEmployee } from '../../assets/assets.api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { useToast } from '../../../components/ui/Toast.jsx';
 import {
   EMPLOYEE_WRITE_ROLES,
   EMPLOYEE_DELETE_ROLES,
   ACCOUNT_PROVISION_ROLES,
+  EOSB_WRITE_ROLES,
 } from '../../../lib/constants.js';
 import { apiMessage, formatDate } from '../../../lib/utils.js';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
@@ -25,7 +27,7 @@ import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 import WorkerDeploymentPanel from '../../deployments/components/WorkerDeploymentPanel.jsx';
 import DocumentsPanel from '../../documents/components/DocumentsPanel.jsx';
-import WorkerLoginPanel from '../components/WorkerLoginPanel.jsx';
+import EmployeeLoginPanel from '../components/EmployeeLoginPanel.jsx';
 
 const STATUS_VARIANT = { Active: 'success', 'On Leave': 'warning', Exited: 'default' };
 
@@ -47,6 +49,42 @@ function Field({ label, children }) {
   );
 }
 
+/** Read-only summary of assigned assets — full assign/return actions live
+ *  on the dedicated Assets page (P3-D); this is a discoverability panel. */
+function AssignedAssetsPanel({ employeeId }) {
+  const { data } = useQuery({
+    queryKey: ['assets', 'by-employee', employeeId],
+    queryFn: () => listAssetsByEmployee(employeeId),
+  });
+  const current = (data ?? []).filter((a) => a.status === 'Active');
+  if (data && data.length === 0) return null;
+
+  return (
+    <Card>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Assigned assets</h2>
+        <Link to="/assets" className="text-xs font-medium text-primary hover:underline">
+          Manage assets
+        </Link>
+      </div>
+      {!data ? (
+        <p className="text-sm text-muted">Loading…</p>
+      ) : current.length === 0 ? (
+        <p className="text-sm text-muted">Nothing currently assigned.</p>
+      ) : (
+        <div className="divide-y divide-border">
+          {current.map((a, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+              <span>{a.assetName}</span>
+              <span className="text-xs text-muted">{a.assetTag}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function EmployeeProfilePage() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -58,6 +96,7 @@ export default function EmployeeProfilePage() {
   const canWrite = EMPLOYEE_WRITE_ROLES.includes(user.role);
   const canDelete = EMPLOYEE_DELETE_ROLES.includes(user.role);
   const canProvisionAccount = ACCOUNT_PROVISION_ROLES.includes(user.role);
+  const canComputeEosb = EOSB_WRITE_ROLES.includes(user.role);
 
   const { data: employee, isPending, isError } = useQuery({
     queryKey: ['employee', id],
@@ -104,9 +143,17 @@ export default function EmployeeProfilePage() {
         description={`${employee.employeeId} · ${employee.designation}`}
         actions={
           <>
+            <Badge variant="default" className="mr-1">
+              {employee.type}
+            </Badge>
             <Badge variant={STATUS_VARIANT[employee.status]} className="mr-1">
               {employee.status}
             </Badge>
+            {canComputeEosb && (
+              <Button variant="secondary" onClick={() => navigate(`/eosb/new?employee=${id}`)}>
+                Calculate EOSB
+              </Button>
+            )}
             {canWrite && (
               <Button variant="secondary" onClick={() => navigate(`/employees/${id}/edit`)}>
                 Edit
@@ -130,18 +177,35 @@ export default function EmployeeProfilePage() {
             <Field label="Email">{employee.email}</Field>
             <Field label="Joining date">{formatDate(employee.joiningDate)}</Field>
             <Field label="Department">{employee.department}</Field>
-            <Field label="Salary">SAR {employee.salary?.toLocaleString()}</Field>
+            <Field label="Salary">{employee.salary != null ? `SAR ${employee.salary.toLocaleString()}` : null}</Field>
             <Field label="Accommodation">{employee.accommodation}</Field>
+            <Field label="Coordinator">{employee.coordinator?.name}</Field>
+            <Field label="Manager">{employee.manager?.name}</Field>
+            <Field label="Added by">
+              {employee.createdBy?.name && (
+                <>
+                  {employee.createdBy.name}
+                  {employee.createdBy.role === 'Coordinator' && (
+                    <Badge variant="primary" className="ml-1.5">
+                      Coordinator
+                    </Badge>
+                  )}
+                </>
+              )}
+            </Field>
           </dl>
         </Card>
 
-        {/* Worker login (P2-M1) — Admin/HR only. Create/inspect this
-            employee's self-service account. */}
-        {canProvisionAccount && <WorkerLoginPanel employee={employee} />}
+        {/* Login (any role) — Admin/HR only. Create/inspect this
+            employee's account. */}
+        {canProvisionAccount && <EmployeeLoginPanel employee={employee} />}
 
         {/* Current deployment, actions (transfer/end/assign) and history —
-            owns its own data; populates from the M6 deployment workflow. */}
-        <WorkerDeploymentPanel employee={employee} />
+            owns its own data; populates from the M6 deployment workflow.
+            Client-type only — an internal Own-type employee is never deployed. */}
+        {employee.type === 'Client' && <WorkerDeploymentPanel employee={employee} />}
+
+        <AssignedAssetsPanel employeeId={id} />
 
         <Card>
           {/* Identity metadata (numbers + expiry) — distinct from uploaded
@@ -192,7 +256,7 @@ export default function EmployeeProfilePage() {
       <ConfirmDialog
         open={confirmingDelete}
         title="Delete employee?"
-        message={`${employee.fullName} (${employee.employeeId}) will be permanently removed. For staff who left the company, set status to "Exited" instead.`}
+        message={`${employee.fullName} (${employee.employeeId}) will be permanently removed, along with their login (if any) and attendance history. For staff who left the company, set status to "Exited" instead.`}
         loading={deleteMutation.isPending}
         onConfirm={() => deleteMutation.mutate()}
         onCancel={() => setConfirmingDelete(false)}

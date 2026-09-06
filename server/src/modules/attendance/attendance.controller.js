@@ -9,7 +9,7 @@ import ApiResponse from '../../utils/ApiResponse.js';
 import * as attendanceService from './attendance.service.js';
 import { buildXlsx, buildPdf } from './attendance.export.js';
 
-const actor = (req) => ({ userId: req.user.id, ip: req.ip });
+const actor = (req) => ({ userId: req.user.id, role: req.user.role, ip: req.ip });
 
 /** POST /api/attendance/bulk — 200 → data: { date, marked } */
 export async function markBulk(req, res) {
@@ -17,22 +17,36 @@ export async function markBulk(req, res) {
   res.json(new ApiResponse('Attendance saved.', data));
 }
 
-/** GET /api/attendance — 200 → data: records[] (for the grid) */
+/** PATCH /api/attendance/adjust — 200 → data: record. Correct one worker's day: status + optional actual check-in/out times. */
+export async function adjust(req, res) {
+  const data = await attendanceService.adjustAttendance(req.body, actor(req));
+  res.json(new ApiResponse('Attendance updated.', data));
+}
+
+/**
+ * GET /api/attendance — 200 → data: records[] (for the grid, and the
+ * sign-in/out log) · 403 a Coordinator naming an employee outside their team
+ * A Coordinator's results are scoped to their own team automatically.
+ */
 export async function list(req, res) {
-  const data = await attendanceService.listAttendance(req.query);
+  const data = await attendanceService.listAttendance(req.query, actor(req));
   res.json(new ApiResponse('Attendance records.', data));
 }
 
-/** GET /api/attendance/summary — 200 → data: { from, to, statuses, rows } */
+/**
+ * GET /api/attendance/summary — 200 → data: { from, to, statuses, rows }
+ * A Coordinator's results are scoped to their own team automatically.
+ */
 export async function summary(req, res) {
-  const data = await attendanceService.getSummary(req.query);
+  const data = await attendanceService.getSummary(req.query, actor(req));
   res.json(new ApiResponse('Attendance summary.', data));
 }
 
-/** GET /api/attendance/export?format=xlsx|pdf — downloads a file. */
+/** GET /api/attendance/export?format=xlsx|pdf — downloads a file, scoped to
+ *  a Coordinator's own team same as the summary it's built from. */
 export async function exportSummary(req, res) {
   const { format, from, to } = req.query;
-  const summaryData = await attendanceService.getSummary({ from, to });
+  const summaryData = await attendanceService.getSummary({ from, to }, actor(req));
 
   const isExcel = format === 'xlsx';
   const buffer = isExcel ? await buildXlsx(summaryData) : await buildPdf(summaryData);
@@ -46,4 +60,16 @@ export async function exportSummary(req, res) {
   );
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(buffer);
+}
+
+/** GET /api/attendance/office-location   (Admin) — 200 → data: location | null */
+export async function getOfficeLocation(req, res) {
+  const data = await attendanceService.getOfficeLocation();
+  res.json(new ApiResponse('Office location.', data));
+}
+
+/** PATCH /api/attendance/office-location   (Admin) — 200 → data: location */
+export async function updateOfficeLocation(req, res) {
+  const data = await attendanceService.setOfficeLocation(req.body, actor(req));
+  res.json(new ApiResponse('Office location saved.', data));
 }

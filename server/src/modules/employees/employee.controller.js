@@ -6,24 +6,26 @@
 import ApiResponse from '../../utils/ApiResponse.js';
 import * as employeeService from './employee.service.js';
 
-/** Who performed the action, for the audit trail. */
-const actor = (req) => ({ userId: req.user.id, ip: req.ip });
+/** Who performed the action, for the audit trail — `role` also drives P2-M2
+ *  ownership scoping (Coordinator/Manager team views) in the service layer. */
+const actor = (req) => ({ userId: req.user.id, role: req.user.role, ip: req.ip });
 
 /**
- * GET /api/employees?page&limit&search&status&alerts&sortBy&sortOrder
- * 200 → data: { items, total, page, pages }
+ * GET /api/employees?page&limit&search&status&alerts&thresholdDays&team&sortBy&sortOrder
+ * 200 → data: { items, total, page, pages } — scoped to "my team" for a
+ * Coordinator automatically, or for a Manager passing team=mine
  */
 export async function list(req, res) {
-  const data = await employeeService.listEmployees(req.query);
+  const data = await employeeService.listEmployees(req.query, actor(req));
   res.json(new ApiResponse('Employees.', data));
 }
 
 /**
  * GET /api/employees/:id
- * 200 → data: employee · 400 bad id · 404 unknown
+ * 200 → data: employee · 400 bad id · 403 outside a Coordinator's team · 404 unknown
  */
 export async function get(req, res) {
-  const employee = await employeeService.getEmployee(req.params.id);
+  const employee = await employeeService.getEmployee(req.params.id, actor(req));
   res.json(new ApiResponse('Employee.', employee));
 }
 
@@ -56,11 +58,20 @@ export async function remove(req, res) {
 
 /**
  * POST /api/employees/:id/user   (Admin, HR)
- * Provisions a Worker login for this employee.
+ * Provisions a login for this employee, with any role except Admin.
  * 201 → data: { user, tempPassword } — tempPassword is shown ONCE, hand it over
  * 400 no email on file · 404 unknown employee · 409 already has a login / email taken
  */
 export async function createLogin(req, res) {
   const data = await employeeService.createEmployeeLogin(req.params.id, req.body, actor(req));
-  res.status(201).json(new ApiResponse('Worker login created.', data));
+  res.status(201).json(new ApiResponse('Login created.', data));
+}
+
+/**
+ * POST /api/employees/:id/user/reset-password   (Admin, HR)
+ * 200 → data: { tempPassword } — shown ONCE, hand it over · 404 no login yet
+ */
+export async function resetLoginPassword(req, res) {
+  const data = await employeeService.resetEmployeeLoginPassword(req.params.id, actor(req));
+  res.json(new ApiResponse('Password reset.', data));
 }

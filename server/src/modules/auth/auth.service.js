@@ -22,6 +22,8 @@ import ApiError from '../../utils/ApiError.js';
 import User from './user.model.js';
 import RefreshToken from './refreshToken.model.js';
 import { logAudit } from '../audit/audit.service.js';
+import { deleteAvatarMedia } from './avatar.upload.js';
+import { getMySectionAccess } from '../sectionAccess/sectionAccess.service.js';
 
 const ACCESS_TOKEN_TTL = '15m';
 export const REFRESH_TOKEN_TTL_DAYS = 7;
@@ -66,7 +68,13 @@ function hashToken(token) {
 
 /** The safe subset of a user we ever send to the client. */
 function publicUser(user) {
-  return { id: user._id.toString(), name: user.name, email: user.email, role: user.role };
+  return {
+    id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    avatarUrl: user.avatarUrl ?? null,
+  };
 }
 
 /** Mint both tokens and persist the refresh token's hash as a session row. */
@@ -113,9 +121,10 @@ export async function login({ email, password, ip }) {
   }
 
   const tokens = await issueTokens(user);
+  const sectionAccess = await getMySectionAccess({ userId: user._id, role: user.role });
   await logAudit({ user: user._id, action: 'auth.login.success', ip });
   logger.info(`Login: ${user.email} (${user.role})`);
-  return { user: publicUser(user), ...tokens };
+  return { user: { ...publicUser(user), sectionAccess }, ...tokens };
 }
 
 /**
@@ -165,7 +174,8 @@ export async function refresh({ refreshToken, ip }) {
   }
 
   const tokens = await issueTokens(user);
-  return { user: publicUser(user), ...tokens };
+  const sectionAccess = await getMySectionAccess({ userId: user._id, role: user.role });
+  return { user: { ...publicUser(user), sectionAccess }, ...tokens };
 }
 
 /**
@@ -176,4 +186,60 @@ export async function logout({ refreshToken, ip }) {
   if (!refreshToken) return;
   const stored = await RefreshToken.findOneAndDelete({ tokenHash: hashToken(refreshToken) });
   if (stored) await logAudit({ user: stored.user, action: 'auth.logout', ip });
+}
+
+/**
+ * Self-service password change. Requires proving the CURRENT password (not
+ * just being logged in) — a short-lived access token alone isn't enough
+ * grounds to change the credential that outlives it.
+ *
+ * Every refresh-token session is revoked afterward, on every device — the
+ * same "assume compromise, start clean" posture as reuse detection. The
+ * caller's own session dies too; the client must send them back to /login.
+ */
+export async function changePassword({ userId, currentPassword, newPassword }, ip) {
+  const user = await User.findById(userId).select('+passwordHash');
+  if (!user) throw new ApiError(404, 'Account not found.');
+
+  const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!ok) throw new ApiError(401, 'Current password is incorrect.');
+
+  user.passwordHash = await hashPassword(newPassword);
+  await user.save();
+  await RefreshToken.deleteMany({ user: user._id });
+
+  await logAudit({ user: user._id, action: 'auth.password.changed', ip });
+  logger.info(`Password changed: ${user.email}`);
+}
+
+/**
+ * Self-service avatar upload/replace — any role. The old image (if any) is
+ * deleted from Cloudinary after the swap succeeds, so a failed upload never
+ * orphans the previous one.
+ */
+export async function updateAvatar({ userId, url }, ip) {
+  const user = await User.findById(userId);
+  if (!user) throw new ApiError(404, 'Account not found.');
+
+  const old = user.avatarUrl;
+  user.avatarUrl = url;
+  await user.save();
+  if (old) await deleteAvatarMedia(old);
+
+  await logAudit({ user: user._id, action: 'user.avatar.update', ip });
+  return { avatarUrl: url };
+}
+
+/** Self-service avatar removal — reverts to the initial-letter placeholder. */
+export async function removeAvatar({ userId }, ip) {
+  const user = await User.findById(userId);
+  if (!user) throw new ApiError(404, 'Account not found.');
+
+  const old = user.avatarUrl;
+  user.avatarUrl = null;
+  await user.save();
+  if (old) await deleteAvatarMedia(old);
+
+  await logAudit({ user: user._id, action: 'user.avatar.remove', ip });
+  return { avatarUrl: null };
 }

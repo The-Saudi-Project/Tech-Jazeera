@@ -47,18 +47,32 @@ Foundation for self-service. Right now `User` (login) and `Employee`
 - **Verify**: admin creates a worker login; worker logs in; worker is blocked
   (403) from every admin route and from other workers' data.
 
-## P2-M2 — Employee Self-Service (ESS) portal
+## P2-M2 — Employee Self-Service (ESS) portal — COMPLETE, expanded scope
 
-The stripped-down worker view. Same app, role-gated routing.
+Built as one integrated pass, not just the ESS shell originally scoped here —
+see `docs/P2-M2-notes.md` for the full breakdown. What shipped beyond this
+plan's original bullets:
 
-- Worker landing = **My profile** (read-only own record + own documents + own
-  current deployment). No admin nav items.
-- Reuse existing components (profile, documents panel, deployment panel) but
-  scoped to `req.user.employee`.
-- New endpoints return "me" data: `GET /api/me`, `GET /api/me/documents`,
-  `GET /api/me/deployments`.
-- **Verify**: worker sees only own data; sidebar shows only worker items;
-  direct-URL to an admin page redirects/403s.
+- **Coordinator role & hierarchy**: `Employee.coordinator`, `User.managedBy`,
+  scoped queries, a "My team" filter for Manager, and (a prerequisite the
+  plan didn't call out) a **Users module** — there was no in-app way to
+  create *any* staff login before this, only the `seed:admin` CLI.
+- **Leave & the eligibility engine**: configurable `LeaveType` policies
+  (Annual/ContractCycle/Manual), server-computed eligibility, auto-approval
+  with a coordinator/manager "notice" flag. Not in the original Phase 2 plan
+  at all — added from a direct product request during this milestone.
+- **Configurable expiry alerts**: `thresholdDays` override + Coordinator
+  team-scoping on the dashboard and employee list.
+
+**Not built, deferred**: `GET /api/me/deployments` (worker's current
+deployment view) — the plan called for it, but leave/coordinator/alerts were
+the actual priority this pass. Add it as a small follow-up if wanted; the
+pattern (`me.service.js` reading another module scoped to
+`req.user.employee`) is already established by `/me/documents`.
+
+**Verified**: worker sees only own data; ESS sidebar shows only worker
+items (My Profile/Documents/Leave); direct-URL to an admin page redirects to
+`/me`. Full curl + browser verification in `docs/P2-M2-notes.md`.
 
 ## P2-M3 — Timesheets (worker submits hours)
 

@@ -4,10 +4,13 @@
  * alerts, recent activity, and role-aware quick actions. Replaces the M3
  * placeholder.
  */
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboard } from '../dashboard.api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { formatMoney } from '../../../lib/utils.js';
+import { EXPIRY_WARNING_DAYS } from '../../../lib/constants.js';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
 import Card from '../../../components/ui/Card.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
@@ -18,6 +21,7 @@ import StatusBreakdown from '../components/StatusBreakdown.jsx';
 import ExpiringDocuments from '../components/ExpiringDocuments.jsx';
 import RecentActivity from '../components/RecentActivity.jsx';
 import QuickActions from '../components/QuickActions.jsx';
+import ProfitCard from '../components/ProfitCard.jsx';
 
 /** A labelled money figure for the finance card. */
 function FinanceItem({ label, value, hint, accent }) {
@@ -30,14 +34,32 @@ function FinanceItem({ label, value, hint, accent }) {
   );
 }
 
+const THRESHOLD_STORAGE_KEY = 'aj-erp:dashboard-alert-threshold';
+
 export default function DashboardPage() {
   const { user } = useAuth();
+  // P2-M2: a personal display preference — not worth a server round trip, so
+  // it lives in localStorage, per browser/device, like any other UI setting.
+  const [thresholdDays, setThresholdDays] = useState(
+    () => Number(localStorage.getItem(THRESHOLD_STORAGE_KEY)) || EXPIRY_WARNING_DAYS
+  );
+  function changeThreshold(days) {
+    setThresholdDays(days);
+    localStorage.setItem(THRESHOLD_STORAGE_KEY, String(days));
+  }
+
+  // P2-M8: which month the Profit section shows. Not persisted like the
+  // threshold above — always opens on the current month, so nobody mistakes
+  // an old month's figures for today's by forgetting they changed it last visit.
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+
   const { data, isPending, isError, refetch } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: getDashboard,
+    queryKey: ['dashboard', thresholdDays, month],
+    queryFn: () => getDashboard(thresholdDays, month),
   });
 
   const firstName = user.name.split(' ')[0];
+  const isCoordinator = user.role === 'Coordinator';
 
   if (isPending) {
     return (
@@ -70,48 +92,95 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <PageHeader title={`Welcome back, ${firstName}`} description="Here's what's happening across the company." />
+      <PageHeader
+        title={`Welcome back, ${firstName}`}
+        description={isCoordinator ? "Here's what's happening with your team." : "Here's what's happening across the company."}
+      />
+
+      {/* Only ever non-zero for Admin/Manager/HR — a Coordinator's own
+          submissions aren't counted here (see dashboard.service.js). Hidden
+          entirely at zero so it never sits around as dead chrome. */}
+      {stats.pendingClientApprovals > 0 && (
+        <Link
+          to="/coordinator-activity"
+          className="flex items-center justify-between gap-3 rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 text-sm transition-colors hover:bg-warning/15"
+        >
+          <span className="font-medium text-text">
+            {stats.pendingClientApprovals} client{stats.pendingClientApprovals === 1 ? '' : 's'} waiting for approval
+          </span>
+          <span className="font-medium text-primary">Review →</span>
+        </Link>
+      )}
 
       {/* Headline stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard label="Deployed now" value={stats.deployedActive} accent="primary" hint="Active placements" to="/deployments" />
         <StatCard label="Active workers" value={stats.activeWorkers} accent="success" hint={`${stats.totalWorkers} total · ${stats.onLeave} on leave`} to="/employees" />
-        <StatCard label="Active clients" value={stats.activeClients} to="/clients" />
-        <StatCard label="Pending quotations" value={stats.pendingQuotations} accent="warning" hint="Draft, awaiting approval" to="/quotations" />
+        <StatCard label={isCoordinator ? 'Your clients' : 'Active clients'} value={stats.activeClients} to="/clients" />
+        {isCoordinator ? (
+          <StatCard label="Expiring soon" value={stats.expiringSoon} accent="warning" hint="Documents needing attention" />
+        ) : (
+          <StatCard label="Pending quotations" value={stats.pendingQuotations} accent="warning" hint="Draft, awaiting approval" to="/quotations" />
+        )}
+        <StatCard
+          label="Marked today"
+          value={stats.markedToday}
+          hint={`of ${stats.activeWorkers} active workers`}
+          to="/attendance/summary"
+        />
       </div>
 
-      {/* Finance summary */}
-      <Card>
-        <div className="mb-4 flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Finance</h2>
-          <span className="text-xs text-muted">Profit needs cost data (a later phase)</span>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <FinanceItem label="Approved revenue" value={finance.approvedRevenue} accent="text-success" hint="Approved quotations" />
-          <FinanceItem label="Pipeline" value={finance.pendingRevenue} hint="Draft quotations" />
-          <FinanceItem label="Monthly payroll" value={finance.monthlyPayroll} hint="Active workforce salaries" />
-        </div>
-      </Card>
+      {/* Finance summary — Admin/Manager/HR/Accounts only. A Coordinator never
+          sees salary or revenue figures, even scoped to their own team — see
+          dashboard.service.js. */}
+      {!isCoordinator && (
+        <>
+          <Card>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Pipeline</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <FinanceItem label="Approved revenue" value={finance.approvedRevenue} accent="text-success" hint="Approved quotations" />
+              <FinanceItem label="Pipeline" value={finance.pendingRevenue} hint="Draft quotations" />
+              <FinanceItem label="Monthly payroll" value={finance.monthlyPayroll} hint="Active workforce salaries, run-rate" />
+            </div>
+          </Card>
+
+          {/* P2-M8: real profit for a selected month — Revenue − Payroll −
+              Expenses, from Invoices/finalized Payroll/Expenses. */}
+          <ProfitCard profit={finance.profit} month={month} onMonthChange={setMonth} />
+        </>
+      )}
 
       {/* Breakdowns */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <StatusBreakdown
-          title="Workforce by status"
+          title={isCoordinator ? 'Your team by status' : 'Workforce by status'}
           data={workforceByStatus}
           colors={{ Active: 'success', 'On Leave': 'warning', Exited: 'default' }}
         />
-        <StatusBreakdown
-          title="Quotations by status"
-          data={quotationsByStatus}
-          colors={{ Draft: 'default', Approved: 'success', Rejected: 'danger' }}
-        />
+        {!isCoordinator && (
+          <StatusBreakdown
+            title="Quotations by status"
+            data={quotationsByStatus}
+            colors={{ Draft: 'default', Approved: 'success', Rejected: 'danger' }}
+          />
+        )}
       </div>
 
-      {/* Alerts + activity */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ExpiringDocuments items={expiringDocuments} />
-        <RecentActivity items={recentActivity} />
-      </div>
+      {/* Alerts + activity — Recent Activity is Admin/Manager/HR/Accounts
+          only, same visibility line as Finance above (see dashboard.service.js). */}
+      {isCoordinator ? (
+        <ExpiringDocuments
+          items={expiringDocuments}
+          thresholdDays={thresholdDays}
+          onThresholdChange={changeThreshold}
+          scopedToTeam
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ExpiringDocuments items={expiringDocuments} thresholdDays={thresholdDays} onThresholdChange={changeThreshold} />
+          <RecentActivity items={recentActivity} />
+        </div>
+      )}
 
       <QuickActions />
     </div>

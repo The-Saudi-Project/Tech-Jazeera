@@ -37,6 +37,21 @@ import timesheetProcessorRoutes from './modules/timesheetProcessor/timesheet.rou
 import nfcRoutes from './modules/nfc/nfc.routes.js';
 import nfcPublicRoutes from './modules/nfc/nfc.public.routes.js';
 import { serveNfcMedia } from './modules/nfc/nfc.upload.js';
+import userRoutes from './modules/users/user.routes.js';
+import leaveRoutes from './modules/leave/leave.routes.js';
+import holidayRoutes from './modules/holidays/holiday.routes.js';
+import ramadanPeriodRoutes from './modules/ramadan/ramadanPeriod.routes.js';
+import notificationRoutes from './modules/notifications/notification.routes.js';
+import settlementRoutes from './modules/eosb/settlement.routes.js';
+import financialRequestsRoutes from './modules/financialRequests/financialRequests.routes.js';
+import assetRoutes from './modules/assets/asset.routes.js';
+import exitDocumentsRoutes from './modules/exitDocuments/exitDocuments.routes.js';
+import timesheetRoutes from './modules/timesheets/timesheet.routes.js';
+import payrollRoutes from './modules/payroll/payroll.routes.js';
+import invoiceRoutes from './modules/invoices/invoice.routes.js';
+import expenseRoutes from './modules/expenses/expense.routes.js';
+import meRoutes from './modules/me/me.routes.js';
+import staffAttendanceRoutes from './modules/staffAttendance/staffAttendance.routes.js';
 
 const app = express();
 
@@ -47,7 +62,8 @@ if (env.isProduction) app.set('trust proxy', 1);
 app.use(helmet());
 app.use(
   cors({
-    origin: env.clientUrl, // exact origin, not '*' — required for cookies
+    origin: env.clientUrls, // array of exact origins, not '*' — required for cookies;
+                            // `cors` reflects back only the matched origin
     credentials: true, // allow the httpOnly refresh-token cookie (M2)
   })
 );
@@ -84,6 +100,23 @@ app.use('/api/quotations', quotationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/timesheet-processor', timesheetProcessorRoutes);
 app.use('/api/nfc', nfcRoutes);
+// P2-M2: staff-account management, leave (types + requests), and the
+// self-service "me" surface a Worker's ESS portal runs on.
+app.use('/api/users', userRoutes);
+app.use('/api', leaveRoutes); // owns /api/leave-types and /api/leave
+app.use('/api/holidays', holidayRoutes);
+app.use('/api/ramadan-periods', ramadanPeriodRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/eosb', settlementRoutes);
+app.use('/api/financial-requests', financialRequestsRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/exit-documents', exitDocumentsRoutes);
+app.use('/api/timesheets', timesheetRoutes);
+app.use('/api/payroll', payrollRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/me', meRoutes);
+app.use('/api/staff-attendance', staffAttendanceRoutes);
 
 // Public NFC tap pages — server-rendered HTML, NOT under /api (no auth, own
 // rate limiter). Must be mounted before the 404 handler.
