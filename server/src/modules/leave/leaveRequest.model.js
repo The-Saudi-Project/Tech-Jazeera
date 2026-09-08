@@ -16,6 +16,21 @@ export const LEAVE_REQUEST_STATUSES = [
   'Cancelled',
 ];
 
+/** An optional supporting file (e.g. a medical note) — same shape as
+ *  ReimbursementClaim's receipt (reimbursement.model.js), but never
+ *  required: not every leave type needs proof. _id disabled — a value
+ *  object, not an entity. */
+const attachmentSchema = new mongoose.Schema(
+  {
+    fileName: { type: String, required: true }, // Cloudinary public_id
+    resourceType: { type: String, required: true }, // 'raw', from the upload middleware
+    originalName: { type: String, required: true },
+    mimeType: { type: String, required: true },
+    size: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
 const leaveRequestSchema = new mongoose.Schema(
   {
     employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
@@ -28,6 +43,7 @@ const leaveRequestSchema = new mongoose.Schema(
     endDate: { type: Date, required: true },
     days: { type: Number, required: true, min: 1 }, // inclusive calendar days
     reason: { type: String, trim: true, maxlength: 500 },
+    attachment: { type: attachmentSchema, default: undefined },
 
     status: { type: String, enum: LEAVE_REQUEST_STATUSES, default: 'PendingReview' },
 
@@ -58,9 +74,54 @@ const leaveRequestSchema = new mongoose.Schema(
     // notification system.
     acknowledgedByManager: { type: Boolean, default: false },
 
+    // decidedBy/decidedAt/decisionNote now mean "the FINAL decision only" —
+    // populated once, whenever the request reaches a terminal state (1 step
+    // later on the legacy path, or N steps later on a workflow). Every
+    // existing reader of "who decided this" keeps working unchanged;
+    // approvalTrail below is the new, granular, append-only record.
     decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     decidedAt: { type: Date, default: null },
     decisionNote: { type: String, trim: true, maxlength: 500 },
+
+    // Configurable Approval Hierarchy (post-Phase-3) — null on every field
+    // below means "no workflow governs this request," i.e. the original
+    // single-level flow above (decidedBy/At/Note set directly by whichever
+    // legacy-allowed role decides it). See approvals/approvalEngine.service.js.
+    workflow: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalWorkflow', default: null },
+    // Frozen snapshot — a later rename of the live workflow never rewrites
+    // an in-flight or already-decided request's displayed name.
+    workflowName: { type: String, default: null },
+    // Frozen COPY of workflow.steps at submission time — a later edit to the
+    // live workflow (reordering/adding/removing steps) never retroactively
+    // changes an in-flight request's own chain.
+    steps: {
+      type: [
+        {
+          label: String,
+          roles: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalRole' }],
+          _id: false,
+        },
+      ],
+      default: undefined,
+    },
+    currentStep: { type: Number, default: 0 },
+    // Append-only — one entry per step decided, in order. Never mutated or
+    // reordered after being pushed (see approvalEngine.service.js).
+    approvalTrail: {
+      type: [
+        {
+          step: Number,
+          approvalRole: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalRole', default: null },
+          viaAdminOverride: Boolean,
+          approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+          decision: { type: String, enum: ['Approved', 'Rejected'] },
+          note: String,
+          decidedAt: Date,
+          _id: false,
+        },
+      ],
+      default: undefined,
+    },
   },
   { timestamps: true }
 );

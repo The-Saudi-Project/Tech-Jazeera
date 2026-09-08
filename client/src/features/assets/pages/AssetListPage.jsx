@@ -4,6 +4,7 @@
  * Admin/Manager/HR; everyone on staff can view.
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -29,7 +30,7 @@ import {
 } from '../assets.schema.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { apiMessage, formatDate } from '../../../lib/utils.js';
-import { ASSET_CATEGORIES, ASSET_STATUSES, ASSET_STATUS_VARIANT, ASSET_WRITE_ROLES, ASSET_DELETE_ROLES } from '../../../lib/constants.js';
+import { ASSET_CATEGORIES, ASSET_STATUSES, ASSET_STATUS_VARIANT, ASSET_DELETE_ROLES } from '../../../lib/constants.js';
 import { useToast } from '../../../components/ui/Toast.jsx';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
@@ -43,10 +44,11 @@ import Modal from '../../../components/ui/Modal.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 
 export default function AssetListPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const canWrite = ASSET_WRITE_ROLES.includes(user.role);
+  const canWrite = Boolean(user.sectionAccess?.includes('assetsManage'));
   const canDelete = ASSET_DELETE_ROLES.includes(user.role);
 
   const [category, setCategory] = useState('');
@@ -203,12 +205,12 @@ export default function AssetListPage() {
             </Button>
           )}
           {canWrite && a.status !== 'Assigned' && a.status !== 'Retired' && (
-            <Button size="sm" variant="ghost" className="hover:text-danger" onClick={() => statusMutation.mutate({ id: a._id, status: 'Retired' })}>
+            <Button size="sm" variant="danger-ghost" onClick={() => statusMutation.mutate({ id: a._id, status: 'Retired' })}>
               Retire
             </Button>
           )}
           {canDelete && a.status !== 'Assigned' && (
-            <Button size="sm" variant="ghost" className="hover:text-danger" onClick={() => setToDelete(a)}>
+            <Button size="sm" variant="danger-ghost" onClick={() => setToDelete(a)}>
               Delete
             </Button>
           )}
@@ -222,10 +224,11 @@ export default function AssetListPage() {
       <PageHeader
         title="Assets"
         description="Vehicles, laptops, phones, and tools — who has what."
+        onBack={() => navigate(-1)}
         actions={canWrite && <Button onClick={openNew}>Add asset</Button>}
       />
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <Select value={category} onChange={(e) => setCategory(e.target.value)} className="sm:max-w-[180px]" aria-label="Filter by category">
           <option value="">All categories</option>
           {ASSET_CATEGORIES.map((c) => (

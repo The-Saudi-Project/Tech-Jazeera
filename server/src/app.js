@@ -19,7 +19,6 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import mongoose from 'mongoose';
 import env from './config/env.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
@@ -52,6 +51,13 @@ import invoiceRoutes from './modules/invoices/invoice.routes.js';
 import expenseRoutes from './modules/expenses/expense.routes.js';
 import meRoutes from './modules/me/me.routes.js';
 import staffAttendanceRoutes from './modules/staffAttendance/staffAttendance.routes.js';
+import approvalsRoutes from './modules/approvals/approvals.routes.js';
+import companySettingsRoutes from './modules/companySettings/companySettings.routes.js';
+import subcontractorRoutes from './modules/subcontractors/subcontractor.routes.js';
+import jobTitleRoutes from './modules/jobTitles/jobTitle.routes.js';
+import mobilisationRoutes from './modules/mobilisations/mobilisation.routes.js';
+import mobilisationSettingsRoutes from './modules/mobilisationSettings/mobilisationSettings.routes.js';
+import sectionAccessRoutes from './modules/sectionAccess/sectionAccess.routes.js';
 
 const app = express();
 
@@ -72,20 +78,14 @@ app.use(cookieParser()); // parses the httpOnly refresh-token cookie
 app.use('/api', apiLimiter);
 
 /**
- * GET /api/health — liveness check.
- * Response: 200 { success, message, data: { uptime, environment, database } }
- * Used by humans during setup and later by any uptime monitor. Reports the
- * Mongoose connection state so a dead DB is visible without reading logs.
+ * GET /api/health — liveness check, public and unauthenticated (an uptime
+ * monitor needs to reach it with no credentials). Deliberately minimal: it
+ * used to also report environment and live DB connection state, which is
+ * free reconnaissance for anyone on the internet and unnecessary for what
+ * an uptime monitor actually needs — a 200.
  */
 app.get('/api/health', (req, res) => {
-  const dbStates = ['disconnected', 'connected', 'connecting', 'disconnecting'];
-  res.json(
-    new ApiResponse('OK', {
-      uptime: `${Math.floor(process.uptime())}s`,
-      environment: env.nodeEnv,
-      database: dbStates[mongoose.connection.readyState] ?? 'unknown',
-    })
-  );
+  res.json(new ApiResponse('OK', { status: 'up' }));
 });
 
 // Feature modules — each module mounts its own router.
@@ -117,6 +117,13 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/staff-attendance', staffAttendanceRoutes);
+app.use('/api/approvals', approvalsRoutes);
+app.use('/api/company-settings', companySettingsRoutes);
+app.use('/api/subcontractors', subcontractorRoutes);
+app.use('/api/job-titles', jobTitleRoutes);
+app.use('/api/mobilisations', mobilisationRoutes);
+app.use('/api/mobilisation-settings', mobilisationSettingsRoutes);
+app.use('/api/section-access', sectionAccessRoutes);
 
 // Public NFC tap pages — server-rendered HTML, NOT under /api (no auth, own
 // rate limiter). Must be mounted before the 404 handler.

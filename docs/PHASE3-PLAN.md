@@ -49,7 +49,7 @@ the resulting build order, so a future session doesn't have to re-derive them.
 | **P3-D** ✅ | Exit & documents | Exit re-entry visa requests, Salary/Service certificate PDFs + Chamber of Commerce attestation tracking, company asset register | — (done, see `docs/P3-D-notes.md`; a full company letterhead — CR number, address, signatory — is the one open item once provided) |
 | **P3-E** ✅ | Overtime & Ramadan shifts | Overtime auto-calc, configurable Ramadan hour caps | P2-M3b (done, see `docs/P3-E-notes.md`) |
 | **P3-F** ✅ | Notifications | Push channel for expiry alerts + request status changes | — (done, see `docs/P3-F-notes.md`) |
-| **P3-G** ✅ | Multi-language (Ar/En/Hi/Ne/Bn) | i18n framework, RTL for Arabic | P3-A–E screens built (done, see `docs/P3-G-notes.md` — scoped to the ESS portal, not the staff panel, per user decision; **Phase 3 now fully complete**) |
+| **P3-G** ✅ | Multi-language (Ar/En — superseded 2026-09-06, was Ar/En/Hi/Ne/Bn) | i18n framework, RTL for Arabic | P3-A–E screens built (done, see `docs/P3-G-notes.md` — scoped to the ESS portal, not the staff panel, per user decision; **Phase 3 now fully complete**) |
 
 ## Open items carried forward
 

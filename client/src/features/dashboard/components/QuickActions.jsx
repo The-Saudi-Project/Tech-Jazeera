@@ -1,35 +1,35 @@
 /**
  * QuickActions — shortcuts to the common create flows, shown only for the
- * actions the current user's role is allowed to perform (mirrors the server
- * guards; the API still enforces them).
+ * actions the current user is admin-granted (Section Access — see
+ * sectionAccess.model.js); the API still enforces them.
+ *
+ * `addEmployee` previously checked EMPLOYEE_WRITE_ROLES (Admin/Manager/HR —
+ * the EDIT circle) instead of the real 'employeeCreate' gate (Admin only by
+ * default) — a real pre-existing mismatch found while migrating this file's
+ * other actions onto Section Access, fixed here too.
  */
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import Card from '../../../components/ui/Card.jsx';
-import {
-  EMPLOYEE_WRITE_ROLES,
-  CLIENT_WRITE_ROLES,
-  DEPLOYMENT_WRITE_ROLES,
-  ATTENDANCE_WRITE_ROLES,
-  QUOTATION_WRITE_ROLES,
-} from '../../../lib/constants.js';
 
 const ACTIONS = [
-  { label: 'Add employee', to: '/employees/new', roles: EMPLOYEE_WRITE_ROLES },
-  { label: 'Add client', to: '/clients/new', roles: CLIENT_WRITE_ROLES },
-  { label: 'Assign worker', to: '/deployments/new', roles: DEPLOYMENT_WRITE_ROLES },
-  { label: 'Attendance', to: '/attendance', roles: ATTENDANCE_WRITE_ROLES },
-  { label: 'New quotation', to: '/quotations/new', roles: QUOTATION_WRITE_ROLES },
+  { labelKey: 'staffDashboard.quickActions.addEmployee', to: '/employees/new', sectionKey: 'employeeCreate' },
+  { labelKey: 'staffDashboard.quickActions.addClient', to: '/clients/new', sectionKey: 'clientsManage' },
+  { labelKey: 'staffDashboard.quickActions.assignWorker', to: '/deployments/new', sectionKey: 'deploymentsManage' },
+  { labelKey: 'staffDashboard.quickActions.attendance', to: '/attendance', sectionKey: 'attendanceManage' },
+  { labelKey: 'staffDashboard.quickActions.newQuotation', to: '/quotations/new', sectionKey: 'quotationsManage' },
 ];
 
 export default function QuickActions() {
   const { user } = useAuth();
-  const available = ACTIONS.filter((a) => a.roles.includes(user.role));
+  const { t } = useTranslation();
+  const available = ACTIONS.filter((a) => user.sectionAccess?.includes(a.sectionKey));
   if (available.length === 0) return null;
 
   return (
     <Card>
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Quick actions</h2>
+      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">{t('staffDashboard.quickActions.title')}</h2>
       <div className="flex flex-wrap gap-2">
         {available.map((a) => (
           <Link
@@ -37,7 +37,7 @@ export default function QuickActions() {
             to={a.to}
             className="rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:border-primary/40 hover:text-primary"
           >
-            {a.label}
+            {t(a.labelKey)}
           </Link>
         ))}
       </div>

@@ -205,3 +205,30 @@ confirmed it is gone.
   any first-generation i18n rollout, not specific to this app) is
   recommended before treating the wording as final, especially anywhere it
   could be read as a legal/HR commitment.
+
+## Scope extended (2026-09-06): the staff panel, English/Arabic only
+
+The "staff already operates in English" scope decision above was
+explicitly revisited and changed by the user — not reversed by oversight.
+The staff panel (Admin/Manager/HR/Accounts/Coordinator/Executive) now also
+gets a language switcher, deliberately English/Arabic only (Hindi/Nepali/
+Bengali stay ESS-only — they were always about the blue-collar workforce,
+not this persona), rolled out module by module starting with the shell +
+Dashboard. See `docs/STAFF-I18N-notes.md` for the full design (notably a
+real RTL-rollout tradeoff put to the user before writing code) and what's
+translated so far.
+
+## Superseded (2026-09-06): Hindi/Nepali/Bengali removed
+
+The user decided the workforce-language scope above was no longer wanted —
+the ESS portal (and the shared login screen, which offers the same list)
+is now **English/Arabic only**, matching the staff panel. Removed:
+`client/src/i18n/locales/{hi,ne,bn}.json`, their imports/registrations in
+`client/src/i18n/index.js`, and the now-redundant `STAFF_SUPPORTED_LANGUAGES`
+constant (the ESS/login/staff switchers all show the same two languages
+now, so `LanguageSwitcher.jsx` no longer takes a `languages` override).
+Nothing server-side referenced these codes, so no backend change was
+needed. If Hindi/Nepali/Bengali support is wanted again later, the removed
+JSON files' shape can be regenerated from `en.json`'s current key set —
+they were last in sync only through the P3-G scope (274 keys), not the
+staff-panel keys added afterward.

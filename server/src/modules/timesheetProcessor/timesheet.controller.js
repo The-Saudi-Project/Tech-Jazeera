@@ -8,6 +8,7 @@
 import ApiResponse from '../../utils/ApiResponse.js';
 import ApiError from '../../utils/ApiError.js';
 import { logAudit } from '../audit/audit.service.js';
+import { getLogoForEmbedding } from '../companySettings/companySettings.service.js';
 import * as timesheetService from './timesheet.service.js';
 import { buildTimesheetXlsx } from './timesheet.export.js';
 import { XLSX_MIME } from './timesheet.constants.js';
@@ -37,7 +38,8 @@ export async function preview(req, res) {
 export async function exportXlsx(req, res) {
   requireFile(req);
   const result = await timesheetService.processTimesheet({ buffer: req.file.buffer, ...req.body });
-  const buffer = await buildTimesheetXlsx(result);
+  const logo = await getLogoForEmbedding();
+  const buffer = await buildTimesheetXlsx(result, logo);
 
   await logAudit({
     user: req.user.id,

@@ -18,10 +18,16 @@ import mongoose from 'mongoose';
  * validation schemas, and the seed script all import it from here so a new
  * role is added in exactly one place.
  *
- * `Worker` (added in P2-M1) is the self-service persona: a deployed employee
- * with a login that can see ONLY their own data. It is deliberately the last
- * entry and the odd one out — every OTHER role is "staff" (see STAFF_ROLES in
- * the rbac middleware), and the admin modules are staff-only.
+ * `Worker` (added in P2-M1) and `Staff` (added alongside the Subcontracted
+ * employee type) are both self-service personas — a login that can see ONLY
+ * its own data via the ESS portal (`/api/me`), never the company-wide admin
+ * modules. They are deliberately the last two entries and the odd ones out
+ * — every OTHER role is "staff" in the STAFF_ROLES sense (see the rbac
+ * middleware), and the admin modules are staff-only. `Worker` is for a
+ * deployed workforce employee (Client/Subcontracted type); `Staff` is the
+ * same self-service mechanism for an internal Own-type employee (e.g. office
+ * staff with no company-wide access) — same ESS shell, same routes, just a
+ * different Employee.type backing it.
  *
  * `Coordinator` (added in P2-M2) is staff, but scoped: they see and act on
  * only the Employees assigned to them (Employee.coordinator), not the whole
@@ -29,11 +35,36 @@ import mongoose from 'mongoose';
  * company-wide visibility — adding Coordinator does not narrow anyone else's
  * access.
  *
+ * `Executive` (added for GM/COO-level logins) is the opposite kind of
+ * narrowing from Coordinator: NOT in STAFF_ROLES (see rbac.js), so it is
+ * denied every CRUD module by default — the same deny-by-default posture as
+ * Worker/Staff, not an opt-out from an ever-growing role list. It is then
+ * explicitly allow-listed, one route at a time, into read + decide access on
+ * the request types the Configurable Approval Hierarchy actually routes to
+ * senior leadership (Leave/Timesheet/SalaryAdvance/Reimbursement, the
+ * Approval Log, and the company Dashboard) via `requireStaffOrExecutive`.
+ * Real authorization for *deciding* any specific item still comes from
+ * ApprovalRole membership exactly as it does for every other role — this
+ * role only controls which doors an Executive login can reach, never what
+ * they can do once through one. Before `Executive` existed, GM/COO/BDM/
+ * Marketing-Manager/Finance-Manager logins had no narrower option than the
+ * broad, CRUD-everywhere `Manager` role — seeing (and being able to edit)
+ * the entire company's operational data was simply the only login shape on
+ * offer, not a deliberate choice for those titles.
+ *
  * `Operations` and `Viewer` were removed after P2-M2 — never had a real
- * account and weren't part of the intended role set going forward. IT and
- * Office Staff are Employee.designation values, not roles — someone in
- * either position logs in as whichever of the roles above actually matches
- * their system access (typically HR or Accounts).
+ * account and weren't part of the intended role set going forward. IT is an
+ * Employee.designation value, not a role — someone in that position logs in
+ * as whichever of the roles above actually matches their system access
+ * (typically HR, Accounts, or the self-service `Staff`).
+ *
+ * `Office Secretary` (added for the Mobilisation module's post-Coordinator
+ * review stage) is narrow like `Executive`, NOT `Coordinator` — excluded
+ * from STAFF_ROLES (see rbac.js), so it is denied every CRUD module by
+ * default. It reaches a specific mobilisation only by being an ApprovalRole
+ * member on that record's current workflow step — the same mechanism
+ * Marketing Manager already used before this role existed — never a blanket
+ * company-wide grant. See `requireStaffOrOfficeSecretary` in rbac.js.
  */
 export const ROLES = [
   'Admin',
@@ -41,6 +72,9 @@ export const ROLES = [
   'HR',
   'Accounts',
   'Coordinator',
+  'Executive',
+  'Office Secretary',
+  'Staff',
   'Worker',
 ];
 

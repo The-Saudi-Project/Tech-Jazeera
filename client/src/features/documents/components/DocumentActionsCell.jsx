@@ -7,18 +7,20 @@
  * next version. Delete goes through the standard confirm dialog.
  */
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { addVersion, deleteDocument, downloadDocumentFile } from '../documents.api.js';
 import { currentVersion } from '../documents.schema.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { useToast } from '../../../components/ui/Toast.jsx';
-import { DOCUMENT_WRITE_ROLES, DOCUMENT_DELETE_ROLES, DOCUMENT_ACCEPT } from '../../../lib/constants.js';
+import { DOCUMENT_ACCEPT } from '../../../lib/constants.js';
 import { apiMessage } from '../../../lib/utils.js';
 import Button from '../../../components/ui/Button.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
 import DocumentPreviewModal from './DocumentPreviewModal.jsx';
 
 export default function DocumentActionsCell({ doc }) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -26,8 +28,8 @@ export default function DocumentActionsCell({ doc }) {
   const [previewing, setPreviewing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  const canWrite = DOCUMENT_WRITE_ROLES.includes(user.role);
-  const canDelete = DOCUMENT_DELETE_ROLES.includes(user.role);
+  const canWrite = Boolean(user.sectionAccess?.includes('documentsManage'));
+  const canDelete = canWrite;
   const version = currentVersion(doc);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['documents'] });
@@ -39,7 +41,7 @@ export default function DocumentActionsCell({ doc }) {
       return addVersion(doc._id, fd);
     },
     onSuccess: () => {
-      toast.success('New version uploaded.');
+      toast.success(t('staffDocuments.actionsCell.versionUploadedToast'));
       invalidate();
     },
     onError: (error) => toast.error(apiMessage(error)),
@@ -48,7 +50,7 @@ export default function DocumentActionsCell({ doc }) {
   const deleteMutation = useMutation({
     mutationFn: () => deleteDocument(doc._id),
     onSuccess: () => {
-      toast.success('Document deleted.');
+      toast.success(t('staffDocuments.actionsCell.deletedToast'));
       setConfirmingDelete(false);
       invalidate();
     },
@@ -61,14 +63,14 @@ export default function DocumentActionsCell({ doc }) {
   return (
     <span className="flex justify-end gap-1">
       <Button size="sm" variant="secondary" onClick={() => setPreviewing(true)}>
-        View
+        {t('staffDocuments.actionsCell.view')}
       </Button>
       <Button
         size="sm"
         variant="ghost"
         onClick={() => downloadDocumentFile(doc._id, version.version, version.originalName)}
       >
-        Download
+        {t('staffDocuments.actionsCell.download')}
       </Button>
       {canWrite && (
         <>
@@ -78,7 +80,7 @@ export default function DocumentActionsCell({ doc }) {
             isLoading={versionMutation.isPending}
             onClick={() => fileInputRef.current?.click()}
           >
-            New version
+            {t('staffDocuments.actionsCell.newVersion')}
           </Button>
           <input
             ref={fileInputRef}
@@ -94,16 +96,16 @@ export default function DocumentActionsCell({ doc }) {
         </>
       )}
       {canDelete && (
-        <Button size="sm" variant="ghost" className="hover:text-danger" onClick={() => setConfirmingDelete(true)}>
-          Delete
+        <Button size="sm" variant="danger-ghost" onClick={() => setConfirmingDelete(true)}>
+          {t('common.delete')}
         </Button>
       )}
 
       <DocumentPreviewModal doc={doc} open={previewing} onClose={() => setPreviewing(false)} />
       <ConfirmDialog
         open={confirmingDelete}
-        title="Delete document?"
-        message={`"${doc.title}" and all ${doc.versions.length} version(s) will be permanently removed, including the stored files.`}
+        title={t('staffDocuments.actionsCell.deleteConfirmTitle')}
+        message={t('staffDocuments.actionsCell.deleteConfirmMessage', { title: doc.title, count: doc.versions.length })}
         loading={deleteMutation.isPending}
         onConfirm={() => deleteMutation.mutate()}
         onCancel={() => setConfirmingDelete(false)}

@@ -43,9 +43,10 @@ export const employeeFormSchema = z
       .max(20)
       .regex(/^[A-Za-z0-9-]+$/, 'Only letters, numbers and dashes.'),
     fullName: z.string().trim().min(2, 'Full name is required.').max(100),
-    // 'Own' = internal staff (reports to a Manager); 'Client' = workforce
-    // supplied to clients. Only 'Client' requires the compliance/payroll
-    // fields below — see the superRefine at the bottom of this schema.
+    // 'Own' = internal staff (reports to a Manager); 'Outsourced'/'Subcontracted'
+    // = workforce. Both workforce types require the compliance fields
+    // below; only 'Outsourced' additionally requires salary, and only
+    // 'Subcontracted' requires `subcontractor` — see the superRefine below.
     type: z.enum(EMPLOYEE_TYPES),
     nationality: optional,
     mobile: optionalPhone,
@@ -81,19 +82,31 @@ export const employeeFormSchema = z
 
     emergencyContact: z.object({ name: optional, phone: optionalPhone, relation: optional }),
     notes: z.string().trim().max(2000).optional().or(z.literal('')),
-    // P2-M2: '' means "no coordinator assigned" — sent to the API as null.
-    coordinator: z.string().optional().or(z.literal('')),
+    // NOTE: `coordinator` is deliberately absent (Milestone 5) — fully
+    // derived from Mobilisation state now, no longer a form field at all.
     // '' means "no manager assigned" — sent to the API as null. Universal
-    // across both types (every 'Own' employee has one; a 'Client' employee
-    // may have one alongside or instead of a coordinator).
+    // across both types (every 'Own' employee has one; an 'Outsourced'
+    // employee may have one alongside or instead of a coordinator).
     manager: z.string().optional().or(z.literal('')),
+    // Configurable Approval Hierarchy: overrides the company-wide default
+    // ApprovalWorkflow for this employee. '' means "no override" — sent to
+    // the API as null.
+    approvalWorkflow: z.string().optional().or(z.literal('')),
+    // '' means "not sourced from a subcontractor" — sent to the API as
+    // null. Required only when type is 'Subcontracted' (superRefine below).
+    subcontractor: z.string().optional().or(z.literal('')),
   })
   .superRefine((data, ctx) => {
-    if (data.type !== 'Client') return;
+    if (data.type === 'Own') return;
     if (!data.nationality) ctx.addIssue({ code: 'custom', path: ['nationality'], message: 'Nationality is required.' });
     if (!data.mobile) ctx.addIssue({ code: 'custom', path: ['mobile'], message: 'Enter a valid mobile number.' });
     if (!data.joiningDate) ctx.addIssue({ code: 'custom', path: ['joiningDate'], message: 'Joining date is required.' });
-    if (!data.salary) ctx.addIssue({ code: 'custom', path: ['salary'], message: 'Salary is required.' });
+    if (data.type === 'Outsourced' && !data.salary) {
+      ctx.addIssue({ code: 'custom', path: ['salary'], message: 'Salary is required.' });
+    }
+    if (data.type === 'Subcontracted' && !data.subcontractor) {
+      ctx.addIssue({ code: 'custom', path: ['subcontractor'], message: 'Select who supplied this worker.' });
+    }
   });
 
 const emptyDocument = { number: '', expiry: '' };
@@ -102,7 +115,7 @@ const emptyDocument = { number: '', expiry: '' };
 export const emptyEmployeeForm = {
   employeeId: '',
   fullName: '',
-  type: 'Client',
+  type: 'Outsourced',
   nationality: '',
   mobile: '',
   email: '',
@@ -124,8 +137,9 @@ export const emptyEmployeeForm = {
   status: 'Active',
   emergencyContact: { name: '', phone: '', relation: '' },
   notes: '',
-  coordinator: '',
   manager: '',
+  approvalWorkflow: '',
+  subcontractor: '',
 };
 
 /** API employee → form values (ISO dates become date-input strings). */
@@ -134,7 +148,7 @@ export function employeeToForm(employee) {
   return {
     employeeId: employee.employeeId,
     fullName: employee.fullName,
-    type: employee.type ?? 'Client',
+    type: employee.type ?? 'Outsourced',
     nationality: employee.nationality ?? '',
     mobile: employee.mobile ?? '',
     email: employee.email ?? '',
@@ -160,8 +174,9 @@ export function employeeToForm(employee) {
       relation: employee.emergencyContact?.relation ?? '',
     },
     notes: employee.notes ?? '',
-    coordinator: employee.coordinator?._id ?? employee.coordinator ?? '',
     manager: employee.manager?._id ?? employee.manager ?? '',
+    approvalWorkflow: employee.approvalWorkflow?._id ?? employee.approvalWorkflow ?? '',
+    subcontractor: employee.subcontractor?._id ?? employee.subcontractor ?? '',
   };
 }
 
@@ -169,8 +184,9 @@ export function employeeToForm(employee) {
 export function formToEmployeePayload(values) {
   return {
     ...values,
-    coordinator: values.coordinator || null,
     manager: values.manager || null,
+    approvalWorkflow: values.approvalWorkflow || null,
+    subcontractor: values.subcontractor || null,
     expectedDailyHours: values.expectedDailyHours || null,
     weeklyOffDay: values.weeklyOffDay === '' ? null : values.weeklyOffDay,
     basicSalary: values.basicSalary || null,

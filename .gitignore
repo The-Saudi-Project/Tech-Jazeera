@@ -21,3 +21,9 @@ client/dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Android Keystore files
+*.keystore
+
+# Personal session scratch notes — never project documentation
+CONTINUE-PROMPT.md

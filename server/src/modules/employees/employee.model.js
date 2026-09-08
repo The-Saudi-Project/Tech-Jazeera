@@ -6,8 +6,8 @@
  * (Manager/HR/Accounts/Coordinator) now gets one too).
  *
  * Schema choices, justified:
- *  - `type` splits the population this record can represent: 'Client' is the
- *    original meaning (workforce supplied to clients — visa/iqama-tracked,
+ *  - `type` splits the population this record can represent: 'Outsourced' is
+ *    the original meaning (workforce supplied to clients — visa/iqama-tracked,
  *    salary counted in payroll); 'Own' is internal staff (Manager/HR/IT/
  *    Office roles), who may have none of that compliance paperwork. See the
  *    conditional `required` on nationality/mobile/joiningDate/salary below.
@@ -25,13 +25,37 @@ import mongoose from 'mongoose';
 
 /** Single source of truth for status values — validation and UI import it. */
 export const EMPLOYEE_STATUSES = ['Active', 'On Leave', 'Exited'];
-/** 'Own' = internal staff (reports to a Manager). 'Client' = the workforce
- *  supplied to clients (mapped to a Coordinator and/or a Manager). */
-export const EMPLOYEE_TYPES = ['Own', 'Client'];
+/** 'Own' = internal staff (reports to a Manager). 'Outsourced' = the
+ *  company's own workforce supplied to clients (mapped to a Coordinator
+ *  and/or a Manager). 'Subcontracted' = a worker sourced from an outside
+ *  Subcontractor (their employer of record, not this company) and placed
+ *  with a client — full compliance/attendance record, but never this
+ *  company's payroll (see `salary`'s own required-check below, which is
+ *  deliberately narrower than the other compliance fields'). */
+export const EMPLOYEE_TYPES = ['Own', 'Outsourced', 'Subcontracted'];
+/** The "not internal staff" set — every module that means "the workforce
+ *  we track on-site" (Attendance, the Coordinator team scope, etc.) should
+ *  import this instead of re-deriving it, so a future fourth type doesn't
+ *  need finding every inline `!== 'Own'` check. */
+export const WORKFORCE_TYPES = ['Outsourced', 'Subcontracted'];
 
-/** Only 'Client' employees carry the compliance/payroll fields below as required. */
-function requiredForClient() {
-  return this.type === 'Client';
+/** Both workforce types carry the compliance/attendance fields below as
+ *  required — only 'Own' (internal staff) is exempt. */
+function requiredForWorkforce() {
+  return this.type !== 'Own';
+}
+
+/** Only 'Outsourced' is paid through this company's own Payroll — a
+ *  Subcontracted worker's pay is the subcontractor's business, never
+ *  aggregated here (see payroll.service.js / dashboard.service.js, both of
+ *  which filter on `type: 'Outsourced'` explicitly and must stay that way). */
+function requiredForOwnPayroll() {
+  return this.type === 'Outsourced';
+}
+
+/** A Subcontracted employee must name who supplied them. */
+function requiredForSubcontracted() {
+  return this.type === 'Subcontracted';
 }
 
 /**
@@ -52,10 +76,11 @@ const employeeSchema = new mongoose.Schema(
     // the unique index also backs duplicate detection (409 via error handler).
     employeeId: { type: String, required: true, unique: true, trim: true, uppercase: true },
     fullName: { type: String, required: true, trim: true },
-    // 'Own' = internal staff; 'Client' = workforce supplied to clients.
-    type: { type: String, enum: EMPLOYEE_TYPES, required: true, default: 'Client' },
-    nationality: { type: String, required: requiredForClient, trim: true },
-    mobile: { type: String, required: requiredForClient, trim: true },
+    // 'Own' = internal staff; 'Outsourced'/'Subcontracted' = workforce (see
+    // EMPLOYEE_TYPES above for the distinction between the two).
+    type: { type: String, enum: EMPLOYEE_TYPES, required: true, default: 'Outsourced' },
+    nationality: { type: String, required: requiredForWorkforce, trim: true },
+    mobile: { type: String, required: requiredForWorkforce, trim: true },
     // Optional — many field workers have no email. NOT unique for that reason.
     email: { type: String, trim: true, lowercase: true },
 
@@ -65,14 +90,14 @@ const employeeSchema = new mongoose.Schema(
     medical: { type: documentSchema, default: () => ({}) },
     drivingLicense: { type: documentSchema, default: () => ({}) },
 
-    joiningDate: { type: Date, required: requiredForClient },
+    joiningDate: { type: Date, required: requiredForWorkforce },
     designation: { type: String, required: true, trim: true },
     department: { type: String, trim: true },
     // Monthly salary in SAR. Number (not string) so M10 can aggregate costs.
-    // Required only for Client — this is the figure Monthly Payroll sums, and
-    // that figure is deliberately scoped to the supplied workforce, not
-    // internal staff pay (see dashboard.service.js).
-    salary: { type: Number, required: requiredForClient, min: 0 },
+    // Required only for Outsourced — this is the figure Monthly Payroll sums, and
+    // that figure is deliberately scoped to the supplied workforce we pay
+    // ourselves, never a Subcontracted worker's pay (see dashboard.service.js).
+    salary: { type: Number, required: requiredForOwnPayroll, min: 0 },
     // Optional WPS-style breakdown of `salary` (P2-M5) — null/unset means
     // "not broken down"; Payroll then treats the whole `salary` as Basic
     // rather than guessing a split percentage that was never agreed. Set
@@ -103,6 +128,18 @@ const employeeSchema = new mongoose.Schema(
     currentClient: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', default: null },
     currentSite: { type: String, trim: true, default: null },
 
+    // Who supplied this worker — required only for 'Subcontracted'. A
+    // reference, not a snapshot (same convention as coordinator/manager
+    // below): this record is looked up live, not duplicated, since it's
+    // populated on every read rather than needing durable point-in-time
+    // history the way Mobilisation's own subcontractor snapshot does.
+    subcontractor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subcontractor',
+      default: null,
+      required: requiredForSubcontracted,
+    },
+
     // P2-M2: the Coordinator user responsible for this employee's day-to-day
     // (leave decisions, expiry follow-up). Optional — HR/Manager/Admin assign
     // it from the employee form, same write circle as the rest of the record.
@@ -111,10 +148,19 @@ const employeeSchema = new mongoose.Schema(
     coordinator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     // The Admin/Manager this employee reports to — universal across both
     // types: every 'Own' employee has one (Coordinator/HR/IT/Office all
-    // report to a Manager), and a 'Client' employee may have one too,
+    // report to a Manager), and an 'Outsourced' employee may have one too,
     // alongside or instead of a coordinator. Referential integrity (must be
     // Admin or Manager) is checked in the service layer, same as coordinator.
     manager: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // Configurable Approval Hierarchy (post-Phase-3): which ApprovalWorkflow
+    // governs THIS employee's Leave/SalaryAdvance/Reimbursement/Timesheet
+    // requests, overriding the company-wide default for each type (see
+    // ApprovalWorkflow.appliesTo and approvals.service.js's
+    // resolveApprovalWorkflow). null = no override — use the company
+    // default if one exists, otherwise the original single-level flow.
+    // Referential integrity (must be a real, active workflow) is checked in
+    // the service layer, same as coordinator/manager above.
+    approvalWorkflow: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalWorkflow', default: null },
     // Who created this record — null for records predating this field. Lets
     // Admin/Manager/HR see, at a glance, which employees a Coordinator added
     // themselves (self-service, no approval — see docs/PHASE2-PLAN.md).

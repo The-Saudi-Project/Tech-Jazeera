@@ -13,6 +13,21 @@ import logger from './config/logger.js';
 import { connectDb } from './config/db.js';
 import app from './app.js';
 import { runExpiryAlertCheck } from './modules/notifications/expiryAlert.job.js';
+import { runMobilisationStaleCheck } from './modules/notifications/mobilisationStale.job.js';
+
+// Without these, a stray unhandled promise rejection or thrown error outside
+// Express's own request handling (e.g. inside a setInterval job's own bug,
+// not the .catch()-wrapped job runs below) can kill the process with zero
+// log of why — PM2 restarts it, but you'd never know what happened. Register
+// before connectDb() so a boot-time failure is caught too.
+process.on('unhandledRejection', (reason) => {
+  logger.error(`Unhandled promise rejection: ${reason instanceof Error ? reason.stack : reason}`);
+});
+
+process.on('uncaughtException', (error) => {
+  logger.error(`Uncaught exception: ${error.stack || error}`);
+  process.exit(1);
+});
 
 try {
   await connectDb();
@@ -39,6 +54,13 @@ const expiryAlertInterval = setInterval(
   ONE_DAY_MS
 );
 
+// Same pattern, offset by 15s so the two jobs' initial runs don't overlap.
+setTimeout(() => runMobilisationStaleCheck().catch((err) => logger.error(`[mobilisationStaleJob] failed: ${err.message}`)), 15_000);
+const mobilisationStaleInterval = setInterval(
+  () => runMobilisationStaleCheck().catch((err) => logger.error(`[mobilisationStaleJob] failed: ${err.message}`)),
+  ONE_DAY_MS
+);
+
 /**
  * Graceful shutdown: stop accepting new connections, let in-flight requests
  * finish, then close the DB connection. Without this, a deploy/restart can
@@ -47,6 +69,7 @@ const expiryAlertInterval = setInterval(
 async function shutdown(signal) {
   logger.info(`${signal} received — shutting down gracefully...`);
   clearInterval(expiryAlertInterval);
+  clearInterval(mobilisationStaleInterval);
   server.close(async () => {
     const { default: mongoose } = await import('mongoose');
     await mongoose.connection.close();

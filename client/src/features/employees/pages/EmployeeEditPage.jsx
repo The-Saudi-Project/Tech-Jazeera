@@ -1,6 +1,7 @@
 /**
  * Edit employee — loads the record, maps it to form values, saves a patch.
  */
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getEmployee, updateEmployee } from '../employees.api.js';
@@ -8,6 +9,7 @@ import { employeeToForm, formToEmployeePayload } from '../employees.schema.js';
 import { apiMessage } from '../../../lib/utils.js';
 import { useToast } from '../../../components/ui/Toast.jsx';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
+import BackButton from '../../../components/shared/BackButton.jsx';
 import EmployeeForm from '../components/EmployeeForm.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
@@ -15,6 +17,7 @@ import EmptyState from '../../../components/ui/EmptyState.jsx';
 export default function EmployeeEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -26,7 +29,7 @@ export default function EmployeeEditPage() {
   const mutation = useMutation({
     mutationFn: (values) => updateEmployee(id, values),
     onSuccess: (updated) => {
-      toast.success(`${updated.fullName} updated.`);
+      toast.success(t('staffEmployees.editPage.updatedSuccess', { name: updated.fullName }));
       // Both the list and this profile are now stale.
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['employee', id] });
@@ -47,19 +50,24 @@ export default function EmployeeEditPage() {
   if (isError) {
     return (
       <EmptyState
-        title="Employee not found"
-        description="The record may have been deleted."
+        title={t('staffEmployees.editPage.notFound')}
+        description={t('staffEmployees.editPage.notFoundDescription')}
+        action={<BackButton onClick={() => navigate('/employees')} />}
       />
     );
   }
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title={`Edit ${employee.fullName}`} description={employee.employeeId} />
+      <PageHeader
+        title={t('staffEmployees.editPage.title', { name: employee.fullName })}
+        description={employee.employeeId}
+        onBack={() => navigate(-1)}
+      />
       <EmployeeForm
         defaultValues={employeeToForm(employee)}
         onSubmit={(values) => mutation.mutate(formToEmployeePayload(values))}
-        submitLabel="Save changes"
+        submitLabel={t('staffEmployees.editPage.submitLabel')}
         submitting={mutation.isPending}
       />
     </div>

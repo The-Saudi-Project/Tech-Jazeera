@@ -73,11 +73,12 @@ const employeeObjectSchema = z
       .regex(/^[A-Za-z0-9-]+$/, 'Only letters, numbers and dashes.')
       .transform((s) => s.toUpperCase()),
     fullName: z.string().trim().min(2, 'Full name is required.').max(100),
-    // 'Own' = internal staff (reports to a Manager); 'Client' = workforce
-    // supplied to clients (mapped to a Coordinator and/or a Manager). Only
-    // 'Client' requires the compliance/payroll fields below — see the
-    // superRefine at the bottom of this schema and Employee.model.js.
-    type: z.enum(EMPLOYEE_TYPES).default('Client'),
+    // 'Own' = internal staff (reports to a Manager); 'Outsourced'/'Subcontracted'
+    // = workforce (see EMPLOYEE_TYPES in employee.model.js). Both workforce
+    // types require the compliance fields below; only 'Outsourced' additionally
+    // requires salary, and only 'Subcontracted' requires `subcontractor` —
+    // see the superRefine at the bottom of this schema.
+    type: z.enum(EMPLOYEE_TYPES).default('Outsourced'),
     nationality: optionalStr(60),
     mobile: z.preprocess(emptyToUndef, phone.optional()),
     email: z.preprocess(
@@ -99,13 +100,13 @@ const employeeObjectSchema = z
       z.coerce.number({ error: 'Salary must be a number.' }).min(0).max(1_000_000).optional()
     ),
     // Optional WPS breakdown of `salary` — see employee.model.js. "" clears
-    // it (nullableAmount), not "leave unchanged" — same rule as coordinator/weeklyOffDay.
+    // it (nullableAmount), not "leave unchanged" — same rule as manager/weeklyOffDay.
     basicSalary: nullableAmount,
     housingAllowance: nullableAmount,
     transportAllowance: nullableAmount,
     accommodation: optionalStr(100),
     // Early-sign-out warning threshold for this employee (My Attendance). "" means
-    // "no threshold" (null), not "leave unchanged" — same rule as coordinator.
+    // "no threshold" (null), not "leave unchanged" — same rule as manager.
     expectedDailyHours: nullableHours,
     weeklyOffDay: nullableWeekday,
     status: z.enum(EMPLOYEE_STATUSES).default('Active'),
@@ -118,42 +119,71 @@ const employeeObjectSchema = z
       })
       .optional(),
     notes: optionalStr(2000),
-    // P2-M2: the Coordinator responsible for this employee. Admin/Manager/HR
-    // assign it (same write circle as the rest of the record); referential
-    // integrity (must be a real 'Coordinator' user) is checked in the service.
-    coordinator: nullableObjectId('coordinator'),
+    // NOTE: `coordinator` is deliberately absent (Milestone 5) — it's no
+    // longer client-settable via these endpoints at all. It's fully derived
+    // from Mobilisation state now (null while standby, set to a real
+    // Coordinator's id only while an active Mobilisation places the
+    // employee) — see mobilisation.service.js's createMobilisation/
+    // completeMobilisation. Zod strips this key silently if a hand-crafted
+    // request still sends it (no .strict() needed).
     // The Admin/Manager this employee reports to. Universal across both
-    // types (every 'Own' employee has one; a 'Client' employee may have one
-    // alongside or instead of a coordinator). Validated in the service.
+    // types (every 'Own' employee has one; an 'Outsourced' employee may have
+    // one alongside or instead of a coordinator). Validated in the service.
     manager: nullableObjectId('manager'),
+    // Configurable Approval Hierarchy: overrides the company-wide default
+    // ApprovalWorkflow for this employee's requests. "" clears it (null),
+    // not "leave unchanged" — same rule as manager/weeklyOffDay.
+    approvalWorkflow: nullableObjectId('approval workflow'),
+    // Who supplied this worker — required only when type is 'Subcontracted'
+    // (see the superRefine below); referential integrity (must be a real
+    // Subcontractor) is checked in the service, same as manager.
+    subcontractor: nullableObjectId('subcontractor'),
     // NOTE: currentClient / currentSite are deliberately absent — they are set
     // by the deployment workflow (M6), and unknown keys are stripped by Zod,
     // so a hand-crafted request can't smuggle an assignment through this form.
   });
 
 /** CREATE: the object shape plus the type-driven cross-field check —
- *  nationality/mobile/joiningDate/salary are required only when type is
- *  'Client', mirroring the Mongoose conditional `required` on the model. */
+ *  mirrors the Mongoose conditional `required`s on the model exactly:
+ *  nationality/mobile/joiningDate for both workforce types, salary only for
+ *  'Outsourced', `subcontractor` only for 'Subcontracted'. */
 export const createEmployeeSchema = employeeObjectSchema.superRefine((data, ctx) => {
-  if (data.type !== 'Client') return;
+  if (data.type === 'Own') return;
   if (!data.nationality) ctx.addIssue({ code: 'custom', path: ['nationality'], message: 'Nationality is required.' });
   if (!data.mobile) ctx.addIssue({ code: 'custom', path: ['mobile'], message: 'Enter a valid mobile number.' });
   if (!data.joiningDate) ctx.addIssue({ code: 'custom', path: ['joiningDate'], message: 'Joining date is required.' });
-  if (data.salary == null) ctx.addIssue({ code: 'custom', path: ['salary'], message: 'Salary is required.' });
+  if (data.type === 'Outsourced' && data.salary == null) {
+    ctx.addIssue({ code: 'custom', path: ['salary'], message: 'Salary is required.' });
+  }
+  if (data.type === 'Subcontracted' && !data.subcontractor) {
+    ctx.addIssue({ code: 'custom', path: ['subcontractor'], message: 'Select who supplied this worker.' });
+  }
 });
 
 /** PATCH: any subset of the same fields, same rules — minus the create-only
  *  cross-field check above, which can't be evaluated against a partial body
- *  (a PATCH that only touches `salary` never resends `type`). */
-export const updateEmployeeSchema = employeeObjectSchema.partial();
+ *  (a PATCH that only touches `salary` never resends `type`).
+ *
+ *  `type` and `status` are re-declared here without their `.default()` —
+ *  same reasoning as `nullableWeekday` above: Zod's `.partial()` only makes a
+ *  field optional, it does NOT stop `.default()` from firing when the key is
+ *  omitted, so a bare `.partial()` here would silently reset `type` to
+ *  'Outsourced' (and `status` to 'Active') on every PATCH that doesn't resend
+ *  them — e.g. a PATCH that only touches `joiningDate` would quietly turn a
+ *  'Subcontracted' or 'Own' employee into 'Outsourced'. An omitted key on
+ *  PATCH must mean "leave unchanged," never "reset to default." */
+export const updateEmployeeSchema = employeeObjectSchema.partial().extend({
+  type: z.enum(EMPLOYEE_TYPES).optional(),
+  status: z.enum(EMPLOYEE_STATUSES).optional(),
+});
 
 export const listEmployeesSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
   search: optionalStr(100),
   status: z.preprocess(emptyToUndef, z.enum(EMPLOYEE_STATUSES).optional()),
-  // 'Own' | 'Client' — powers the Employees list filter, the deployment
-  // assign-worker picker (Client only), and the Records grid (Client only).
+  // 'Own' | 'Outsourced' — powers the Employees list filter, the deployment
+  // assign-worker picker (Outsourced only), and the Records grid (Outsourced only).
   type: z.preprocess(emptyToUndef, z.enum(EMPLOYEE_TYPES).optional()),
   // String enum, NOT z.coerce.boolean() — that coerces the string "false" to
   // true (any non-empty string is truthy), a classic query-string trap.
@@ -199,6 +229,17 @@ export const createLoginSchema = z.object({
     (v) => (typeof v === 'string' ? emptyToUndef(v.trim().toLowerCase()) : v),
     z.email('Enter a valid email address.').optional()
   ),
+  role: z.enum(EMPLOYEE_LOGIN_ROLES, {
+    error: `Role must be one of: ${EMPLOYEE_LOGIN_ROLES.join(', ')}.`,
+  }),
+});
+
+/** Body for correcting an existing login's role — same allowed set as
+ *  creation (any non-Admin role). Needed because a role picked at
+ *  provisioning time (e.g. 'Worker' vs 'Staff' for an internal employee)
+ *  isn't always the right one, and there was previously no way to fix it
+ *  short of deleting the User document directly in the database. */
+export const updateLoginRoleSchema = z.object({
   role: z.enum(EMPLOYEE_LOGIN_ROLES, {
     error: `Role must be one of: ${EMPLOYEE_LOGIN_ROLES.join(', ')}.`,
   }),

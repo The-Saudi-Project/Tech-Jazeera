@@ -1,9 +1,7 @@
 /**
- * LanguageSwitcher (P3-G) — mounted only where a Worker (or someone about to
- * become one, on the login screen) can see it: EssLayout's header and
- * AuthLayout. Deliberately NOT on DashboardLayout — see i18n/index.js's doc
- * comment for the scope decision (staff operate in English; exposing a
- * switcher there would translate nothing since no staff screen calls t()).
+ * LanguageSwitcher — shared by the ESS portal, the login screen, and the
+ * staff panel. Every surface now offers the same English/Arabic list (see
+ * i18n/index.js), so there's no per-surface override anymore.
  */
 import { useTranslation } from 'react-i18next';
 import { changeLanguage, SUPPORTED_LANGUAGES } from '../../i18n/index.js';

@@ -7,16 +7,17 @@ import { cn } from '../../lib/utils.js';
 import Spinner from './Spinner.jsx';
 
 const variants = {
-  primary: 'bg-primary text-white shadow-sm hover:bg-primary-hover hover:shadow-glow',
-  secondary: 'bg-surface text-text border border-border shadow-xs hover:bg-bg hover:border-muted/40',
-  ghost: 'text-muted hover:bg-border/40 hover:text-text',
+  primary: 'bg-gradient-to-r from-primary to-purple-500 text-white shadow-sm hover:from-primary-hover hover:to-purple-600 hover:shadow-glow border border-white/10',
+  secondary: 'bg-surface/50 backdrop-blur-md text-text border border-border/50 shadow-sm hover:bg-surface/80 hover:border-border/80',
+  ghost: 'text-muted hover:bg-surface/40 hover:backdrop-blur-md hover:text-text',
   danger: 'bg-danger text-white shadow-sm hover:bg-danger-hover',
+  'danger-ghost': 'text-danger/70 hover:bg-danger/10 hover:text-danger',
 };
 
 const sizes = {
   lg: 'h-11 px-5 text-sm',
   md: 'h-10 px-4 text-sm', // 40px tall — comfortably touch-friendly
-  sm: 'h-8 px-3 text-sm',
+  sm: 'h-9 px-3 text-sm',
 };
 
 export default function Button({

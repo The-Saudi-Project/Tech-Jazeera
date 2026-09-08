@@ -32,15 +32,52 @@ export const requireRoles = (...allowedRoles) => {
 };
 
 /**
- * Staff = every role EXCEPT the self-service Worker (P2-M1). The admin modules
- * (employees, clients, deployments, attendance, documents, quotations,
- * dashboard) are staff-only; a Worker uses the ESS portal (P2-M2), never these.
+ * Staff = every role EXCEPT the self-service personas, Worker (P2-M1) and
+ * Staff (the login role — confusingly named the same as this constant, but
+ * distinct: STAFF_ROLES is "company-wide admin access", the `Staff` role is
+ * "self-service only"), and the two deny-by-default senior/narrow roles
+ * Executive and Office Secretary (see user.model.js's doc comments —
+ * allow-listed into specific routes via requireStaffOrExecutive/
+ * requireStaffOrOfficeSecretary below, never blanket CRUD access). The
+ * admin modules (employees, clients, deployments, attendance, documents,
+ * quotations, dashboard) are staff-only; Worker and Staff logins use the ESS
+ * portal (`/api/me`) instead, never these.
  *
- * Derived from ROLES rather than hard-coded so a future staff role is included
- * automatically. Mounted at the router level (`router.use(requireStaff)`) so it
- * covers every route in a module — including the READ routes that otherwise ask
- * only for requireAuth, which is exactly where a Worker would leak into
- * company-wide data.
+ * Derived from ROLES rather than hard-coded so a future self-service role is
+ * excluded automatically. Mounted at the router level (`router.use(requireStaff)`)
+ * so it covers every route in a module — including the READ routes that
+ * otherwise ask only for requireAuth, which is exactly where a Worker/Staff
+ * login would leak into company-wide data.
  */
-export const STAFF_ROLES = ROLES.filter((role) => role !== 'Worker');
+export const STAFF_ROLES = ROLES.filter((role) => !['Worker', 'Staff', 'Executive', 'Office Secretary'].includes(role));
 export const requireStaff = requireRoles(...STAFF_ROLES);
+
+/**
+ * requireStaff, plus Executive — for the short, deliberate list of routes an
+ * Executive login (GM/COO) may reach: the Dashboard, and the read + decide
+ * endpoints of whichever request types the Configurable Approval Hierarchy
+ * can route to senior leadership (Leave, Timesheet, SalaryAdvance,
+ * Reimbursement) plus the Approval Log. Letting Executive through THIS gate
+ * is safe by construction: the shared approval engine (approvalEngine.
+ * service.js) re-checks real ApprovalRole membership per item regardless of
+ * who cleared the router-level gate, so an Executive with no membership on a
+ * given workflow step simply can't decide it — this only controls which
+ * doors they can knock on, never what happens once they do.
+ *
+ * Deliberately NOT used for money-handling actions (repayments, marking a
+ * claim paid) or any create/edit/delete route — see docs/RBAC-notes.md.
+ */
+export const requireStaffOrExecutive = requireRoles(...STAFF_ROLES, 'Executive');
+
+/**
+ * requireStaff, plus Office Secretary — used only by mobilisation.routes.js.
+ * Same safety argument as requireStaffOrExecutive: this only controls which
+ * router an Office Secretary login can reach at all; real per-record
+ * authorization for editing/deciding a specific mobilisation still comes
+ * from ApprovalRole membership on its current workflow step
+ * (resolveStepAuthority in approvalEngine.service.js), unchanged by this
+ * gate. Without it, an Office-Secretary login would 403 at the router before
+ * ever reaching that per-step check — the same gap Executive had before this
+ * middleware's sibling was created for it.
+ */
+export const requireStaffOrOfficeSecretary = requireRoles(...STAFF_ROLES, 'Office Secretary');

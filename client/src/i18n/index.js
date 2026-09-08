@@ -1,9 +1,10 @@
 /**
- * i18n setup (P3-G) — scoped to the Worker self-service (ESS) portal + the
- * shared login screen, per the P3-G scope decision: the workforce actually
- * needs Hindi/Nepali/Bengali/Arabic; Admin/Manager/HR/Accounts/Coordinator
- * already operate the staff panel in English, so it stays untranslated
- * (see docs/P3-G-notes.md for the full reasoning).
+ * i18n setup — shared by the Worker self-service (ESS) portal, the shared
+ * login screen, and the staff panel. English/Arabic only (superseded
+ * 2026-09-06: the ESS portal originally also shipped Hindi/Nepali/Bengali
+ * for the workforce — see docs/P3-G-notes.md's follow-up note — removed at
+ * the user's explicit request). One shared i18n instance and RTL mechanism
+ * for every surface.
  *
  * No language-detector plugin: the user explicitly picks a language (there
  * is no "detect from Accept-Language" requirement here, and a manual choice
@@ -15,16 +16,10 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import en from './locales/en.json';
 import ar from './locales/ar.json';
-import hi from './locales/hi.json';
-import ne from './locales/ne.json';
-import bn from './locales/bn.json';
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'ar', label: 'العربية' },
-  { code: 'hi', label: 'हिन्दी' },
-  { code: 'ne', label: 'नेपाली' },
-  { code: 'bn', label: 'বাংলা' },
 ];
 export const RTL_LANGUAGES = ['ar'];
 const STORAGE_KEY = 'language';
@@ -63,9 +58,6 @@ i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
     ar: { translation: ar },
-    hi: { translation: hi },
-    ne: { translation: ne },
-    bn: { translation: bn },
   },
   lng: initialLanguage,
   fallbackLng: DEFAULT_LANGUAGE,

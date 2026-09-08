@@ -1,0 +1,29 @@
+/**
+ * Company settings routes. Every route beyond requireAuth is gated by the
+ * controller's own dynamic Section Access check ('companySettings' key —
+ * Admin, plus whoever an Admin has granted on the Section Access page).
+ * Changing WHO gets that grant lives entirely on the Section Access page
+ * now (Admin-only there too) — not a route in this file. Visible in the
+ * nav to every staff role (dynamic eligibility can't be expressed as a
+ * static per-role nav filter); a non-eligible viewer gets this page's own
+ * explained 403, not a route redirect — same pattern as the Approval Log.
+ */
+import { Router } from 'express';
+import asyncHandler from '../../utils/asyncHandler.js';
+import { requireAuth } from '../../middleware/auth.js';
+import { requireStaff } from '../../middleware/rbac.js';
+import { validate } from '../../middleware/validate.js';
+import { updateCompanySettingsSchema } from './companySettings.validation.js';
+import { uploadLogoImage } from './logo.upload.js';
+import * as companySettingsController from './companySettings.controller.js';
+
+const router = Router();
+
+router.use(requireAuth, requireStaff);
+
+router.get('/', asyncHandler(companySettingsController.get));
+router.patch('/', validate({ body: updateCompanySettingsSchema }), asyncHandler(companySettingsController.update));
+router.post('/logo', uploadLogoImage, asyncHandler(companySettingsController.uploadLogo));
+router.delete('/logo', asyncHandler(companySettingsController.removeLogo));
+
+export default router;

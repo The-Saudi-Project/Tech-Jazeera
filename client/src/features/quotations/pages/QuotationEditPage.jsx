@@ -3,12 +3,14 @@
  * recomputes totals).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getQuotation, updateQuotation } from '../quotations.api.js';
 import { quotationToForm } from '../quotations.schema.js';
 import { apiMessage } from '../../../lib/utils.js';
 import { useToast } from '../../../components/ui/Toast.jsx';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
+import BackButton from '../../../components/shared/BackButton.jsx';
 import QuotationForm from '../components/QuotationForm.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
@@ -16,6 +18,7 @@ import EmptyState from '../../../components/ui/EmptyState.jsx';
 export default function QuotationEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -27,7 +30,7 @@ export default function QuotationEditPage() {
   const mutation = useMutation({
     mutationFn: (values) => updateQuotation(id, values),
     onSuccess: (updated) => {
-      toast.success(`${updated.quotationNumber} updated.`);
+      toast.success(t('staffQuotations.edit.updatedToast', { number: updated.quotationNumber }));
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
       queryClient.invalidateQueries({ queryKey: ['quotation', id] });
       navigate(`/quotations/${id}`);
@@ -44,16 +47,26 @@ export default function QuotationEditPage() {
     );
   }
   if (isError) {
-    return <EmptyState title="Quotation not found" description="It may have been deleted." />;
+    return (
+      <EmptyState
+        title={t('staffQuotations.edit.notFoundTitle')}
+        description={t('staffQuotations.edit.notFoundDescription')}
+        action={<BackButton onClick={() => navigate('/quotations')} />}
+      />
+    );
   }
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader title={`Edit ${quotation.quotationNumber}`} description={quotation.clientName} />
+      <PageHeader
+        title={t('staffQuotations.edit.pageTitlePrefix', { number: quotation.quotationNumber })}
+        description={quotation.clientName}
+        onBack={() => navigate(-1)}
+      />
       <QuotationForm
         defaultValues={quotationToForm(quotation)}
         onSubmit={(values) => mutation.mutate(values)}
-        submitLabel="Save changes"
+        submitLabel={t('staffQuotations.edit.submitLabel')}
         submitting={mutation.isPending}
       />
     </div>

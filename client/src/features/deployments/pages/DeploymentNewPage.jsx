@@ -4,6 +4,7 @@
  * when arriving from an employee profile's "Assign" button).
  */
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { assignWorker } from '../deployments.api.js';
@@ -21,18 +22,20 @@ import DeploymentForm from '../components/DeploymentForm.jsx';
 
 export default function DeploymentNewPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const preselectedWorker = searchParams.get('worker') ?? '';
 
-  // Assignable = unassigned, type: 'Client' employees who haven't exited the
-  // company (an internal Own-type employee is never deployed to a client).
-  // We filter Exited out client-side (the server also rejects them); On
-  // Leave workers stay eligible, matching the server's rule.
+  // Assignable = unassigned workforce employees (Client or Subcontracted)
+  // who haven't exited the company (an internal Own-type employee is never
+  // deployed to a client). Type isn't filtered server-side — filtered
+  // client-side below alongside the Exited filter (the server also rejects
+  // Exited); On Leave workers stay eligible, matching the server's rule.
   const { data: workerData, isPending: workersLoading } = useQuery({
     queryKey: ['employees', { assignable: true }],
-    queryFn: () => listEmployees({ unassigned: 'true', type: 'Client', limit: 100 }),
+    queryFn: () => listEmployees({ unassigned: 'true', limit: 100 }),
   });
   // Only active, approved clients can receive deployments — a
   // Coordinator-submitted client not yet approved isn't real enough to
@@ -45,7 +48,7 @@ export default function DeploymentNewPage() {
   const mutation = useMutation({
     mutationFn: assignWorker,
     onSuccess: (deployment) => {
-      toast.success('Worker deployed.');
+      toast.success(t('staffDeployments.new.deployedToast'));
       queryClient.invalidateQueries({ queryKey: ['deployments'] });
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['employee', deployment.worker] });
@@ -68,27 +71,31 @@ export default function DeploymentNewPage() {
     );
   }
 
-  const workers = (workerData?.items ?? []).filter((w) => w.status !== 'Exited');
+  const workers = (workerData?.items ?? []).filter((w) => w.type !== 'Own' && w.status !== 'Exited');
   const clients = clientData?.items ?? [];
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="Assign worker" description="Deploy a worker to a client site." />
+      <PageHeader
+        title={t('staffDeployments.new.pageTitle')}
+        description={t('staffDeployments.new.pageDescription')}
+        onBack={() => navigate(-1)}
+      />
       {workers.length === 0 ? (
         <EmptyState
-          title="No assignable workers"
-          description="Every active worker is already deployed, or there are no active workers yet."
+          title={t('staffDeployments.new.noWorkersTitle')}
+          description={t('staffDeployments.new.noWorkersDescription')}
           action={
             <Button variant="secondary" onClick={() => navigate('/deployments')}>
-              Back to deployments
+              {t('staffDeployments.new.backToDeployments')}
             </Button>
           }
         />
       ) : clients.length === 0 ? (
         <EmptyState
-          title="No active clients"
-          description="Add an active client with at least one site before deploying workers."
-          action={<Button variant="secondary" onClick={() => navigate('/clients/new')}>Add client</Button>}
+          title={t('staffDeployments.new.noClientsTitle')}
+          description={t('staffDeployments.new.noClientsDescription')}
+          action={<Button variant="secondary" onClick={() => navigate('/clients/new')}>{t('staffDeployments.new.addClient')}</Button>}
         />
       ) : (
         <Card>
@@ -98,7 +105,7 @@ export default function DeploymentNewPage() {
             defaultValues={defaultValues}
             onSubmit={(values) => mutation.mutate(values)}
             onCancel={() => navigate(-1)}
-            submitLabel="Deploy worker"
+            submitLabel={t('staffDeployments.new.submitLabel')}
             submitting={mutation.isPending}
           />
         </Card>

@@ -2,10 +2,12 @@
  * Employee service — all employee business logic. Controllers only translate
  * HTTP; nothing in here touches req/res.
  */
-import Employee from './employee.model.js';
+import Employee, { WORKFORCE_TYPES } from './employee.model.js';
 import User, { MANAGER_ELIGIBLE_ROLES } from '../auth/user.model.js';
 import RefreshToken from '../auth/refreshToken.model.js';
 import Attendance from '../attendance/attendance.model.js';
+import ApprovalWorkflow from '../approvals/approvalWorkflow.model.js';
+import Subcontractor from '../subcontractors/subcontractor.model.js';
 import ApiError from '../../utils/ApiError.js';
 import { hashPassword, generateTempPassword } from '../auth/auth.service.js';
 import { logAudit } from '../audit/audit.service.js';
@@ -72,13 +74,16 @@ export async function listEmployees(
     const coordinatorIds = await User.find({ role: 'Coordinator' }).distinct('_id');
     conditions.push({ createdBy: { $in: coordinatorIds } });
   }
-  // P2-M2: a Coordinator only ever sees their own assigned employees — this is
-  // not a filter the caller can opt out of. A Manager may narrow to their
-  // coordinators' teams with team=mine; without it a Manager keeps the
-  // existing company-wide view (adding Coordinator must not shrink anyone
-  // else's established access).
+  // P2-M2: a Coordinator sees their own assigned employees — this is not a
+  // filter the caller can opt out of. Milestone 5: PLUS every standby
+  // workforce employee (coordinator: null) company-wide, so any Coordinator
+  // can find and mobilise them — visibility only, never approval authority
+  // (leave/attendance/dashboard scoping deliberately stay coordinator-owned-
+  // only, unchanged). A Manager may narrow to their coordinators' teams with
+  // team=mine; without it a Manager keeps the existing company-wide view
+  // (adding Coordinator must not shrink anyone else's established access).
   if (actor?.role === 'Coordinator') {
-    conditions.push({ coordinator: actor.userId });
+    conditions.push({ $or: [{ coordinator: actor.userId }, { coordinator: null, type: { $in: WORKFORCE_TYPES } }] });
   } else if (actor?.role === 'Manager' && team === 'mine') {
     // The Manager's direct 'Own' reports (e.g. their Coordinators) → the
     // Users linked to those Employee records → the Employees THOSE
@@ -116,14 +121,21 @@ export async function getEmployee(id, actor) {
     .populate('currentClient', 'companyName')
     .populate('coordinator', 'name email')
     .populate('manager', 'name email')
+    .populate('approvalWorkflow', 'name isActive')
+    .populate('subcontractor', 'name')
     .populate('createdBy', 'name role')
     .lean();
   if (!employee) throw new ApiError(404, 'Employee not found.');
-  // P2-M2: a Coordinator may only open employees assigned to them — everyone
-  // else's existing access (Admin/Manager/HR/Accounts see everyone) is
-  // unchanged.
-  if (actor?.role === 'Coordinator' && employee.coordinator?._id?.toString() !== actor.userId) {
-    throw new ApiError(403, 'You do not have access to this employee.');
+  // P2-M2: a Coordinator may only open employees assigned to them, PLUS
+  // (Milestone 5) any standby workforce employee — everyone else's existing
+  // access (Admin/Manager/HR/Accounts see everyone) is unchanged. Same
+  // visibility-only widening as listEmployees above.
+  if (actor?.role === 'Coordinator') {
+    const isMyAssignment = employee.coordinator?._id?.toString() === actor.userId;
+    const isStandbyWorkforce = !employee.coordinator && WORKFORCE_TYPES.includes(employee.type);
+    if (!isMyAssignment && !isStandbyWorkforce) {
+      throw new ApiError(403, 'You do not have access to this employee.');
+    }
   }
   // P2-M1: surface whether this employee has a login so the profile can show
   // account status (and hide "create login" once one exists) without a second
@@ -135,21 +147,30 @@ export async function getEmployee(id, actor) {
   return employee;
 }
 
-/** The assigned coordinator, if any, must actually be a 'Coordinator' user. */
-async function assertValidCoordinator(coordinatorId) {
-  if (!coordinatorId) return;
-  const coordinator = await User.findById(coordinatorId).lean();
-  if (!coordinator || coordinator.role !== 'Coordinator') {
-    throw new ApiError(400, 'Selected coordinator is not a valid Coordinator account.');
-  }
-}
-
 /** The assigned manager, if any, must be an Admin or Manager user. */
 async function assertValidManager(managerId) {
   if (!managerId) return;
   const manager = await User.findById(managerId).lean();
   if (!manager || !MANAGER_ELIGIBLE_ROLES.includes(manager.role)) {
     throw new ApiError(400, 'Selected manager must be an Admin or Manager account.');
+  }
+}
+
+/** The assigned approval-workflow override, if any, must actually exist and be active. */
+async function assertValidApprovalWorkflow(workflowId) {
+  if (!workflowId) return;
+  const workflow = await ApprovalWorkflow.findById(workflowId).lean();
+  if (!workflow || !workflow.isActive) {
+    throw new ApiError(400, 'Selected approval workflow is not valid or is inactive.');
+  }
+}
+
+/** A 'Subcontracted' employee's supplier, if given, must be a real Subcontractor. */
+async function assertValidSubcontractor(subcontractorId) {
+  if (!subcontractorId) return;
+  const subcontractor = await Subcontractor.findById(subcontractorId).lean();
+  if (!subcontractor) {
+    throw new ApiError(400, 'Selected subcontractor is not valid.');
   }
 }
 
@@ -170,6 +191,15 @@ async function assertValidManager(managerId) {
 export async function createEmployeeLogin(employeeId, { email, role }, actor) {
   const employee = await Employee.findById(employeeId).lean();
   if (!employee) throw new ApiError(404, 'Employee not found.');
+  // Milestone 4: the ESS portal is Own-type-only now, so provisioning a login
+  // for an Outsourced/Subcontracted employee would just create a login that
+  // can never sign into anything — reject it at the source instead.
+  if (employee.type !== 'Own') {
+    throw new ApiError(
+      400,
+      'A login can only be created for an Own-type (internal staff) employee — the self-service portal is not available to Outsourced or Subcontracted workers.'
+    );
+  }
 
   const existing = await User.findOne({ employee: employeeId }).lean();
   if (existing) throw new ApiError(409, 'This employee already has a login.');
@@ -211,6 +241,39 @@ export async function createEmployeeLogin(employeeId, { email, role }, actor) {
 }
 
 /**
+ * Admin/HR corrects an existing login's role — e.g. it was provisioned as
+ * 'Worker' when this is really an internal 'Own'-type employee who should
+ * have gotten 'Staff' instead. The Users module's updateStaffUser() covers
+ * this same action for the 5 non-Worker roles, but deliberately excludes
+ * Worker (and, by the same logic, Staff) — those self-service logins aren't
+ * listed on the company-wide Team page at all, so this employee-scoped
+ * route is the only place either of them can be corrected. Revokes every
+ * existing session for the login: the role is baked into its access token,
+ * so an old token would otherwise keep acting under the previous role until
+ * it naturally expired.
+ */
+export async function updateEmployeeLoginRole(employeeId, role, actor) {
+  const login = await User.findOne({ employee: employeeId });
+  if (!login) throw new ApiError(404, 'This employee does not have a login yet.');
+
+  const previousRole = login.role;
+  login.role = role;
+  await login.save();
+  await RefreshToken.deleteMany({ user: login._id });
+
+  await logAudit({
+    user: actor.userId,
+    action: 'user.role.update',
+    targetType: 'User',
+    targetId: login._id,
+    meta: { email: login.email, employeeId, from: previousRole, to: role },
+    ip: actor.ip,
+  });
+
+  return { id: login._id.toString(), name: login.name, email: login.email, role: login.role };
+}
+
+/**
  * Admin/HR resets a Worker's password — the recovery path for a forgotten
  * or lost temp password, mirroring resetStaffPassword() in the Users module.
  * No self-service email flow exists for this project (no email provider is
@@ -241,17 +304,19 @@ export async function resetEmployeeLoginPassword(employeeId, actor) {
 /** Duplicate employeeId is caught by the unique index → 409 via errorHandler. */
 export async function createEmployee(data, actor) {
   const payload = { ...data, createdBy: actor.userId };
-  // A Coordinator adding their own worker doesn't pick a coordinator — it's
-  // always themselves — and it's always a 'Client'-type employee (their
-  // deployable team, never internal staff). Overriding here (not just
-  // defaulting) means a hand-crafted request can't smuggle a different
-  // coordinator or type through.
-  if (actor.role === 'Coordinator') {
-    payload.coordinator = actor.userId;
-    payload.type = 'Client';
-  }
-  await assertValidCoordinator(payload.coordinator);
+  // A Coordinator can never create an internal-staff record — only 'Own' is
+  // overridden (their choice of 'Outsourced' vs 'Subcontracted' is left
+  // alone, both are "their deployable team"). This is an override (not just
+  // a default) so a hand-crafted request can't smuggle an 'Own' type
+  // through. Coordinator is deliberately NOT auto-assigned here (Milestone
+  // 5): a newly created employee always starts on standby (coordinator:
+  // null), visible to every Coordinator, and only gets one once a real
+  // Mobilisation actually places them — see mobilisation.service.js's
+  // createMobilisation.
+  if (actor.role === 'Coordinator' && payload.type === 'Own') payload.type = 'Outsourced';
   await assertValidManager(payload.manager);
+  await assertValidApprovalWorkflow(payload.approvalWorkflow);
+  await assertValidSubcontractor(payload.subcontractor);
   const employee = await Employee.create(payload);
   await logAudit({
     user: actor.userId,
@@ -265,8 +330,9 @@ export async function createEmployee(data, actor) {
 }
 
 export async function updateEmployee(id, data, actor) {
-  if ('coordinator' in data) await assertValidCoordinator(data.coordinator);
   if ('manager' in data) await assertValidManager(data.manager);
+  if ('approvalWorkflow' in data) await assertValidApprovalWorkflow(data.approvalWorkflow);
+  if ('subcontractor' in data) await assertValidSubcontractor(data.subcontractor);
   const employee = await Employee.findByIdAndUpdate(id, data, {
     new: true, // return the updated document, not the stale one
     runValidators: true, // Mongoose skips schema validation on updates unless told
