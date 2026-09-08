@@ -1,0 +1,25 @@
+# Local dev / a quick way to run the server exactly as it runs in
+# production, without installing Node globally or trusting your machine's
+# own setup to match the server's.
+#
+# The client is deliberately NOT containerized here — it runs via
+# `npm run dev` (Vite) as it always has, since that gives instant hot-reload;
+# wrapping it in Docker for local dev would only slow that down for no
+# benefit. This compose file exists for the server, and for later CI/staging
+# use where "build the exact same image prod runs" matters.
+#
+# The database is real MongoDB Atlas (server/.env), same as every other
+# workflow in this project — no local Mongo container, on purpose.
+#
+# Usage:  docker compose up --build
+services:
+  server:
+    build:
+      context: ./server
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./server/.env
+    volumes:
+      - ./server/uploads:/app/uploads
+    restart: unless-stopped
