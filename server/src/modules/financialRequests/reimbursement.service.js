@@ -4,12 +4,14 @@
  */
 import Employee from '../employees/employee.model.js';
 import ReimbursementClaim from './reimbursement.model.js';
+import Expense from '../expenses/expense.model.js';
 import ApiError from '../../utils/ApiError.js';
 import { signedDownloadUrl, destroyDocumentFile } from '../../middleware/upload.js';
 import { logAudit } from '../audit/audit.service.js';
 import { notifyEmployeeUser } from '../notifications/notification.service.js';
 import { resolveApprovalWorkflow } from '../approvals/approvals.service.js';
 import { decideApprovalStep, annotateCanDecide, notifySubmission } from '../approvals/approvalEngine.service.js';
+import { canAccessSection } from '../sectionAccess/sectionAccess.service.js';
 
 /** The ORIGINAL decide-route role gate for a ReimbursementClaim — preserved
  *  exactly as the authorization used whenever no ApprovalWorkflow governs a
@@ -152,9 +154,14 @@ export async function listReimbursements({ page, limit, status, employee }, acto
       .lean(),
     ReimbursementClaim.countDocuments(filter),
   ]);
-  const items = actor
-    ? await annotateCanDecide(rawItems, actor, { pendingStatus: 'Pending', legacyAllowedRoles: LEGACY_DECIDE_ROLES })
-    : rawItems;
+  let items = rawItems;
+  if (actor) {
+    items = await annotateCanDecide(rawItems, actor, { pendingStatus: 'Pending', legacyAllowedRoles: LEGACY_DECIDE_ROLES });
+    // Same real-gate intersection as advance.service.js's listAdvances —
+    // see its own comment for why (2026-09-14, a real QA-audit-found gap).
+    const hasSectionWrite = await canAccessSection('financialRequests', actor, 'write');
+    items = items.map((item) => ({ ...item, canDecideCurrentStep: item.canDecideCurrentStep && hasSectionWrite }));
+  }
   return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }
 
@@ -180,14 +187,44 @@ export async function decideReimbursement(id, { status, decisionNote }, actor) {
 }
 
 export async function markReimbursementPaid(id, actor) {
-  const claim = await ReimbursementClaim.findById(id);
-  if (!claim) throw new ApiError(404, 'Reimbursement claim not found.');
-  if (claim.status !== 'Approved') throw new ApiError(400, 'Only an approved claim can be marked paid.');
+  // Atomic transition (2026-09-29, a real audit finding): the old
+  // read-then-save let two near-simultaneous "Mark Paid" calls both pass
+  // the in-memory `status !== 'Approved'` check and each create their own
+  // Expense row below — double-counting the same claim. Filtering the
+  // update itself on `status: 'Approved'` means only ONE concurrent call
+  // can ever match and flip it; the loser gets a clean 400, same pattern
+  // advance.service.js's own atomic repayment update already uses.
+  const paidAt = new Date();
+  const claim = await ReimbursementClaim.findOneAndUpdate(
+    { _id: id, status: 'Approved' },
+    { status: 'Paid', paidAt, paidBy: actor.userId },
+    { new: true }
+  );
+  if (!claim) {
+    const exists = await ReimbursementClaim.exists({ _id: id });
+    if (!exists) throw new ApiError(404, 'Reimbursement claim not found.');
+    throw new ApiError(400, 'Only an approved claim can be marked paid.');
+  }
 
-  claim.status = 'Paid';
-  claim.paidAt = new Date();
-  claim.paidBy = actor.userId;
-  await claim.save();
+  // Real cash leaving the company — must land in the Expenses ledger, the
+  // one place the dashboard's profit figure actually reads from. Before
+  // this, a paid claim was invisible to both (a real gap, not a design
+  // choice — see expense.model.js's own doc comment on sourceReimbursement).
+  // Best-effort, not transactional (this codebase has no cross-collection
+  // transactions anywhere — see invoice.service.js's own atomic-update
+  // convention): if this throws, the claim is still correctly Paid; the
+  // failure surfaces as a 500 for Accounts to retry, same risk posture as
+  // every other post-write side effect (logAudit, notifyEmployeeUser) here.
+  const employee = await Employee.findById(claim.employee).select('fullName').lean();
+  await Expense.create({
+    date: claim.paidAt,
+    category: 'Staff Reimbursement',
+    vendor: employee?.fullName ?? 'Employee reimbursement',
+    amount: claim.amount,
+    notes: `${claim.category} reimbursement claim${claim.description ? ` — ${claim.description}` : ''}.`,
+    recordedBy: actor.userId,
+    sourceReimbursement: claim._id,
+  });
 
   await logAudit({
     user: actor.userId,

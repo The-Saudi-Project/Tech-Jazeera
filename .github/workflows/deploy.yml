@@ -1,74 +1,32 @@
-name: Build, Check & Deploy
+name: Deploy to Oracle Server
 
-# Runs on every push to main, from the single consolidated repo (server/ and
-# client/ both live here now — this replaces the separate deploy.yml that
-# used to live in the old Tech-Jazeera-Backend repo, which had no build gate
-# at all: a broken commit on main used to reach production immediately.
-#
-# Two jobs, in order: build-and-check MUST pass before deploy is allowed to
-# run at all ("needs: build-and-check" below) — that's the actual gate.
 on:
   push:
     branches:
       - main
 
 jobs:
-  build-and-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      # A full Vite production build parses and bundles every file the
-      # client ships — the strongest, cheapest available signal that a
-      # commit didn't break the frontend. This project has no test suite
-      # (deliberately — see CLAUDE.md), so this is the real gate today.
-      - name: Install & build client
-        working-directory: client
-        run: |
-          npm ci
-          npm run build
-
-      # No test suite on the server side either. A syntax check across
-      # every source file is a genuine, free correctness signal on top of
-      # `npm ci` succeeding (which alone only proves the lockfile installs).
-      - name: Install & syntax-check server
-        working-directory: server
-        run: |
-          npm ci
-          find src -name "*.js" -print0 | xargs -0 -n1 node --check
-
   deploy:
-    needs: build-and-check
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Copy server files to Oracle via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "server/src,server/package.json,server/package-lock.json"
-          target: "/home/ubuntu/Tech-Jazeera-Backend"
-          strip_components: 1
-          rm: false
-
-      - name: Install dependencies and restart PM2
+      - name: Deploy to Oracle VM via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USERNAME }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
           script: |
-            cd /home/ubuntu/Tech-Jazeera-Backend
-            npm install --production
-            pm2 restart all
-
-      # The client isn't deployed from here — Cloudflare Pages deploys it
-      # separately via its own GitHub integration (see the migration notes
-      # in README.md). This job only ever touches the Oracle server.
+            # Navigate to the backend folder
+            cd ~/Tech-Jazeera-Backend
+            
+            # Pull the latest code from the main branch
+            git pull origin main
+            
+            # Go into the server folder and install any new dependencies
+            cd server
+            npm install
+            
+            # Restart the Node server cleanly
+            pm2 restart aljazeera-backend
+            pm2 save

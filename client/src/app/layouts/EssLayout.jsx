@@ -8,7 +8,7 @@
  * see i18n/index.js's doc comment for why it's scoped to the ESS portal
  * rather than also appearing on DashboardLayout.
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, Suspense } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../features/auth/AuthContext.jsx';
@@ -17,7 +17,12 @@ import AvatarUploadModal from '../../features/auth/components/AvatarUploadModal.
 import NotificationBell from '../../components/shared/NotificationBell.jsx';
 import LanguageSwitcher from '../../components/shared/LanguageSwitcher.jsx';
 import ThemeToggle from '../../components/shared/ThemeToggle.jsx';
+import BrandLogo, { useBranding } from '../../components/shared/BrandLogo.jsx';
+import ErrorBoundary from '../../components/shared/ErrorBoundary.jsx';
+import RouteFallback from '../../components/shared/RouteFallback.jsx';
+import Icon from '../../components/ui/Icon.jsx';
 import { cn } from '../../lib/utils.js';
+import { useCloseOnOutsideClick } from '../../lib/useCloseOnOutsideClick.js';
 
 const NAV_ITEMS = [
   {
@@ -57,20 +62,13 @@ const NAV_ITEMS = [
   },
 ];
 
-function NavIcon({ d }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5">
-      <path strokeLinecap="round" strokeLinejoin="round" d={d} />
-    </svg>
-  );
-}
-
 function Sidebar({ onNavigate }) {
   const { t } = useTranslation();
+  const { name: brandName } = useBranding();
   return (
     <div className="flex h-full flex-col border-r border-border/50 bg-surface/60 backdrop-blur-2xl">
       <div className="flex h-16 items-center gap-2.5 border-b border-border/50 bg-transparent px-5">
-        <img src="/logo.png" alt="Al Jazeera" className="h-9 w-9 rounded-xl shadow-glow" />
+        <BrandLogo className="h-9 w-9 shrink-0" />
         <span className="font-semibold tracking-tight">{t('nav.workspaceTitle')}</span>
       </div>
       <nav className="flex-1 space-y-1 p-3">
@@ -89,17 +87,16 @@ function Sidebar({ onNavigate }) {
               )
             }
           >
-            <NavIcon d={item.icon} />
+            <Icon d={item.icon} />
             {t(item.labelKey)}
           </NavLink>
         ))}
       </nav>
       <div className="border-t border-border p-4">
-        <p className="text-[11px] leading-relaxed text-muted/70">
-          {t('nav.footerLine1')}
-          <br />
-          {t('nav.footerLine2')}
+        <p className="truncate text-[11px] leading-relaxed text-muted/70" title={brandName}>
+          {brandName}
         </p>
+        <p className="text-[11px] leading-relaxed text-muted/70">{t('nav.footerLine2')}</p>
       </div>
     </div>
   );
@@ -113,18 +110,7 @@ export default function EssLayout() {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-  const avatarMenuRef = useRef(null);
-
-  useEffect(() => {
-    if (!avatarMenuOpen) return undefined;
-    function onClickOutside(e) {
-      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
-        setAvatarMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, [avatarMenuOpen]);
+  const avatarMenuRef = useCloseOnOutsideClick(avatarMenuOpen, setAvatarMenuOpen);
 
   async function handleLogout() {
     await logout();
@@ -227,7 +213,11 @@ export default function EssLayout() {
         </header>
 
         <main className="p-4 sm:p-6">
-          <Outlet />
+          <ErrorBoundary>
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
 

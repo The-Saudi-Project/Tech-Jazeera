@@ -16,7 +16,7 @@ import {
   CLIENT_APPROVAL_STATUSES,
   CLIENT_APPROVAL_VARIANT,
 } from '../../../lib/constants.js';
-import { apiMessage } from '../../../lib/utils.js';
+import { apiMessage, createSortToggle } from '../../../lib/utils.js';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
 import DecideClientModal from '../components/DecideClientModal.jsx';
@@ -37,7 +37,7 @@ export default function ClientListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const canCreate = Boolean(user.sectionAccess?.includes('clientsManage'));
+  const canCreate = Boolean(user.sectionAccessWrite?.includes('clientsManage'));
   const canDelete = CLIENT_DELETE_ROLES.includes(user.role);
   const [deciding, setDeciding] = useState(null); // client pending Approve/Reject review
 
@@ -74,8 +74,9 @@ export default function ClientListPage() {
     placeholderData: keepPreviousData,
     // Same reasoning as the Leave review queue: a new client submitted for
     // approval from another session has no way to reach this already-open
-    // list otherwise.
-    refetchInterval: 10_000,
+    // list otherwise. 20s, not 10s (2026-09-22, a real QA-audit finding —
+    // P1) — see LeavePage.jsx's own comment on this exact change.
+    refetchInterval: 20_000,
     refetchOnWindowFocus: true,
   });
 
@@ -94,14 +95,7 @@ export default function ClientListPage() {
     },
   });
 
-  function toggleSort(key) {
-    setParams((p) => ({
-      ...p,
-      sortBy: key,
-      sortOrder: p.sortBy === key && p.sortOrder === 'asc' ? 'desc' : 'asc',
-      page: 1,
-    }));
-  }
+  const toggleSort = createSortToggle(setParams);
 
   const columns = [
     {
@@ -109,11 +103,16 @@ export default function ClientListPage() {
       header: t('staffClients.list.columns.company'),
       sortable: true,
       render: (c) => (
-        <Link to={`/clients/${c._id}`} className="font-medium text-text hover:text-primary">
-          {c.companyName}
-          {c.contactPerson && (
-            <span className="block text-xs font-normal text-muted">{c.contactPerson}</span>
-          )}
+        <Link to={`/clients/${c._id}`} className="flex items-center gap-3 font-medium text-text hover:text-primary group">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold shadow-sm ring-1 ring-primary/20 transition-transform group-hover:scale-105">
+            {c.companyName.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            {c.companyName}
+            {c.contactPerson && (
+              <span className="block text-xs font-normal text-muted transition-colors group-hover:text-primary/70">{c.contactPerson}</span>
+            )}
+          </div>
         </Link>
       ),
     },
@@ -184,7 +183,7 @@ export default function ClientListPage() {
   const noFilters = !params.search && !params.status && !params.approvalStatus;
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-[1600px]">
       <PageHeader
         title={t('staffClients.list.pageTitle')}
         description={t('staffClients.list.pageDescription')}

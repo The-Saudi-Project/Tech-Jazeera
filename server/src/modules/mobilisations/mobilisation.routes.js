@@ -1,65 +1,97 @@
 /**
  * Mobilisation routes.
  *
- * `requireStaffOrOfficeSecretary` at the router level (broader than plain
- * `requireStaff` — Office Secretary is otherwise deny-by-default, see
- * rbac.js): who may create/edit/decide a mobilisation depends on ApprovalRole
- * membership and document ownership (coordinator/primary/current-step-
- * reviewer), none of which is expressible as a static `User.role` list —
- * same reasoning as client.routes.js leaving the finer rules to the service.
+ * Router-level `requireStaff` (Office Secretary included since she moved
+ * into STAFF_ROLES 2026-09-13 — see rbac.js's own doc comment): who may
+ * create/edit/decide a mobilisation depends on ApprovalRole membership and
+ * document ownership (coordinator/primary/current-step-reviewer), none of
+ * which is expressible as a static `User.role` list — same reasoning as
+ * client.routes.js leaving the finer rules to the service.
  */
 import { Router } from 'express';
 import asyncHandler from '../../utils/asyncHandler.js';
 import logger from '../../config/logger.js';
 import { requireAuth } from '../../middleware/auth.js';
-import { requireStaffOrOfficeSecretary, requireRoles } from '../../middleware/rbac.js';
+import { requireStaff, requireRoles } from '../../middleware/rbac.js';
 import { validate } from '../../middleware/validate.js';
 import { uploadMultiple, destroyDocumentFile } from '../../middleware/upload.js';
 import {
   createMobilisationSchema,
   updateMobilisationSchema,
   listMobilisationsSchema,
+  exportMobilisationsSchema,
   mobilisationIdParamSchema,
   mobilisationCoordinatorParamSchema,
   addCoordinatorSchema,
+  setCoordinatorSharesSchema,
   commercialDetailsSchema,
   decideMobilisationSchema,
   mobilisationDocumentCategorySchema,
   mobilisationDocumentParamSchema,
-  mobilisationSuggestionQuerySchema,
+  mobilisationIqamaLookupQuerySchema,
+  mobilisationPreviousWorkersQuerySchema,
+  workerHistoryQuerySchema,
+  workerIqamaBodySchema,
 } from './mobilisation.validation.js';
 import * as mobilisationController from './mobilisation.controller.js';
 
 const router = Router();
 
 router.use(requireAuth);
-router.use(requireStaffOrOfficeSecretary);
+router.use(requireStaff);
 
 router.get('/', validate({ query: listMobilisationsSchema }), asyncHandler(mobilisationController.list));
 // Before the /:id catch-all, or these are read as a mobilisation id.
 router.get('/coordinators', asyncHandler(mobilisationController.listCoordinatorCandidates));
 router.get(
-  '/suggestions',
-  validate({ query: mobilisationSuggestionQuerySchema }),
-  asyncHandler(mobilisationController.suggestions)
+  '/lookup-by-iqama',
+  validate({ query: mobilisationIqamaLookupQuerySchema }),
+  asyncHandler(mobilisationController.lookupByIqama)
+);
+router.get(
+  '/previous-workers',
+  validate({ query: mobilisationPreviousWorkersQuerySchema }),
+  asyncHandler(mobilisationController.previousWorkers)
+);
+// Worker-data archive (2026-09-17, the user's own ask) — Admin-only, same
+// posture as the temporary hard-delete below but reversible and never
+// destructive. Before the /:id catch-all, same reasoning as every other
+// literal route above.
+router.get(
+  '/worker-history',
+  requireRoles('Admin'),
+  validate({ query: workerHistoryQuerySchema }),
+  asyncHandler(mobilisationController.getWorkerHistory)
+);
+router.post(
+  '/worker-history/archive',
+  requireRoles('Admin'),
+  validate({ body: workerIqamaBodySchema }),
+  asyncHandler(mobilisationController.archiveWorker)
+);
+router.post(
+  '/worker-history/unarchive',
+  requireRoles('Admin'),
+  validate({ body: workerIqamaBodySchema }),
+  asyncHandler(mobilisationController.unarchiveWorker)
+);
+router.get(
+  '/export',
+  validate({ query: exportMobilisationsSchema }),
+  asyncHandler(mobilisationController.exportAll)
 );
 router.get('/:id', validate({ params: mobilisationIdParamSchema }), asyncHandler(mobilisationController.get));
+router.get(
+  '/:id/export',
+  validate({ params: mobilisationIdParamSchema }),
+  asyncHandler(mobilisationController.exportOne)
+);
 router.post('/', validate({ body: createMobilisationSchema }), asyncHandler(mobilisationController.create));
 router.patch(
   '/:id',
   validate({ params: mobilisationIdParamSchema, body: updateMobilisationSchema }),
   asyncHandler(mobilisationController.update)
 );
-// TEMPORARY — pre-production cleanup only, Admin-only hard delete. Remove
-// this route (and mobilisation.controller.js's `remove` /
-// mobilisation.service.js's `deleteMobilisation`) before going live.
-router.delete(
-  '/:id',
-  requireRoles('Admin'),
-  validate({ params: mobilisationIdParamSchema }),
-  asyncHandler(mobilisationController.remove)
-);
-
 // --- M2: joint coordinators + submit ---
 router.post(
   '/:id/coordinators',
@@ -76,15 +108,20 @@ router.patch(
   validate({ params: mobilisationCoordinatorParamSchema }),
   asyncHandler(mobilisationController.confirmCoordinator)
 );
+router.put(
+  '/:id/coordinator-shares',
+  validate({ params: mobilisationIdParamSchema, body: setCoordinatorSharesSchema }),
+  asyncHandler(mobilisationController.setCoordinatorShares)
+);
+router.delete(
+  '/:id/coordinator-shares',
+  validate({ params: mobilisationIdParamSchema }),
+  asyncHandler(mobilisationController.clearCoordinatorShares)
+);
 router.post(
   '/:id/submit',
   validate({ params: mobilisationIdParamSchema }),
   asyncHandler(mobilisationController.submit)
-);
-router.patch(
-  '/:id/complete',
-  validate({ params: mobilisationIdParamSchema }),
-  asyncHandler(mobilisationController.complete)
 );
 
 // --- M3: Marketing Manager review ---
@@ -120,7 +157,6 @@ router.get(
 
 /** Same orphaned-upload cleanup as document.routes.js/financialRequests.routes.js
  *  — only the documents POST above ever sets req.files on this router. */
-// eslint-disable-next-line no-unused-vars
 router.use((err, req, res, next) => {
   if (req.files?.length) {
     for (const file of req.files) {

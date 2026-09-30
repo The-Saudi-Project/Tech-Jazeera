@@ -1,7 +1,8 @@
 /**
  * NfcCardListPage — the card inventory: every physical card as a row, with its
  * status, holder, and batch. Search by token/chip/holder, filter by status and
- * company, generate new blank batches. Admin-only.
+ * company, generate new blank batches. Gated by the real 'nfc' Section
+ * Access grant (fixed 2026-09-14 — see NfcCompanyListPage's doc comment).
  */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -16,29 +17,31 @@ import Select from '../../../components/ui/Select.jsx';
 import Button from '../../../components/ui/Button.jsx';
 import Badge from '../../../components/ui/Badge.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
+import PickerLoadWarning from '../../../components/shared/PickerLoadWarning.jsx';
 import BatchGenerateModal from '../components/BatchGenerateModal.jsx';
 
 export default function NfcCardListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAdmin = user.role === 'Admin';
+  const canRead = Boolean(user.sectionAccess?.includes('nfc'));
+  const canWrite = Boolean(user.sectionAccessWrite?.includes('nfc'));
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [company, setCompany] = useState('');
   const [generating, setGenerating] = useState(false);
 
-  const { data: cards = [], isPending } = useQuery({
+  const { data: cards = [], isPending, isError } = useQuery({
     queryKey: ['nfc-cards', { search, status, company }],
     queryFn: () => listNfcCards({ search: search || undefined, status: status || undefined, company: company || undefined }),
-    enabled: isAdmin,
+    enabled: canRead,
   });
-  const { data: companies = [] } = useQuery({
+  const { data: companies = [], isError: companiesError } = useQuery({
     queryKey: ['nfc-companies', ''],
     queryFn: () => listNfcCompanies({}),
-    enabled: isAdmin,
+    enabled: canRead,
   });
 
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!canRead) return <Navigate to="/" replace />;
 
   const columns = [
     { key: 'token', header: 'Token', render: (c) => <span className="font-mono text-xs">{c.token}</span> },
@@ -83,7 +86,7 @@ export default function NfcCardListPage() {
             <Link to="/nfc">
               <Button variant="secondary">Companies</Button>
             </Link>
-            <Button onClick={() => setGenerating(true)}>Generate batch</Button>
+            {canWrite && <Button onClick={() => setGenerating(true)}>Generate batch</Button>}
           </>
         }
       />
@@ -108,24 +111,29 @@ export default function NfcCardListPage() {
         </Select>
       </div>
 
-      <Table
-        columns={columns}
-        rows={cards}
-        rowKey={(c) => c._id}
-        loading={isPending}
-        onRowClick={(c) => navigate(`/nfc/cards/${c._id}`)}
-        emptyState={
-          <EmptyState
-            title={search || status || company ? 'No matching cards' : 'No cards yet'}
-            description={
-              search || status || company
-                ? 'Try clearing the filters.'
-                : 'Generate a batch of blank cards to get started.'
-            }
-            action={!(search || status || company) && <Button onClick={() => setGenerating(true)}>Generate batch</Button>}
-          />
-        }
-      />
+      <PickerLoadWarning failed={[{ label: 'the company filter list', isError: companiesError }]} />
+      {isError ? (
+        <EmptyState title="Could not load cards" description="Check your permissions or connection, then try again." />
+      ) : (
+        <Table
+          columns={columns}
+          rows={cards}
+          rowKey={(c) => c._id}
+          loading={isPending}
+          onRowClick={(c) => navigate(`/nfc/cards/${c._id}`)}
+          emptyState={
+            <EmptyState
+              title={search || status || company ? 'No matching cards' : 'No cards yet'}
+              description={
+                search || status || company
+                  ? 'Try clearing the filters.'
+                  : 'Generate a batch of blank cards to get started.'
+              }
+              action={!(search || status || company) && canWrite && <Button onClick={() => setGenerating(true)}>Generate batch</Button>}
+            />
+          }
+        />
+      )}
 
       <BatchGenerateModal open={generating} onClose={() => setGenerating(false)} />
     </div>

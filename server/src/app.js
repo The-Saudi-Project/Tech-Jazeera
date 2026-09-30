@@ -6,38 +6,44 @@
  * starting a listener (useful for testing and for keeping boot logic clean).
  *
  * MIDDLEWARE ORDER MATTERS and is deliberate:
- *   1. helmet     — set security headers before anything else runs
- *   2. cors       — reject foreign origins early, allow credentials for the
+ *   1. requestMetrics — starts the clock before anything else runs, so
+ *                        durationMs reflects the FULL request lifecycle
+ *                        (2026-09-22, a real QA-audit finding — see its own
+ *                        doc comment)
+ *   2. helmet     — set security headers before anything else runs
+ *   3. cors       — reject foreign origins early, allow credentials for the
  *                   refresh-token cookie (M2)
- *   3. parsers    — JSON body with a size cap (large bodies are a DoS vector)
- *   4. rate limit — applied to /api as a whole
- *   5. routes     — feature modules mount here as milestones add them
- *   6. 404        — anything that fell through every route
- *   7. errors     — LAST, so it catches failures from all of the above
+ *   4. parsers    — JSON body with a size cap (large bodies are a DoS vector)
+ *   5. rate limit — applied to /api as a whole
+ *   6. routes     — feature modules mount here as milestones add them
+ *   7. 404        — anything that fell through every route
+ *   8. errors     — LAST, so it catches failures from all of the above
  */
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import env from './config/env.js';
+import { requestMetrics } from './middleware/requestMetrics.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import ApiResponse from './utils/ApiResponse.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import employeeRoutes from './modules/employees/employee.routes.js';
+import outsourcedEmployeeRoutes from './modules/employees/outsourcedEmployee.routes.js';
 import clientRoutes from './modules/clients/client.routes.js';
 import deploymentRoutes from './modules/deployments/deployment.routes.js';
 import attendanceRoutes from './modules/attendance/attendance.routes.js';
 import documentRoutes from './modules/documents/document.routes.js';
-import quotationRoutes from './modules/quotations/quotation.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import timesheetProcessorRoutes from './modules/timesheetProcessor/timesheet.routes.js';
 import nfcRoutes from './modules/nfc/nfc.routes.js';
 import nfcPublicRoutes from './modules/nfc/nfc.public.routes.js';
 import { serveNfcMedia } from './modules/nfc/nfc.upload.js';
 import userRoutes from './modules/users/user.routes.js';
-import leaveRoutes from './modules/leave/leave.routes.js';
+import leaveTypeRoutes from './modules/leave/leaveType.routes.js';
+import leaveRequestRoutes from './modules/leave/leaveRequest.routes.js';
 import holidayRoutes from './modules/holidays/holiday.routes.js';
 import ramadanPeriodRoutes from './modules/ramadan/ramadanPeriod.routes.js';
 import notificationRoutes from './modules/notifications/notification.routes.js';
@@ -46,8 +52,7 @@ import financialRequestsRoutes from './modules/financialRequests/financialReques
 import assetRoutes from './modules/assets/asset.routes.js';
 import exitDocumentsRoutes from './modules/exitDocuments/exitDocuments.routes.js';
 import timesheetRoutes from './modules/timesheets/timesheet.routes.js';
-import payrollRoutes from './modules/payroll/payroll.routes.js';
-import invoiceRoutes from './modules/invoices/invoice.routes.js';
+
 import expenseRoutes from './modules/expenses/expense.routes.js';
 import meRoutes from './modules/me/me.routes.js';
 import profileRoutes from './modules/me/profile.routes.js';
@@ -56,9 +61,14 @@ import approvalsRoutes from './modules/approvals/approvals.routes.js';
 import companySettingsRoutes from './modules/companySettings/companySettings.routes.js';
 import subcontractorRoutes from './modules/subcontractors/subcontractor.routes.js';
 import jobTitleRoutes from './modules/jobTitles/jobTitle.routes.js';
+import locationRoutes from './modules/locations/location.routes.js';
 import mobilisationRoutes from './modules/mobilisations/mobilisation.routes.js';
 import mobilisationSettingsRoutes from './modules/mobilisationSettings/mobilisationSettings.routes.js';
 import sectionAccessRoutes from './modules/sectionAccess/sectionAccess.routes.js';
+import reconciliationRoutes from './modules/reconciliation/reconciliation.routes.js';
+import dailyUpdateRoutes from './modules/dailyUpdates/dailyUpdate.routes.js';
+import requirementRoutes from './modules/requirements/requirement.routes.js';
+import mobilisationTargetRoutes from './modules/mobilisationTargets/mobilisationTarget.routes.js';
 
 const app = express();
 
@@ -66,6 +76,7 @@ const app = express();
 // IP — otherwise rate limiting and audit logs would see the proxy's IP.
 if (env.isProduction) app.set('trust proxy', 1);
 
+app.use(requestMetrics);
 app.use(helmet());
 app.use(
   cors({
@@ -93,18 +104,29 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/outsourced-employees', outsourcedEmployeeRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/deployments', deploymentRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/documents', documentRoutes);
-app.use('/api/quotations', quotationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/timesheet-processor', timesheetProcessorRoutes);
 app.use('/api/nfc', nfcRoutes);
 // P2-M2: staff-account management, leave (types + requests), and the
 // self-service "me" surface a Worker's ESS portal runs on.
 app.use('/api/users', userRoutes);
-app.use('/api', leaveRoutes); // owns /api/leave-types and /api/leave
+app.use('/api/company-settings', companySettingsRoutes);
+// FIX (2026-09-22, a real QA-audit finding — P2): this used to be one router
+// (`leaveRoutes`) mounted at the bare '/api' prefix with its own
+// unconditional requireAuth, silently authenticating EVERY request for any
+// module mounted after it a second time (it fell through leaveRoutes'
+// blanket middleware before ever reaching its own router's). Split into two
+// routers, each at its own real prefix — mount order relative to other
+// modules no longer matters for this reason (company-settings' public
+// /branding route was previously mounted early specifically to dodge this;
+// that workaround is no longer load-bearing, but left in its current spot).
+app.use('/api/leave-types', leaveTypeRoutes);
+app.use('/api/leave', leaveRequestRoutes);
 app.use('/api/holidays', holidayRoutes);
 app.use('/api/ramadan-periods', ramadanPeriodRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -113,19 +135,22 @@ app.use('/api/financial-requests', financialRequestsRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/exit-documents', exitDocumentsRoutes);
 app.use('/api/timesheets', timesheetRoutes);
-app.use('/api/payroll', payrollRoutes);
-app.use('/api/invoices', invoiceRoutes);
+
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/staff-attendance', staffAttendanceRoutes);
 app.use('/api/approvals', approvalsRoutes);
-app.use('/api/company-settings', companySettingsRoutes);
 app.use('/api/subcontractors', subcontractorRoutes);
 app.use('/api/job-titles', jobTitleRoutes);
+app.use('/api/locations', locationRoutes);
 app.use('/api/mobilisations', mobilisationRoutes);
 app.use('/api/mobilisation-settings', mobilisationSettingsRoutes);
 app.use('/api/section-access', sectionAccessRoutes);
+app.use('/api/reconciliation', reconciliationRoutes);
+app.use('/api/daily-updates', dailyUpdateRoutes);
+app.use('/api/requirements', requirementRoutes);
+app.use('/api/mobilisation-targets', mobilisationTargetRoutes);
 
 // Public NFC tap pages — server-rendered HTML, NOT under /api (no auth, own
 // rate limiter). Must be mounted before the 404 handler.

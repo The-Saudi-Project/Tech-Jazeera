@@ -29,7 +29,7 @@ import {
   emptySubmitLeaveForm,
 } from '../leave.schema.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { apiMessage, formatDate } from '../../../lib/utils.js';
+import { apiMessage, formatDate, collectFormErrorMessages } from '../../../lib/utils.js';
 import {
   LEAVE_RECURRENCES,
   LEAVE_RECURRENCE_LABELS,
@@ -46,6 +46,7 @@ import UpcomingHolidays from '../../holidays/components/UpcomingHolidays.jsx';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
 import ApprovalTrailView from '../../../components/shared/ApprovalTrailView.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
+import PickerLoadWarning from '../../../components/shared/PickerLoadWarning.jsx';
 import Card from '../../../components/ui/Card.jsx';
 import Badge from '../../../components/ui/Badge.jsx';
 import Button from '../../../components/ui/Button.jsx';
@@ -109,6 +110,11 @@ function LeaveTypesPanel() {
     setEditing(type);
   }
 
+  const onInvalid = (formErrors) => {
+    console.error('[leave] leave type form invalid', formErrors);
+    toast.error(collectFormErrorMessages(formErrors).join(' ') || t('staffLeave.types.form.invalid'));
+  };
+
   return (
     <Card>
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -160,7 +166,7 @@ function LeaveTypesPanel() {
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?._id ? t('staffLeave.types.modalEditTitle') : t('staffLeave.types.modalNewTitle')}>
         <form
-          onSubmit={handleSubmit((values) => saveMutation.mutate(values))}
+          onSubmit={handleSubmit((values) => saveMutation.mutate(values), onInvalid)}
           noValidate
           className="space-y-4"
         >
@@ -285,7 +291,7 @@ function SubmitLeavePanel() {
   const fileInputRef = useRef(null);
   const [pendingFile, setPendingFile] = useState(null);
 
-  const { data: types } = useQuery({
+  const { data: types, isError: typesError } = useQuery({
     queryKey: ['leave-types', { activeOnly: true }],
     queryFn: () => listLeaveTypes({ activeOnly: 'true' }),
   });
@@ -329,10 +335,16 @@ function SubmitLeavePanel() {
     onError: (error) => toast.error(apiMessage(error)),
   });
 
+  const onInvalid = (formErrors) => {
+    console.error('[leave] submit leave form invalid', formErrors);
+    toast.error(collectFormErrorMessages(formErrors).join(' ') || t('staffLeave.submit.formInvalid'));
+  };
+
   return (
     <Card>
       <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">{t('staffLeave.submit.title')}</h2>
-      <form onSubmit={handleSubmit((values) => submitMutation.mutate(values))} noValidate className="space-y-4">
+      <form onSubmit={handleSubmit((values) => submitMutation.mutate(values), onInvalid)} noValidate className="space-y-4">
+        <PickerLoadWarning failed={[{ label: 'leave types', isError: typesError }]} />
         <Select label={t('staffLeave.submit.chooseType')} error={errors.leaveType?.message} {...register('leaveType')}>
           <option value="">{t('staffLeave.submit.choosePlaceholder')}</option>
           {(types ?? []).map((ty) => (
@@ -384,9 +396,16 @@ function ReviewQueue() {
     // A new submission from another session (or another approver deciding a
     // step) has no way to reach this already-open queue otherwise — the
     // app-wide default is a 30s staleTime with no polling and no
-    // refetch-on-focus. Same cadence as NotificationBell's own poll, so a
-    // request appearing here and its notification arriving feel like one event.
-    refetchInterval: 10_000,
+    // refetch-on-focus. FIX (2026-09-22, a real QA-audit finding — P1): this
+    // used to be 10s, "same cadence as NotificationBell's own poll" — but
+    // this is a real paginated query against the model, not the bell's own
+    // now much cheaper single count. 20s roughly halves this page's
+    // contribution to request volume (the same change applied to every
+    // sibling review queue — see the other refetchInterval sites this
+    // comment is referenced from) while staying close enough to the bell's
+    // own signal that a request still feels like it "arrived" within
+    // moments, not stale.
+    refetchInterval: 20_000,
     refetchOnWindowFocus: true,
   });
 
@@ -532,7 +551,7 @@ export default function LeavePage() {
   const [activeTab, setActiveTab] = useTabParam(tabs, 'requests');
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-[1600px] space-y-6">
       <PageHeader
         title={t('staffLeave.page.title')}
         onBack={() => navigate(-1)}

@@ -1,0 +1,945 @@
+/**
+ * DeploymentDetailPage — the workhorse: placement info, the monthly
+ * client-hours/OT ledger (add + correct), and Demobilise. This is the ONLY
+ * place a deployment is managed — there is no separate create/edit page,
+ * a Deployment is born automatically once its source Mobilisation is
+ * Approved (see the Mobilisations module).
+ */
+import { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  getDeployment,
+  addMonthlyHours,
+  updateMonthlyHours,
+  downloadInvoiceFile,
+  demobiliseDeployment,
+  updateDeployment,
+} from '../deployments.api.js';
+import {
+  buildMonthlyHoursFormSchema,
+  emptyMonthlyHoursForm,
+  monthlyHoursEntryToForm,
+  dailyEntryToString,
+  demobiliseFormSchema,
+  emptyDemobiliseForm,
+  resolveDemobiliseOutcome,
+  editDeploymentFormSchema,
+  deploymentToEditForm,
+} from '../deployments.schema.js';
+import { DEMOBILISATION_REASONS, EMPLOYEE_ONLY_DEMOBILISATION_REASONS } from '../../../lib/constants.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { apiMessage, formatDate, formatMoney, cn } from '../../../lib/utils.js';
+import { useToast } from '../../../components/ui/Toast.jsx';
+import PageHeader from '../../../components/shared/PageHeader.jsx';
+import BackButton from '../../../components/shared/BackButton.jsx';
+import Card from '../../../components/ui/Card.jsx';
+import Badge from '../../../components/ui/Badge.jsx';
+import Button from '../../../components/ui/Button.jsx';
+import Input from '../../../components/ui/Input.jsx';
+import Select from '../../../components/ui/Select.jsx';
+import Textarea from '../../../components/ui/Textarea.jsx';
+import Modal from '../../../components/ui/Modal.jsx';
+import Skeleton from '../../../components/ui/Skeleton.jsx';
+import EmptyState from '../../../components/ui/EmptyState.jsx';
+import DeploymentExpensesSection from '../components/DeploymentExpensesSection.jsx';
+
+function monthStrOf(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function addMonthsToStr(monthStr, n) {
+  const [y, m] = monthStr.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return monthStrOf(d);
+}
+function previousMonthStr() {
+  return addMonthsToStr(monthStrOf(new Date()), -1);
+}
+
+/** Locale-aware weekday abbreviation for one calendar day of a 'YYYY-MM'
+ *  month — shown above each day's input so a reviewer can see at a glance
+ *  which days are weekends without cross-checking a calendar. Intl's 'short'
+ *  form is a compact 3-letter word in English ("Mon") but the FULL word in
+ *  Arabic ("الاثنين" — no shorter form exists in ICU's ar data), which would
+ *  blow out this grid's narrow columns; 'narrow' is a single unambiguous
+ *  letter in Arabic but collides in English (Tue/Thu both "T", Sat/Sun both
+ *  "S") — so each language gets whichever form is actually compact AND
+ *  unambiguous for it. */
+function weekdayAbbrev(monthStr, dayNum, locale) {
+  const [y, m] = monthStr.split('-').map(Number);
+  const style = locale?.startsWith('ar') ? 'narrow' : 'short';
+  return new Date(y, m - 1, dayNum).toLocaleDateString(locale, { weekday: style });
+}
+
+/** Deployment reason → EOSB exit reason, for the post-demobilise deep link
+ *  (see resolveDemobiliseOutcome / SettlementNewPage.jsx's preset params). */
+const EOSB_REASON_BY_DEMOB_REASON = {
+  TerminatedByCompany: 'TerminationByEmployer',
+  Resigned: 'Resignation',
+  TransferredToAnotherCompany: 'SponsorshipTransfer',
+};
+
+/** The latest month it's actually legitimate to enter/pick hours for.
+ *  Mirrors deployment.service.js's addMonthlyHours exactly (2026-09-16, the
+ *  user's own ask, in two parts):
+ *   - Active: a full calendar month must have passed (relative to today) —
+ *     a client's own timesheet for the CURRENT month isn't final yet while
+ *     the worker is still there, still accumulating hours.
+ *   - Ended: no such wait — "waiting for month completion is for people
+ *     who are still mobilised... and not demobilised" (the user's own
+ *     words). The whole placement is already history the moment it ends,
+ *     so every month through its own real end is immediately enterable,
+ *     even the still-in-progress current calendar month. Originally (this
+ *     same day, an earlier fix) only widened this to the FINAL month once
+ *     it had itself calendar-elapsed — this removes that wait entirely for
+ *     an Ended deployment. */
+function maxEligibleMonthFor(deployment) {
+  if (deployment.status === 'Ended' && deployment.endDate) {
+    return monthStrOf(deployment.endDate);
+  }
+  return previousMonthStr();
+}
+
+/** The earliest eligible month not yet entered — a sensible default for the
+ *  add-hours form, empty string when nothing is eligible yet (deployment
+ *  started this calendar month, or — once Ended — every real month through
+ *  its own end has already been entered). */
+function nextEligibleMonth(deployment) {
+  const start = monthStrOf(deployment.startDate);
+  const maxEligible = maxEligibleMonthFor(deployment);
+  if (start > maxEligible) return '';
+  const entered = new Set(deployment.monthlyHours.map((m) => m.month));
+  let candidate = start;
+  while (candidate <= maxEligible) {
+    if (!entered.has(candidate)) return candidate;
+    candidate = addMonthsToStr(candidate, 1);
+  }
+  return '';
+}
+
+function DetailRow({ label, children }) {
+  return (
+    <div className="flex flex-col justify-center gap-1 rounded-xl bg-bg/50 p-3.5 ring-1 ring-border/60 transition-all hover:bg-bg/80">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</span>
+      <span className="text-sm font-semibold text-text">{children || '—'}</span>
+    </div>
+  );
+}
+
+/** Two typed totals transcribed straight off the client's own timesheet —
+ *  reverted 2026-09-16 (the user's own ask) from the day-by-day grid this
+ *  briefly became (see docs/DEPLOYMENT-notes.md's 2026-09-12 follow-up) back
+ *  to the shape this app originally used before that (see
+ *  docs/MOBILISATION-notes.md's 2026-09-12 follow-up): "Client timesheet
+ *  hours" (→ `actualHours`) and "Days worked" (→ `daysWorked`, informational/
+ *  cross-check only — not part of the OT formula). OT hours is always
+ *  server-computed and previewed live here purely for feedback; the formula
+ *  depends on worker type (2026-09-19, the user's own ask): a
+ *  SupplierEmployee deployment also enters "Supplier timesheet hours" (the
+ *  subcontractor's own record, which can legitimately differ from the
+ *  client's) and OT is Client hours − Supplier hours; Employee/Freelancer
+ *  have no such second timesheet, so they keep the original
+ *  max(0, actualHours - contractHours).
+ *
+ * `contractHours` is the client agreement hours to compare against (the
+ * deployment's own `requiredTimesheetHours` when adding, or the entry's own
+ * snapshotted `contractHours` when correcting one already entered — see the
+ * two call sites below). There is no OT amount INPUT — it's always
+ * server-computed (otHours × the Mobilisation's OT client rate), never typed
+ * in, so whoever enters hours never has to know or guess it.
+ * `canDecideHours`/`otClientRate` gate a small commercial-only preview of it
+ * below — only whoever can decide this section ever sees a money figure
+ * here; `otClientRate` is simply absent from the API response for anyone
+ * else (see deployment.service.js's getDeployment), so there's nothing to
+ * leak even if this check were somehow bypassed client-side. */
+function MonthlyHoursForm({ deployment, defaultValues, onSubmit, submitting, submitLabel, monthFixed, contractHours, canDecideHours, otClientRate }) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const isSupplierEmployee = deployment.workerType === 'SupplierEmployee';
+  const schema = useMemo(() => buildMonthlyHoursFormSchema(deployment.workerType), [deployment.workerType]);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm({ resolver: zodResolver(schema), defaultValues });
+  const start = monthStrOf(deployment.startDate);
+  const max = maxEligibleMonthFor(deployment);
+
+  const agreementHours = contractHours ?? 0;
+  const actualHoursPreview = Number(watch('actualHours')) || 0;
+  const supplierHoursPreview = Number(watch('supplierHours')) || 0;
+  // Formula depends on worker type (2026-09-19, the user's own ask) — see
+  // deployment.service.js's computeOtHours, mirrored here purely for live
+  // feedback.
+  const otHoursPreview = isSupplierEmployee
+    ? Math.max(0, actualHoursPreview - supplierHoursPreview)
+    : Math.max(0, actualHoursPreview - agreementHours);
+  const otAmountPreview = otHoursPreview * (otClientRate ?? 0);
+  const deductionPreview = Number(watch('deductionAmount')) || 0;
+
+  // A client-side validation failure previously failed silently (react-hook-
+  // form never fires a mutation's own onError for one) — found via a real
+  // user report against this form's earlier day-grid shape. Every form in
+  // the app surfaces this as a toast now — see MobilisationForm.jsx's own
+  // onInvalid for the pattern this mirrors.
+  function onInvalid(formErrors) {
+    const messages = Object.values(formErrors)
+      .map((err) => err?.message)
+      .filter(Boolean);
+    console.error('[MonthlyHoursForm] validation failed:', formErrors);
+    toast.error(messages.length ? messages.join(' · ') : t('staffDeployments.detail.fixHighlighted'));
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="space-y-3">
+      {/* Row 1: Month | Client timesheet | Supplier timesheet | Client deduction — all 4 in one line */}
+      <div className={cn('grid grid-cols-1 gap-3', isSupplierEmployee ? 'sm:grid-cols-4' : 'sm:grid-cols-3')}>
+        <Input
+          label={t('staffDeployments.detail.monthLabel')}
+          type="month"
+          min={start}
+          max={max}
+          disabled={monthFixed}
+          error={errors.month?.message}
+          {...register('month')}
+        />
+        <Input
+          label={t('staffDeployments.detail.clientTimesheetHoursLabel')}
+          type="number"
+          step="0.01"
+          min="0"
+          error={errors.actualHours?.message}
+          {...register('actualHours')}
+        />
+        {isSupplierEmployee && (
+          <Input
+            label={t('staffDeployments.detail.supplierTimesheetHoursLabel')}
+            type="number"
+            step="0.01"
+            min="0"
+            error={errors.supplierHours?.message}
+            {...register('supplierHours')}
+          />
+        )}
+        <div>
+          <Input
+            label={t('staffDeployments.detail.deductionAmountLabel')}
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder={t('staffDeployments.detail.deductionAmountPlaceholder')}
+            error={errors.deductionAmount?.message}
+            {...register('deductionAmount')}
+          />
+          <p className="mt-1 text-xs text-muted">{t('staffDeployments.detail.deductionAmountHint')}</p>
+        </div>
+      </div>
+
+      {/* Row 2: Notes full-width */}
+      <Textarea label={t('staffDeployments.detail.notesLabel')} error={errors.notes?.message} {...register('notes')} />
+
+      {/* Save button */}
+      <div className="flex justify-end">
+        <Button type="submit" size="sm" isLoading={submitting}>
+          {submitLabel}
+        </Button>
+      </div>
+
+      {/* Summary stats bar — live computed preview, at the very bottom */}
+      <div className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-bg/40 p-3 sm:grid-cols-4">
+        <div>
+          <p className="text-xs text-muted">{t('staffDeployments.detail.summaryContractHours')}</p>
+          <p className="text-sm font-semibold tabular-nums">{agreementHours}</p>
+        </div>
+        {isSupplierEmployee && (
+          <div>
+            <p className="text-xs text-muted">{t('staffDeployments.detail.summarySupplierHours')}</p>
+            <p className="text-sm font-semibold tabular-nums">{supplierHoursPreview}</p>
+          </div>
+        )}
+        <div>
+          <p className="text-xs text-muted">{t('staffDeployments.detail.summaryOtHours')}</p>
+          <p className="text-sm font-semibold tabular-nums">{otHoursPreview}</p>
+        </div>
+        {canDecideHours && (
+          <div>
+            <p className="text-xs text-muted">{t('staffDeployments.detail.summaryOtAmount')}</p>
+            <p className="text-sm font-semibold tabular-nums">{formatMoney(otAmountPreview)}</p>
+          </div>
+        )}
+        {deductionPreview > 0 && (
+          <div>
+            <p className="text-xs text-muted">{t('staffDeployments.detail.summaryDeduction')}</p>
+            <p className="text-sm font-semibold tabular-nums text-danger">{formatMoney(deductionPreview)}</p>
+          </div>
+        )}
+      </div>
+    </form>
+  );
+}
+
+/** Read-only breakdown of a pre-2026-09-16 entry's real day-by-day data —
+ *  see deployment.model.js's own doc comment on why `dailyHours` is never
+ *  written to again but stays visible on a record that still has it.
+ *  Collapsed by default so it doesn't dominate the (now much shorter)
+ *  monthly-hours history. */
+function LegacyDailyBreakdown({ entry, locale }) {
+  const { t } = useTranslation();
+  if (!entry.dailyHours?.length) return null;
+  return (
+    <details className="mt-2 text-xs text-muted">
+      <summary className="cursor-pointer select-none font-medium text-primary hover:underline">
+        {t('staffDeployments.detail.viewDailyBreakdown')}
+      </summary>
+      <div className="mt-2 overflow-x-auto rounded-lg border border-border">
+        <table className="border-collapse text-sm">
+          <thead>
+            <tr>
+              {entry.dailyHours.map((_, i) => (
+                <th key={i} className="border-b border-border bg-bg/40 px-1 py-1 text-center font-medium text-muted">
+                  <div className="text-xs leading-tight">{i + 1}</div>
+                  <div className="text-[10px] font-normal leading-tight text-muted/70">
+                    {weekdayAbbrev(entry.month, i + 1, locale)}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              {entry.dailyHours.map((day, i) => (
+                <td key={i} className="border-b border-border px-1 py-1 text-center tabular-nums text-text">
+                  {dailyEntryToString(day)}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}
+
+/** The real-revenue billing lifecycle for one monthly-hours entry — a
+ *  compact status readout, separate from the hours-approval Status column
+ *  above it (a different, later stage of the same entry). Read-only here;
+ *  the real actions (Send Invoice/Record Payment/Approve-Reject) live on
+ *  the Financial section's own Ready to Invoice / Payments Due pages
+ *  (2026-09-27, the user's own ask). Payment status is now the entry's own
+ *  live FIFO allocation (`amountAllocated`/`balanceDue`/`fullyPaid` —
+ *  2026-09-27 bulk-payment redesign, see deployment.service.js's
+ *  getClientAllocation) rather than a per-entry decision a person typed —
+ *  a client's bulk payment is recorded and approved at the client level,
+ *  on the Payments Due page, not here. */
+function BillingStatus({ entry, t, formatDate, formatMoney }) {
+  if (entry.status !== 'Approved') return <span className="text-xs text-muted">—</span>;
+  if (!entry.invoiceSentAt) {
+    return <Badge variant="default">{t('staffDeployments.detail.billing.notInvoiced')}</Badge>;
+  }
+  const invoiceRef = entry.invoiceNumber && (
+    <p className="mt-1 text-xs text-muted">{t('staffDeployments.detail.billing.invoiceRef', { number: entry.invoiceNumber, date: entry.invoiceDate ? formatDate(entry.invoiceDate) : '—' })}</p>
+  );
+  if (entry.fullyPaid) {
+    return (
+      <div>
+        <Badge variant="success">{t('staffDeployments.detail.billing.paid', { amount: formatMoney(entry.amountAllocated) })}</Badge>
+        {invoiceRef}
+      </div>
+    );
+  }
+  if (entry.amountAllocated > 0) {
+    return (
+      <div>
+        <Badge variant="warning">{t('staffDeployments.detail.billing.partiallyPaid', { balance: formatMoney(entry.balanceDue) })}</Badge>
+        {invoiceRef}
+      </div>
+    );
+  }
+  return (
+    <div>
+      <Badge variant="default">
+        {t('staffDeployments.detail.billing.invoicedDue', { date: entry.invoiceDueAt ? formatDate(entry.invoiceDueAt) : '—' })}
+      </Badge>
+      {invoiceRef}
+    </div>
+  );
+}
+
+export default function DeploymentDetailPage() {
+  const { id } = useParams();
+  const { t, i18n } = useTranslation();
+  const { user } = useAuth();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [demobilising, setDemobilising] = useState(false);
+  const [eosbPrompt, setEosbPrompt] = useState(null); // { exitDate, exitReason } | null
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [editingDeployment, setEditingDeployment] = useState(false);
+
+  // Office Secretary is a hardcoded exception to the Section Access gate —
+  // mirrors deployment.service.js's addMonthlyHours exactly (they aren't a
+  // grantable Section Access role at all).
+  const canEnterHours = user.role === 'Office Secretary' || Boolean(user.sectionAccessWrite?.includes('deploymentsHours'));
+  // Section Access key name is unchanged ('deploymentsRelease') even though
+  // the action itself is now called Demobilise — see deployment.routes.js.
+  const canDemobilise = Boolean(user.sectionAccessWrite?.includes('deploymentsRelease'));
+  // Deliberately a separate grant from canEnterHours — no Office Secretary
+  // bypass here, since she's usually the one entering, not approving.
+  const canDecideHours = Boolean(user.sectionAccessWrite?.includes('deploymentsHoursDecide'));
+  // New key (2026-09-16, the user's own ask) — Admin-only until granted; MM
+  // granted write immediately (see src/scripts/grant-deployments-edit.js).
+  // No Office Secretary bypass — purely Section-Access-driven.
+  const canEditDeployment = Boolean(user.sectionAccessWrite?.includes('deploymentsEdit'));
+  // These two no longer gate any ACTION here (Send Invoice/Record Payment/
+  // Approve-Reject Payment moved to the Financial section's own Ready to
+  // Invoice / Payments Due pages, 2026-09-27, the user's own ask) — kept
+  // only to decide whether this viewer should see the read-only Billing
+  // status column below at all.
+  const canInvoice = Boolean(user.sectionAccessWrite?.includes('deploymentsInvoicing'));
+  const canDecidePaymentAccess = Boolean(user.sectionAccessWrite?.includes('deploymentsPaymentDecide'));
+  const { data: deployment, isPending, isError } = useQuery({
+    queryKey: ['deployment', id],
+    queryFn: () => getDeployment(id),
+  });
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['deployment', id] });
+    queryClient.invalidateQueries({ queryKey: ['deployments'] });
+  };
+
+  const addMutation = useMutation({
+    mutationFn: (values) => addMonthlyHours(id, values),
+    onSuccess: () => {
+      toast.success(t('staffDeployments.detail.addedToast'));
+      invalidate();
+    },
+    onError: (error) => toast.error(apiMessage(error)),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ entryId, values }) => updateMonthlyHours(id, entryId, values),
+    onSuccess: () => {
+      toast.success(t('staffDeployments.detail.updatedToast'));
+      setEditingEntry(null);
+      invalidate();
+    },
+    onError: (error) => toast.error(apiMessage(error)),
+  });
+
+  const demobiliseMutation = useMutation({
+    mutationFn: (values) => demobiliseDeployment(id, values),
+    onSuccess: (_data, values) => {
+      toast.success(t('staffDeployments.detail.demobilisedToast', { name: deployment.workerName }));
+      setDemobilising(false);
+      const outcome = resolveDemobiliseOutcome(deployment.workerType, values.reason, values.exitOutcome);
+      if (outcome === 'Exit') {
+        setEosbPrompt({ exitDate: values.releaseDate, exitReason: EOSB_REASON_BY_DEMOB_REASON[values.reason] ?? '' });
+      }
+      invalidate();
+    },
+    onError: (error) => toast.error(apiMessage(error)),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: (values) => updateDeployment(id, values),
+    onSuccess: () => {
+      toast.success(t('staffDeployments.detail.editedToast'));
+      setEditingDeployment(false);
+      invalidate();
+    },
+    onError: (error) => toast.error(apiMessage(error)),
+  });
+
+  const {
+    register: registerEdit,
+    handleSubmit: handleEditSubmit,
+    reset: resetEditForm,
+    formState: { errors: editErrors },
+  } = useForm({ resolver: zodResolver(editDeploymentFormSchema), defaultValues: deploymentToEditForm(deployment ?? {}) });
+
+  function openEditDeployment() {
+    resetEditForm(deploymentToEditForm(deployment));
+    setEditingDeployment(true);
+  }
+
+  const addDefaultValues = useMemo(() => {
+    if (!deployment) return emptyMonthlyHoursForm;
+    return { 
+      ...emptyMonthlyHoursForm, 
+      month: nextEligibleMonth(deployment),
+      supplierHours: deployment.workerType === 'SupplierEmployee' && deployment.requiredTimesheetHours != null 
+        ? deployment.requiredTimesheetHours.toString() 
+        : '',
+    };
+  }, [deployment]);
+
+  const {
+    register: registerDemobilise,
+    handleSubmit: handleDemobiliseSubmit,
+    watch: watchDemobilise,
+    formState: { errors: demobiliseErrors },
+  } = useForm({ resolver: zodResolver(demobiliseFormSchema), defaultValues: emptyDemobiliseForm });
+  const demobiliseReason = watchDemobilise('reason');
+  const demobiliseExitOutcome = watchDemobilise('exitOutcome');
+  const availableDemobiliseReasons =
+    deployment?.workerType === 'Employee'
+      ? DEMOBILISATION_REASONS
+      : DEMOBILISATION_REASONS.filter((r) => !EMPLOYEE_ONLY_DEMOBILISATION_REASONS.includes(r));
+  const resolvedOutcome = deployment
+    ? resolveDemobiliseOutcome(deployment.workerType, demobiliseReason, demobiliseExitOutcome)
+    : 'Standby';
+
+  if (isPending) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+  if (isError || !deployment) {
+    return (
+      <EmptyState
+        title={t('staffDeployments.detail.notFoundTitle')}
+        description={t('staffDeployments.detail.notFoundDescription')}
+        action={<BackButton onClick={() => navigate('/deployments')} />}
+      />
+    );
+  }
+
+  const isActive = deployment.status === 'Active';
+  // An Ended deployment can still have a real, never-entered FINAL month —
+  // deployment.service.js's addMonthlyHours has always allowed this
+  // server-side; the client just never gave a way to reach it (2026-09-16
+  // fix, see nextEligibleMonth's own doc comment).
+  const canAddThisMonth = canEnterHours && Boolean(nextEligibleMonth(deployment));
+  const sortedMonths = [...deployment.monthlyHours].sort((a, b) => a.month.localeCompare(b.month));
+
+  return (
+    <div className="mx-auto max-w-[1600px] space-y-6">
+      <PageHeader
+        title={deployment.workerName}
+        description={
+          <span>
+            <span>{deployment.jobTitle}</span>
+            <span className="mx-2 opacity-50">·</span>
+            <strong className="text-text">{deployment.clientName}</strong>
+            {deployment.site && (
+              <>
+                <span className="mx-2 opacity-50">·</span>
+                <span>{deployment.site}</span>
+              </>
+            )}
+          </span>
+        }
+        onBack={() => navigate(-1)}
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant={isActive ? 'success' : 'default'}>
+              {t(`staffDeployments.status.${deployment.status}`, deployment.status)}
+            </Badge>
+            {canEditDeployment && (
+              <Button size="sm" variant="secondary" onClick={openEditDeployment}>
+                {t('common.edit')}
+              </Button>
+            )}
+            {isActive && canDemobilise && (
+              <Button size="sm" variant="danger-ghost" onClick={() => setDemobilising(true)}>
+                {t('staffDeployments.detail.demobilise')}
+              </Button>
+            )}
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-2">
+      <Card className="h-full">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{t('staffDeployments.detail.sectionPlacement')}</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-2">
+        <DetailRow label={t('staffDeployments.detail.fields.worker')}>
+          {deployment.worker?._id ? (
+            <Link to={`/employees/${deployment.worker._id}`} className="text-primary hover:underline">
+              {deployment.workerName}
+            </Link>
+          ) : (
+            deployment.workerName
+          )}
+        </DetailRow>
+        <DetailRow label={t('staffDeployments.detail.fields.workerType')}>
+          {t(`staffMobilisations.form.workerType.${deployment.workerType}`, deployment.workerType)}
+        </DetailRow>
+        <DetailRow label={t('staffDeployments.detail.fields.client')}>
+          <Link to={`/clients/${deployment.client}`} className="text-primary hover:underline">
+            {deployment.clientName}
+          </Link>
+        </DetailRow>
+        {deployment.site && <DetailRow label={t('staffDeployments.detail.fields.site')}>{deployment.site}</DetailRow>}
+        {deployment.subcontractorName && (
+          <DetailRow label={t('staffDeployments.detail.fields.subcontractor')}>{deployment.subcontractorName}</DetailRow>
+        )}
+        <DetailRow label={t('staffDeployments.detail.fields.contractHours')}>{deployment.requiredTimesheetHours ?? '—'}</DetailRow>
+        <DetailRow label={t('staffDeployments.detail.fields.since')}>{formatDate(deployment.startDate)}</DetailRow>
+        {!isActive && (
+          <>
+            <DetailRow label={t('staffDeployments.detail.fields.demobilisedOn')}>{formatDate(deployment.endDate)}</DetailRow>
+            {deployment.endReason && (
+              <DetailRow label={t('staffDeployments.detail.fields.reason')}>
+                {t(`staffDeployments.reasons.${deployment.endReason}`, deployment.endReason)}
+              </DetailRow>
+            )}
+          </>
+        )}
+        </div>
+        {deployment.releaseNote && (
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="text-xs uppercase tracking-wide text-muted">{t('staffDeployments.detail.notesLabel')}</p>
+            <p className="text-sm">{deployment.releaseNote}</p>
+          </div>
+        )}
+        {deployment.notes && (
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="text-xs uppercase tracking-wide text-muted">{t('staffDeployments.detail.deploymentNotesLabel')}</p>
+            <p className="text-sm">{deployment.notes}</p>
+          </div>
+        )}
+        {deployment.mobilisation && (
+          <div className="mt-4">
+            <Link to={`/mobilisations/${deployment.mobilisation._id}`} className="text-sm font-medium text-primary hover:underline">
+              {t('staffDeployments.detail.viewMobilisation')} (#{deployment.mobilisation.serialNumber})
+            </Link>
+          </div>
+        )}
+      </Card>
+
+      <div className="flex h-full flex-col"><DeploymentExpensesSection deployment={deployment} /></div>
+      </div>
+
+      <Card>
+        <div className="mb-1 flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{t('staffDeployments.detail.sectionMonthlyHours')}</h2>
+          {/* Profit is commercial data, stripped server-side for anyone
+              without deploymentsHoursDecide access — deployment.totalProfit
+              simply won't exist on the response for them, so this naturally
+              disappears rather than needing a separate client-side check. */}
+          {deployment.totalProfit != null && (
+            <div className="text-right">
+              <p className="text-xs uppercase tracking-wide text-muted">{t('staffDeployments.detail.totalProfit')}</p>
+              <p className={cn('text-lg font-semibold tabular-nums', deployment.totalProfit >= 0 ? 'text-success' : 'text-danger')}>
+                {formatMoney(deployment.totalProfit)}
+              </p>
+            </div>
+          )}
+        </div>
+        <p className="mb-4 text-sm text-muted">{t('staffDeployments.detail.monthlyHoursHint')}</p>
+
+        {sortedMonths.length === 0 ? (
+          <p className="mb-4 text-sm text-muted">{t('staffDeployments.detail.noMonthlyHours')}</p>
+        ) : (
+          <div className="mb-4 overflow-x-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-bg/40 text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="px-3 py-2">{t('staffDeployments.detail.columns.month')}</th>
+                  <th className="px-3 py-2">{t('staffDeployments.detail.columns.contractHours')}</th>
+                  <th className="px-3 py-2">{t('staffDeployments.detail.columns.actualHours')}</th>
+                  {deployment.workerType === 'SupplierEmployee' && (
+                    <th className="px-3 py-2">{t('staffDeployments.detail.columns.supplierHours')}</th>
+                  )}
+                  <th className="px-3 py-2">{t('staffDeployments.detail.columns.otHours')}</th>
+                  {/* OT amount is commercial data — stripped server-side for
+                      anyone without deploymentsHoursDecide access (see
+                      deployment.service.js's getDeployment), same treatment
+                      as profit below. canDecideHours mirrors that exact
+                      check client-side. */}
+                  {canDecideHours && <th className="px-3 py-2">{t('staffDeployments.detail.columns.otAmount')}</th>}
+                  {/* Deduction is NOT commercial (unlike OT amount) — the
+                      user's own explicit call: whoever enters it already
+                      knows the number, it's transcribed straight off the
+                      client's own timesheet in front of her. Visible to
+                      everyone who can see this section at all. */}
+                  <th className="px-3 py-2">{t('staffDeployments.detail.columns.deduction')}</th>
+                  {deployment.totalProfit != null && <th className="px-3 py-2">{t('staffDeployments.detail.columns.profitOrDue')}</th>}
+                  <th className="px-3 py-2">{t('staffDeployments.detail.columns.status')}</th>
+                  {(canInvoice || canEnterHours || canDecidePaymentAccess) && (
+                    <th className="px-3 py-2">{t('staffDeployments.detail.columns.billing')}</th>
+                  )}
+                  {(canEnterHours || canDecideHours || canInvoice || canDecidePaymentAccess) && isActive && <th className="px-3 py-2" />}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {sortedMonths.map((entry) => {
+                  const statusVariant = entry.status === 'Approved' ? 'success' : entry.status === 'Rejected' ? 'danger' : 'warning';
+                  // The enterer can edit Pending/Rejected only; whoever can decide
+                  // this section may also correct an already-Approved entry
+                  // directly (2026-09-13 rule, restored — see docs/CHANGELOG.md).
+                  // Approve/Reject of a Pending entry itself now lives only on
+                  // the dedicated Hours Approval Queue (HoursReviewPage).
+                  const canEditThis =
+                    isActive && ((canEnterHours && entry.status !== 'Approved') || (canDecideHours && entry.status === 'Approved'));
+                  return (
+                    <tr key={entry._id}>
+                      <td className="px-3 py-2 font-medium">
+                        {entry.month}
+                        <LegacyDailyBreakdown entry={entry} locale={i18n.language} />
+                      </td>
+                      <td className="px-3 py-2">{entry.contractHours}</td>
+                      <td className="px-3 py-2">{entry.actualHours}</td>
+                      {deployment.workerType === 'SupplierEmployee' && (
+                        <td className="px-3 py-2">{entry.supplierHours ?? '—'}</td>
+                      )}
+                      <td className="px-3 py-2">{entry.otHours}</td>
+                      {canDecideHours && <td className="px-3 py-2">{formatMoney(entry.otAmount)}</td>}
+                      <td className="px-3 py-2">
+                        {entry.deductionAmount > 0 ? (
+                          <span className="text-danger">{formatMoney(entry.deductionAmount)}</span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      {deployment.totalProfit != null && (
+                        <td className="px-3 py-2">
+                          {!entry.fullyPaid ? (
+                            <span className="font-medium tabular-nums text-danger">
+                              {formatMoney(entry.profit)}
+                              <span className="block text-[10px] font-normal uppercase tracking-wide text-muted">
+                                {t('staffDeployments.detail.amountDueLabel')}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className={cn('font-medium tabular-nums', entry.profit >= 0 ? 'text-success' : 'text-danger')}>
+                              {formatMoney(entry.profit)}
+                              <span className="block text-[10px] font-normal uppercase tracking-wide text-muted">
+                                {t('staffDeployments.detail.actualProfitLabel')}
+                              </span>
+                            </span>
+                          )}
+                        </td>
+                      )}
+                      <td className="px-3 py-2">
+                        <Badge variant={statusVariant}>{t(`staffDeployments.detail.hoursStatus.${entry.status}`, entry.status)}</Badge>
+                        {entry.status === 'Rejected' && entry.decisionNote && (
+                          <p className="mt-1 max-w-[16rem] text-xs text-muted">{entry.decisionNote}</p>
+                        )}
+                      </td>
+                      {(canInvoice || canEnterHours || canDecidePaymentAccess) && (
+                        <td className="px-3 py-2">
+                          <BillingStatus entry={entry} t={t} formatDate={formatDate} formatMoney={formatMoney} />
+                        </td>
+                      )}
+                      {(canEnterHours || canDecideHours || canInvoice || canDecidePaymentAccess) && isActive && (
+                        <td className="px-3 py-2 text-right">
+                          <div className="flex flex-wrap justify-end gap-1.5">
+                            {canEditThis && (
+                              <Button size="sm" variant="ghost" onClick={() => setEditingEntry(entry)}>
+                                {t('staffDeployments.detail.editEntry')}
+                              </Button>
+                            )}
+                            {entry.invoiceFile && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => downloadInvoiceFile(id, entry._id, entry.invoiceFile.originalName)}
+                              >
+                                {t('staffDeployments.detail.downloadInvoiceButton')}
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {!canEnterHours ? null : canAddThisMonth ? (
+          <div className="border-t border-border pt-4">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">{t('staffDeployments.detail.addMonthLabel')}</h3>
+            <MonthlyHoursForm
+              // Fixed 2026-09-29 (a real audit finding): react-hook-form only
+              // reads `defaultValues` at mount, so without a `key` tied to the
+              // computed next-eligible-month, a successful add left this form
+              // showing the just-submitted month/values instead of advancing
+              // — the user had to manually overwrite the month field to enter
+              // the next one. Keying on the month forces a fresh mount (fresh
+              // form state) whenever `addDefaultValues` recomputes post-add.
+              key={addDefaultValues.month}
+              deployment={deployment}
+              defaultValues={addDefaultValues}
+              submitting={addMutation.isPending}
+              submitLabel={t('staffDeployments.detail.save')}
+              contractHours={deployment.requiredTimesheetHours ?? 0}
+              canDecideHours={canDecideHours}
+              otClientRate={deployment.mobilisation?.otClientRate}
+              onSubmit={(values) =>
+                addMutation.mutate({
+                  month: values.month,
+                  actualHours: Number(values.actualHours),
+                  supplierHours: values.supplierHours !== '' ? Number(values.supplierHours) : undefined,
+                  deductionAmount: values.deductionAmount ? Number(values.deductionAmount) : undefined,
+                  notes: values.notes || undefined,
+                })
+              }
+            />
+          </div>
+        ) : !isActive ? (
+          <p className="text-sm text-muted">{t('staffDeployments.detail.endedNote')}</p>
+        ) : (
+          <p className="text-sm text-muted">{t('staffDeployments.detail.noEligibleMonth')}</p>
+        )}
+      </Card>
+
+
+      <Modal
+        open={Boolean(editingEntry)}
+        onClose={() => setEditingEntry(null)}
+        title={editingEntry ? t('staffDeployments.detail.editModalTitle', { month: editingEntry.month }) : ''}
+        size="lg"
+      >
+        {editingEntry && (
+          <MonthlyHoursForm
+            deployment={deployment}
+            defaultValues={monthlyHoursEntryToForm(editingEntry)}
+            submitting={updateMutation.isPending}
+            submitLabel={t('staffDeployments.detail.save')}
+            monthFixed
+            contractHours={editingEntry.contractHours}
+            canDecideHours={canDecideHours}
+            otClientRate={deployment.mobilisation?.otClientRate}
+            onSubmit={(values) =>
+              updateMutation.mutate({
+                entryId: editingEntry._id,
+                values: {
+                  actualHours: Number(values.actualHours),
+                  supplierHours: values.supplierHours !== '' ? Number(values.supplierHours) : undefined,
+                  deductionAmount: values.deductionAmount ? Number(values.deductionAmount) : undefined,
+                  notes: values.notes || undefined,
+                },
+              })
+            }
+          />
+        )}
+      </Modal>
+
+      {/* Send Invoice / Record Payment / Approve-Reject Payment moved to the
+          Financial section's own Ready to Invoice / Payments Due pages
+          (2026-09-27, the user's own ask) — only a read-only Billing status
+          readout and an invoice-file download stay here. */}
+
+      <Modal
+        open={demobilising}
+        onClose={() => setDemobilising(false)}
+        title={t('staffDeployments.detail.demobiliseModalTitle', { name: deployment.workerName })}
+      >
+        <form
+          onSubmit={handleDemobiliseSubmit((values) => demobiliseMutation.mutate(values))}
+          noValidate
+          className="space-y-4"
+        >
+          <p className="text-sm text-muted">{t('staffDeployments.detail.demobiliseModalMessage', { name: deployment.workerName })}</p>
+          <Input
+            label={t('staffDeployments.detail.demobiliseDateLabel')}
+            type="date"
+            error={demobiliseErrors.releaseDate?.message}
+            {...registerDemobilise('releaseDate')}
+          />
+          <Select label={t('staffDeployments.detail.reasonLabel')} error={demobiliseErrors.reason?.message} {...registerDemobilise('reason')}>
+            <option value="">{t('staffDeployments.detail.chooseReason')}</option>
+            {availableDemobiliseReasons.map((r) => (
+              <option key={r} value={r}>
+                {t(`staffDeployments.reasons.${r}`, r)}
+              </option>
+            ))}
+          </Select>
+          {demobiliseReason === 'Other' && deployment.workerType === 'Employee' && (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4 rounded border-border" {...registerDemobilise('exitOutcome')} />
+              {t('staffDeployments.detail.otherExitCheckbox')}
+            </label>
+          )}
+          {resolvedOutcome === 'Exit' && (
+            <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+              {t('staffDeployments.detail.exitWarning', { name: deployment.workerName })}
+            </p>
+          )}
+          <Textarea
+            label={t('staffDeployments.detail.demobiliseNoteLabel')}
+            error={demobiliseErrors.releaseNote?.message}
+            {...registerDemobilise('releaseNote')}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setDemobilising(false)} disabled={demobiliseMutation.isPending}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" variant="danger" isLoading={demobiliseMutation.isPending}>
+              {t('staffDeployments.detail.demobilise')}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(eosbPrompt)}
+        onClose={() => setEosbPrompt(null)}
+        title={t('staffDeployments.detail.eosbPromptTitle', { name: deployment.workerName })}
+      >
+        {eosbPrompt && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">{t('staffDeployments.detail.eosbPromptMessage', { name: deployment.workerName })}</p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="secondary" onClick={() => setEosbPrompt(null)}>
+                {t('staffDeployments.detail.eosbPromptLater')}
+              </Button>
+              <Button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    `/eosb/new?employee=${deployment.worker?._id ?? ''}&exitDate=${eosbPrompt.exitDate}&exitReason=${eosbPrompt.exitReason}`
+                  )
+                }
+              >
+                {t('staffDeployments.detail.eosbPromptGo')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={editingDeployment}
+        onClose={() => setEditingDeployment(false)}
+        title={t('staffDeployments.detail.editDeploymentModalTitle', { name: deployment.workerName })}
+      >
+        <form onSubmit={handleEditSubmit((values) => editMutation.mutate(values))} noValidate className="space-y-4">
+          <Input label={t('staffDeployments.detail.fields.workerName')} error={editErrors.workerName?.message} {...registerEdit('workerName')} />
+          <Input label={t('staffDeployments.detail.fields.site')} error={editErrors.site?.message} {...registerEdit('site')} />
+          <Input
+            label={t('staffDeployments.detail.fields.contractHours')}
+            type="number"
+            step="0.01"
+            min="0"
+            error={editErrors.requiredTimesheetHours?.message}
+            {...registerEdit('requiredTimesheetHours')}
+          />
+          <Textarea label={t('staffDeployments.detail.deploymentNotesLabel')} error={editErrors.notes?.message} {...registerEdit('notes')} />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" onClick={() => setEditingDeployment(false)} disabled={editMutation.isPending}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" isLoading={editMutation.isPending}>
+              {t('common.save')}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+}

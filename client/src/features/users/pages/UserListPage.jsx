@@ -11,6 +11,7 @@ import { listStaffUsers, updateStaffUser, resetStaffPassword, deleteStaffUser } 
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { apiMessage, formatDate } from '../../../lib/utils.js';
 import { useToast } from '../../../components/ui/Toast.jsx';
+import { useCopyToClipboard } from '../../../lib/useCopyToClipboard.js';
 import { STAFF_USER_MANAGE_ROLES } from '../../../lib/constants.js';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
@@ -24,6 +25,7 @@ export default function UserListPage() {
   const navigate = useNavigate();
   const { user: viewer } = useAuth();
   const toast = useToast();
+  const copyToClipboard = useCopyToClipboard();
   const queryClient = useQueryClient();
   const canManage = STAFF_USER_MANAGE_ROLES.includes(viewer.role);
 
@@ -32,22 +34,28 @@ export default function UserListPage() {
     queryFn: () => listStaffUsers(),
   });
 
+  const [toToggleActive, setToToggleActive] = useState(null); // the user row being (de)activated
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, isActive }) => updateStaffUser(id, { isActive }),
     onSuccess: () => {
       toast.success('User updated.');
+      setToToggleActive(null);
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (error) => toast.error(apiMessage(error)),
   });
 
   const [created, setCreated] = useState(null); // one-time credential reveal, from a password reset
+  const [toResetPassword, setToResetPassword] = useState(null); // the user row awaiting confirmation
   // Reveals through the same one-time-password modal — the response only
   // carries { tempPassword }, so the row's own name/email (already in hand
   // at click time) fills in the rest of that modal's shape.
   const resetPasswordMutation = useMutation({
     mutationFn: (u) => resetStaffPassword(u._id).then((data) => ({ user: u, ...data, reset: true })),
-    onSuccess: (data) => setCreated(data),
+    onSuccess: (data) => {
+      setToResetPassword(null);
+      setCreated(data);
+    },
     onError: (error) => toast.error(apiMessage(error)),
   });
 
@@ -62,14 +70,7 @@ export default function UserListPage() {
     onError: (error) => toast.error(apiMessage(error)),
   });
 
-  async function copyPassword() {
-    try {
-      await navigator.clipboard.writeText(created.tempPassword);
-      toast.success('Temporary password copied.');
-    } catch {
-      toast.error('Could not copy — select and copy it manually.');
-    }
-  }
+  const copyPassword = () => copyToClipboard(created.tempPassword, { successMessage: 'Temporary password copied.' });
 
   const columns = [
     {
@@ -105,20 +106,14 @@ export default function UserListPage() {
       render: (u) =>
         canManage && u._id !== viewer.id ? (
           <span className="flex justify-end gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              isLoading={resetPasswordMutation.isPending}
-              onClick={() => resetPasswordMutation.mutate(u)}
-            >
+            <Button size="sm" variant="ghost" onClick={() => setToResetPassword(u)}>
               Reset password
             </Button>
             <Button
               size="sm"
               variant="ghost"
               className={u.isActive ? 'hover:text-danger' : ''}
-              isLoading={toggleActiveMutation.isPending}
-              onClick={() => toggleActiveMutation.mutate({ id: u._id, isActive: !u.isActive })}
+              onClick={() => setToToggleActive(u)}
             >
               {u.isActive ? 'Deactivate' : 'Reactivate'}
             </Button>
@@ -131,7 +126,7 @@ export default function UserListPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-[1600px]">
       <PageHeader
         title="Team"
         description="Every staff and worker login. To create a new one, open the person's Employee profile."
@@ -153,7 +148,7 @@ export default function UserListPage() {
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted">
               Their old password no longer works. Hand this new one to{' '}
-              <span className="font-medium text-text">{created.user.name}</span> — it's shown{' '}
+              <span className="font-medium text-text">{created.user.name}</span> — it&apos;s shown{' '}
               <span className="font-medium text-text">once</span>, copy it now.
             </p>
             <div className="rounded-lg border border-border bg-bg p-3">
@@ -179,6 +174,28 @@ export default function UserListPage() {
         loading={deleteMutation.isPending}
         onConfirm={() => deleteMutation.mutate(toDelete._id)}
         onCancel={() => setToDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(toResetPassword)}
+        title="Reset password?"
+        message={`${toResetPassword?.name}'s current password will stop working immediately, replaced by a new one-time temporary password you'll need to hand to them.`}
+        loading={resetPasswordMutation.isPending}
+        onConfirm={() => resetPasswordMutation.mutate(toResetPassword)}
+        onCancel={() => setToResetPassword(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(toToggleActive)}
+        title={toToggleActive?.isActive ? 'Deactivate login?' : 'Reactivate login?'}
+        message={
+          toToggleActive?.isActive
+            ? `${toToggleActive?.name} will immediately lose access to their account.`
+            : `${toToggleActive?.name} will immediately regain access to their account.`
+        }
+        loading={toggleActiveMutation.isPending}
+        onConfirm={() => toggleActiveMutation.mutate({ id: toToggleActive._id, isActive: !toToggleActive.isActive })}
+        onCancel={() => setToToggleActive(null)}
       />
     </div>
   );

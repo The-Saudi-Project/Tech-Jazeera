@@ -1,39 +1,138 @@
 /**
- * Client-side deployment form schemas.
- *
- * Two schemas because assign needs a worker and transfer does not (the worker
- * is fixed by the deployment being transferred). They otherwise share the
- * same placement fields.
+ * Client-side deployment form schemas — monthly hours entry/correction,
+ * Demobilise, and a narrow details Edit (2026-09-16, the user's own ask —
+ * see deployments.api.js's updateDeployment).
  */
 import { z } from 'zod';
-import { DEPLOYMENT_SHIFTS } from '../../lib/constants.js';
+import { DEMOBILISATION_OUTCOME } from '../../lib/constants.js';
 
-const optional = z.string().trim().max(1000).optional().or(z.literal(''));
+const optionalStr = (max) => z.string().trim().max(max).optional().or(z.literal(''));
 
-const placement = {
-  client: z.string().min(1, 'Select a client.'),
-  site: z.string().min(1, 'Select a site.'),
-  vehicle: z.string().trim().max(60).optional().or(z.literal('')),
-  driver: z.string().trim().max(100).optional().or(z.literal('')),
-  shift: z.enum(DEPLOYMENT_SHIFTS),
-  startDate: z.string().min(1, 'Start date is required.'),
-  notes: optional,
-};
+/** Mirrors deployment.service.js's own outcome resolution exactly — used
+ *  client-side only for UI branching (the inline warning, and whether to
+ *  show the post-demobilise EOSB prompt), never trusted as authoritative:
+ *  the server independently recomputes and enforces the same rule. */
+export function resolveDemobiliseOutcome(workerType, reason, exitOutcome) {
+  if (workerType !== 'Employee') return 'Standby';
+  if (reason === 'Other') return exitOutcome ? 'Exit' : 'Standby';
+  return DEMOBILISATION_OUTCOME[reason] ?? 'Standby';
+}
 
-export const assignFormSchema = z.object({
-  worker: z.string().min(1, 'Select a worker.'),
-  ...placement,
-});
+/** Real day count for a 'YYYY-MM' string (28-31) — mirrors the server's own
+ *  daysInMonth (deployment.service.js) exactly, so the grid always renders
+ *  the right number of day inputs for the selected month. */
+export function daysInMonth(monthStr) {
+  if (!monthStr) return 0;
+  const [y, m] = monthStr.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
 
-export const transferFormSchema = z.object({ ...placement });
+// Reverted 2026-09-16 (the user's own ask) from a day-by-day grid (added
+// 2026-09-12, see docs/DEPLOYMENT-notes.md's own follow-up on that) back to
+// two typed totals transcribed straight off the client's own timesheet —
+// the shape this app originally used before the daily grid existed (see
+// docs/MOBILISATION-notes.md's 2026-09-12 follow-up). `otHours` is still
+// always server-computed, never sent from here — the formula itself now
+// depends on worker type (2026-09-19, the user's own ask): SupplierEmployee
+// is `max(0, actualHours - supplierHours)`, Employee/Freelancer stay
+// `max(0, actualHours - contractHours)` — see deployment.service.js's
+// computeOtHours.
+//
+// `supplierHours` is required only for a SupplierEmployee deployment — this
+// schema is built per-form-instance (via `workerType`) rather than static,
+// since only DeploymentDetailPage knows which deployment it's rendering for.
+// Bounds mirror deployment.validation.js's own actualHours/supplierHours/
+// deductionAmount exactly (2026-09-29, a real audit finding: this used to
+// only check non-empty, so a negative or wildly-too-high value passed here
+// and only ever got caught by a raw server-error toast instead of inline
+// field feedback).
+const hoursField = (message) =>
+  z
+    .string()
+    .min(1, message)
+    .refine((v) => !Number.isNaN(Number(v)), message)
+    .refine((v) => Number(v) >= 0, 'Cannot be negative.')
+    .refine((v) => Number(v) <= 1000, 'That looks too high for one month — check the figure.');
 
-/** Defaults shared by both forms. `worker` is added by the assign page. */
-export const emptyPlacement = {
-  client: '',
-  site: '',
-  vehicle: '',
-  driver: '',
-  shift: 'Day',
-  startDate: new Date().toISOString().slice(0, 10), // today, editable
+export function buildMonthlyHoursFormSchema(workerType) {
+  return z.object({
+    month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Choose a month.'),
+    actualHours: hoursField('Enter the client timesheet hours.'),
+    supplierHours:
+      workerType === 'SupplierEmployee'
+        ? hoursField('Enter the supplier timesheet hours.')
+        : z.string().optional().or(z.literal('')),
+    deductionAmount: z
+      .string()
+      .optional()
+      .or(z.literal(''))
+      .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0), 'Cannot be negative.')
+      .refine((v) => !v || Number(v) <= 1_000_000, 'That looks too high — check the figure.'),
+    notes: optionalStr(500),
+  });
+}
+
+export const emptyMonthlyHoursForm = {
+  month: '',
+  actualHours: '',
+  supplierHours: '',
+  deductionAmount: '',
   notes: '',
 };
+
+const DAILY_STATUS_LETTER = { Off: 'F', Sick: 'S', Absent: 'A' };
+
+/** A saved {status, hours} day → the single display string — read-only use
+ *  only now (DeploymentDetailPage's collapsible breakdown for a pre-
+ *  2026-09-16 entry that still has real dailyHours; see deployment.model.js's
+ *  own doc comment on why that array is never written to again). */
+export function dailyEntryToString(day) {
+  const letter = DAILY_STATUS_LETTER[day.status];
+  return letter ?? String(day.hours ?? '');
+}
+
+export function monthlyHoursEntryToForm(entry) {
+  return {
+    month: entry.month,
+    actualHours: String(entry.actualHours ?? ''),
+    supplierHours: entry.supplierHours != null ? String(entry.supplierHours) : '',
+    deductionAmount: entry.deductionAmount ? String(entry.deductionAmount) : '',
+    notes: entry.notes ?? '',
+  };
+}
+
+// `exitOutcome` only matters when reason === 'Other' — every other reason
+// has a fixed outcome (see deployment.model.js's DEMOBILISATION_OUTCOME,
+// mirrored in lib/constants.js). Kept as a plain boolean, not coerced from a
+// checkbox string, since DemobiliseForm controls it directly via setValue.
+export const demobiliseFormSchema = z.object({
+  releaseDate: z.string().min(1, 'Demobilisation date is required.'),
+  reason: z.string().min(1, 'Choose a reason.'),
+  exitOutcome: z.boolean().optional(),
+  releaseNote: optionalStr(1000),
+});
+
+export const emptyDemobiliseForm = {
+  releaseDate: new Date().toISOString().slice(0, 10),
+  reason: '',
+  exitOutcome: false,
+  releaseNote: '',
+};
+
+/** Mirrors the server's own updateDeploymentSchema exactly — see that
+ *  file's doc comment for why this stops at these 4 fields. */
+export const editDeploymentFormSchema = z.object({
+  site: optionalStr(150),
+  workerName: optionalStr(150),
+  requiredTimesheetHours: z.string().optional().or(z.literal('')),
+  notes: optionalStr(1000),
+});
+
+export function deploymentToEditForm(deployment) {
+  return {
+    site: deployment.site ?? '',
+    workerName: deployment.workerName ?? '',
+    requiredTimesheetHours: deployment.requiredTimesheetHours != null ? String(deployment.requiredTimesheetHours) : '',
+    notes: deployment.notes ?? '',
+  };
+}

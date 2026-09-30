@@ -7,6 +7,15 @@
  * with a long version list) never pushes its content off-screen.
  *
  * `size` picks the max width; default 'md' preserves every existing caller.
+ * 'screen' (added for DeploymentOverviewModal's spreadsheet-style table,
+ * 2026-09-17) goes further than 'full' — near-edge-to-edge width, top-aligned
+ * instead of vertically centered, and a FIXED height (not just a cap) that
+ * fills nearly the whole viewport regardless of how much content there is —
+ * so a short table doesn't leave the dialog small and centered with dead
+ * space above/below it; the content area (below) is a flex child that grows
+ * to fill that fixed height, letting a caller's own inner scroll region (e.g.
+ * a table with a sticky header/footer) use the space directly instead of the
+ * whole dialog scrolling as one block.
  * The backdrop is the app's one intentional use of glass: a frosted scrim that
  * pushes the page back without hiding it.
  */
@@ -20,6 +29,14 @@ const sizeClasses = {
   lg: 'max-w-2xl',
   xl: 'max-w-5xl',
   full: 'max-w-[calc(100vw-2rem)]',
+  screen: 'max-w-[calc(100vw-1rem)]',
+};
+
+// 'screen' gets a FIXED height (fills the viewport regardless of content);
+// every other size keeps the original max-height cap (shrinks to fit its
+// own content, up to that cap).
+const heightClasses = {
+  screen: 'h-[calc(100vh-1.5rem)]',
 };
 
 export default function Modal({ open, onClose, title, size = 'md', children }) {
@@ -39,7 +56,12 @@ export default function Modal({ open, onClose, title, size = 'md', children }) {
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex justify-center overflow-y-auto p-4 sm:items-center sm:p-6">
+    <div
+      className={cn(
+        'fixed inset-0 z-50 flex justify-center overflow-y-auto',
+        size === 'screen' ? 'items-start p-2 sm:p-3' : 'p-4 sm:items-center sm:p-6'
+      )}
+    >
       <div
         className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm animate-overlay-in"
         onClick={onClose}
@@ -50,8 +72,10 @@ export default function Modal({ open, onClose, title, size = 'md', children }) {
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'relative my-auto flex max-h-[90vh] w-full flex-col overflow-hidden',
-          'rounded-2xl border border-border bg-surface shadow-xl animate-in fade-in zoom-in-95 duration-200 ease-out',
+          'relative flex w-full flex-col overflow-hidden',
+          size === 'screen' ? '' : 'my-auto',
+          'rounded-2xl border border-border/60 bg-surface/95 backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 ease-out',
+          heightClasses[size] || 'max-h-[90vh]',
           sizeClasses[size] || sizeClasses.md
         )}
       >
@@ -70,7 +94,7 @@ export default function Modal({ open, onClose, title, size = 'md', children }) {
             </button>
           </div>
         )}
-        <div className="overflow-y-auto px-6 py-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </div>,
     document.body

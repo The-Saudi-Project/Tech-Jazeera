@@ -37,7 +37,7 @@ export default function SubcontractorListPage() {
   const { user } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const canWrite = Boolean(user.sectionAccess?.includes('subcontractorsManage'));
+  const canWrite = Boolean(user.sectionAccessWrite?.includes('subcontractorsManage'));
   const canDelete = canWrite;
 
   const [search, setSearch] = useState('');
@@ -140,7 +140,7 @@ export default function SubcontractorListPage() {
   const noFilters = !params.search && !params.status;
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-[1600px]">
       <PageHeader
         title={t('staffSubcontractors.pageTitle')}
         description={t('staffSubcontractors.pageDescription')}

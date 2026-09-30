@@ -14,8 +14,34 @@
 import ApprovalRole from './approvalRole.model.js';
 import User from '../auth/user.model.js';
 import ApiError from '../../utils/ApiError.js';
+import logger from '../../config/logger.js';
 import { logAudit } from '../audit/audit.service.js';
 import { notifyUser, notifyEmployeeUser } from '../notifications/notification.service.js';
+
+/**
+ * Never let a notification failure abort the business transition that
+ * already committed above it (fixed 2026-09-15, a real QA-audit-found gap
+ * — F2): `notifyFinal`/`notifyUser` used to be awaited inline with nothing
+ * catching a throw, so e.g. a `Notification.create` failure inside
+ * `decideApprovalStep`'s terminal Approved branch propagated straight out
+ * — meaning the CALLER's own post-decision code never ran at all, even
+ * though the decision itself had already been durably persisted just
+ * above. Concretely: mobilisation.service.js's `approveMobilisation` never
+ * reached its `createDeploymentFromMobilisation` call, since the
+ * `decideApprovalStep(...)` call it was awaiting never returned — leaving
+ * an Approved mobilisation with no Deployment and no normal retry path
+ * (the existing compensating rollback there only catches a
+ * Deployment-creation failure, not one that happened before that code was
+ * ever reached). Notifications are inherently best-effort — logged, never
+ * allowed to silently swallow an error either.
+ */
+async function notifyBestEffort(fn) {
+  try {
+    await fn();
+  } catch (err) {
+    logger.error(`[approvalEngine] notification dispatch failed: ${err.message}`);
+  }
+}
 
 /**
  * Is `actor` allowed to decide a step whose pool is `stepRoleIds`? Admin is
@@ -25,15 +51,34 @@ import { notifyUser, notifyEmployeeUser } from '../notifications/notification.se
  * membership" from "decided via the Admin override" so the Approval Log can
  * show it transparently.
  */
+// isActive: true (2026-09-14 QA-audit fix): a step's `roles` snapshot
+// references a role by id forever (roles are deactivated, never deleted),
+// but a DISABLED role must stop granting real decide authority the moment
+// it's disabled, not just stop appearing in new workflow configuration.
 export async function resolveStepAuthority(actor, stepRoleIds) {
   if (stepRoleIds?.length) {
-    const matchedRole = await ApprovalRole.findOne({ _id: { $in: stepRoleIds }, members: actor.userId })
+    const matchedRole = await ApprovalRole.findOne({ _id: { $in: stepRoleIds }, members: actor.userId, isActive: true })
       .select('_id')
       .lean();
     if (matchedRole) return { authorized: true, roleId: matchedRole._id, viaAdminOverride: false };
   }
   if (actor.role === 'Admin') return { authorized: true, roleId: null, viaAdminOverride: true };
   return { authorized: false, roleId: null, viaAdminOverride: false };
+}
+
+/** The role ids `annotateCanDecide` would need to check membership of for
+ *  ONE module's items — extracted so a caller juggling several modules
+ *  (getMyPendingActions) can union them across all of its calls first and
+ *  resolve membership once, instead of once per module. */
+export function roleIdsNeededAcross(items, pendingStatus) {
+  const roleIdsNeeded = new Set();
+  for (const item of items) {
+    if (item.status === pendingStatus && item.workflow) {
+      const step = item.steps?.[item.currentStep];
+      for (const roleId of step?.roles ?? []) roleIdsNeeded.add((roleId._id ?? roleId).toString());
+    }
+  }
+  return roleIdsNeeded;
 }
 
 /**
@@ -51,28 +96,49 @@ export async function resolveStepAuthority(actor, stepRoleIds) {
  * @param {{userId:string, role:string}} actor
  * @param {string} pendingStatus    status value meaning "awaiting decision"
  * @param {string[]} legacyAllowedRoles  same list passed to decideApprovalStep
+ * @param {Set<string>} [memberRoleIds]  ALREADY-resolved "which role ids is
+ *   this actor an active member of" (2026-09-22, a real QA-audit finding —
+ *   P3: "batch approval-role membership checks"). Every existing caller
+ *   still gets its own single query exactly as before by leaving this out —
+ *   it exists for a caller like getMyPendingActions that calls this
+ *   function once per module and would otherwise pay for the same "which
+ *   roles is this actor in" question up to once per module. Computed with
+ *   roleIdsNeededAcross(), below, over the UNION of every module's items.
  */
-export async function annotateCanDecide(items, actor, { pendingStatus, legacyAllowedRoles }) {
-  const roleIdsNeeded = new Set();
-  for (const item of items) {
-    if (item.status === pendingStatus && item.workflow) {
-      const step = item.steps?.[item.currentStep];
-      for (const roleId of step?.roles ?? []) roleIdsNeeded.add((roleId._id ?? roleId).toString());
+export async function annotateCanDecide(
+  items,
+  actor,
+  { pendingStatus, legacyAllowedRoles, memberRoleIds: providedMemberRoleIds, isInLegacyScope } = {}
+) {
+  let memberRoleIds = providedMemberRoleIds;
+  if (!memberRoleIds) {
+    const roleIdsNeeded = roleIdsNeededAcross(items, pendingStatus);
+    memberRoleIds = new Set();
+    if (roleIdsNeeded.size > 0) {
+      const roles = await ApprovalRole.find({ _id: { $in: [...roleIdsNeeded] }, members: actor.userId, isActive: true })
+        .select('_id')
+        .lean();
+      memberRoleIds = new Set(roles.map((r) => r._id.toString()));
     }
-  }
-
-  let memberRoleIds = new Set();
-  if (roleIdsNeeded.size > 0) {
-    const roles = await ApprovalRole.find({ _id: { $in: [...roleIdsNeeded] }, members: actor.userId })
-      .select('_id')
-      .lean();
-    memberRoleIds = new Set(roles.map((r) => r._id.toString()));
   }
 
   return items.map((item) => {
     if (item.status !== pendingStatus) return { ...item, canDecideCurrentStep: false };
     if (!item.workflow) {
-      return { ...item, canDecideCurrentStep: legacyAllowedRoles.includes(actor.role) };
+      // Fixed 2026-09-29, a real audit finding: this had no way to apply the
+      // same per-item scope check `decideApprovalStep`'s own legacy path
+      // enforces via its `assertScope` parameter (e.g. Leave's Coordinator-
+      // team check) — a role-list match alone let this flag say "you can
+      // decide this" for an item the real decide call would actually 403 on
+      // (a Coordinator's own self-submitted request, or another team's
+      // request), including inflating a "waiting on you" count with items
+      // that were never actually theirs to decide. `isInLegacyScope` is
+      // never consulted on the workflow branch below, same reasoning
+      // `assertScope` itself documents — step-role membership IS the scope
+      // there.
+      const roleOk = legacyAllowedRoles.includes(actor.role);
+      const scopeOk = isInLegacyScope ? isInLegacyScope(item) : true;
+      return { ...item, canDecideCurrentStep: roleOk && scopeOk };
     }
     const step = item.steps?.[item.currentStep];
     const stepRoleIds = (step?.roles ?? []).map((roleId) => (roleId._id ?? roleId).toString());
@@ -81,10 +147,13 @@ export async function annotateCanDecide(items, actor, { pendingStatus, legacyAll
   });
 }
 
-/** Every distinct User id holding any of `roleIds` — for next-step notifications. */
+/** Every distinct User id holding any of `roleIds` — for next-step
+ *  notifications. `isActive: true` (2026-09-14 QA-audit fix): a disabled
+ *  role's members shouldn't be proactively notified as if they still held
+ *  real decide authority. */
 export async function membersOfRoles(roleIds) {
   if (!roleIds?.length) return [];
-  const roles = await ApprovalRole.find({ _id: { $in: roleIds } }).select('members').lean();
+  const roles = await ApprovalRole.find({ _id: { $in: roleIds }, isActive: true }).select('members').lean();
   const ids = new Set();
   for (const role of roles) for (const memberId of role.members) ids.add(memberId.toString());
   return [...ids];
@@ -122,7 +191,13 @@ export async function notifySubmission(doc, buildStepNotification, legacyAllowed
     userIds = [...ids];
   }
 
-  await Promise.all(userIds.map((userId) => notifyUser(userId, notification)));
+  // Best-effort, same reasoning as decideApprovalStep's own notifyBestEffort
+  // above (2026-09-15, F2's sibling case): the request itself is already
+  // persisted by the time a caller reaches this call — a notification
+  // failure here must not turn an already-successful submission into a
+  // 500 response for the caller (or worse, invite an accidental duplicate
+  // resubmit).
+  await notifyBestEffort(() => Promise.all(userIds.map((userId) => notifyUser(userId, notification))));
 }
 
 /**
@@ -163,34 +238,63 @@ export async function decideApprovalStep({
 }) {
   const doc = await Model.findById(id);
   if (!doc) throw new ApiError(404, notFoundMessage);
-  if (doc.status !== pendingStatus) {
-    throw new ApiError(400, `Only requests pending review can be decided.`);
-  }
+
+  // Deliberately NOT throwing here on `doc.status !== pendingStatus` (fixed
+  // 2026-09-22, a real QA-audit finding — F1's own flaky test, reconciled).
+  // A stale advisory check like that against this READ raced against every
+  // branch's own atomic conditional update below (all of which already,
+  // consistently, return 409 on a lost race — the `findOneAndUpdate`
+  // filters two lines down are the real, single source of truth for "is
+  // this still decidable"). Depending on exactly how two concurrent
+  // decisions interleaved, the loser could either lose HERE (this doc read
+  // landing after the winner's write already committed → 400) or lose AT
+  // the atomic update (this read landing before the winner's write → 409)
+  // — the same request, the same two racing actors, two different status
+  // codes purely from scheduling. The intended contract is simpler and now
+  // deterministic: 409 Conflict, always, for "this request is not pending
+  // review anymore" — whether that's because someone else decided it a
+  // millisecond ago in a live race or three days ago from a stale-open UI
+  // tab. (Authorization below still runs against this doc regardless of
+  // its status, which is correct — a non-authorized actor gets 403 rather
+  // than being told anything about the request's current state.)
 
   // ---- Legacy path: no workflow governs this request — today's original,
-  // untouched single-level behavior. ----
+  // single-level behavior. ----
   if (!doc.workflow) {
     if (assertScope) await assertScope(actor, doc.employee);
     if (!legacyAllowedRoles.includes(actor.role)) {
       throw new ApiError(403, 'You do not have permission to perform this action.');
     }
-    doc.status = decision;
-    doc.decidedBy = actor.userId;
-    doc.decidedAt = new Date();
-    doc.decisionNote = note;
-    await doc.save();
+    // Atomic update, not read-then-save (fixed 2026-09-15, a real QA-audit-
+    // found race — F1): two concurrent decisions (even a contradictory
+    // Approved + Rejected pair) could both pass the `doc.status !==
+    // pendingStatus` check above against the same stale read, then both
+    // `.save()` — both returning 200 with their own decision, whichever
+    // write landed last silently overwriting the other's, audit log and
+    // notification included for both. This is the exact same class of race
+    // the WORKFLOW path just below already atomically guards (its own
+    // `findOneAndUpdate({status, currentStep}, ...)`) — this legacy branch
+    // predates that fix and was never brought in line with it. The filter
+    // re-checks `status: pendingStatus` against the CURRENT document at
+    // write time; only the first of two concurrent requests can match it —
+    // the loser gets `null` back instead of silently succeeding.
+    const updated = await Model.findOneAndUpdate(
+      { _id: id, status: pendingStatus },
+      { $set: { status: decision, decidedBy: actor.userId, decidedAt: new Date(), decisionNote: note } },
+      { new: true }
+    ).lean();
+    if (!updated) throw new ApiError(409, 'This request was already decided by someone else.');
 
     await logAudit({
       user: actor.userId,
       action: `${auditAction}.${decision.toLowerCase()}`,
       targetType: Model.modelName,
-      targetId: doc._id,
+      targetId: updated._id,
       meta: { decisionNote: note },
       ip: actor.ip,
     });
-    const plain = doc.toObject();
-    await notifyFinal(plain, buildFinalNotification(plain));
-    return plain;
+    await notifyBestEffort(() => notifyFinal(updated, buildFinalNotification(updated)));
+    return updated;
   }
 
   // ---- Workflow path ----
@@ -235,7 +339,7 @@ export async function decideApprovalStep({
       meta: { decisionNote: note, step: stepIndex, viaAdminOverride },
       ip: actor.ip,
     });
-    await notifyFinal(updated, buildFinalNotification(updated));
+    await notifyBestEffort(() => notifyFinal(updated, buildFinalNotification(updated)));
     return updated;
   }
 
@@ -262,7 +366,7 @@ export async function decideApprovalStep({
       const nextStep = updated.steps[updated.currentStep];
       const memberIds = await membersOfRoles(nextStep?.roles);
       const notification = buildStepNotification(updated, updated.currentStep);
-      await Promise.all(memberIds.map((userId) => notifyUser(userId, notification)));
+      await notifyBestEffort(() => Promise.all(memberIds.map((userId) => notifyUser(userId, notification))));
     }
     return updated;
   }
@@ -286,6 +390,6 @@ export async function decideApprovalStep({
     meta: { decisionNote: note, step: stepIndex, viaAdminOverride },
     ip: actor.ip,
   });
-  await notifyFinal(updated, buildFinalNotification(updated));
+  await notifyBestEffort(() => notifyFinal(updated, buildFinalNotification(updated)));
   return updated;
 }

@@ -6,24 +6,83 @@
  */
 import { z } from 'zod';
 
-const optionalNumberString = z.string().optional().or(z.literal(''));
 const optionalStr = (max) => z.string().trim().max(max).optional().or(z.literal(''));
+
+// Bounds mirror mobilisation.validation.js's own optionalNonNegNumber/
+// optionalNonNegMoney/requiredNonNegNumber exactly (2026-09-29, a real audit
+// finding: these rate/commission/FTA/allowance fields had no bound at all
+// client-side, so a negative or absurdly large value passed here and only
+// ever got caught by a raw server-error toast). Rates/commissions/FTA/
+// allowance are per-hour or per-unit figures — a much smaller ceiling than
+// a money-total field is the honest bound; mobilisationCost is a one-time
+// lump sum, same higher ceiling deployment.schema.js's own deductionAmount
+// uses.
+const optionalRateNumberString = z
+  .string()
+  .optional()
+  .or(z.literal(''))
+  .refine((v) => !v || !Number.isNaN(Number(v)), 'Enter a valid number.')
+  .refine((v) => !v || Number(v) >= 0, 'Cannot be negative.')
+  .refine((v) => !v || Number(v) <= 100_000, 'That looks too high — check the figure.');
+const optionalMoneyNumberString = z
+  .string()
+  .optional()
+  .or(z.literal(''))
+  .refine((v) => !v || !Number.isNaN(Number(v)), 'Enter a valid number.')
+  .refine((v) => !v || Number(v) >= 0, 'Cannot be negative.')
+  .refine((v) => !v || Number(v) <= 1_000_000, 'That looks too high — check the figure.');
+const requiredRateNumberString = (message) =>
+  z
+    .string()
+    .min(1, message)
+    .refine((v) => !Number.isNaN(Number(v)), message)
+    .refine((v) => Number(v) >= 0, 'Cannot be negative.')
+    .refine((v) => Number(v) <= 100_000, 'That looks too high — check the figure.');
+
+// Saudi Iqama numbers are exactly 10 digits. Mirrors the server's own regex
+// in mobilisation.validation.js — only meaningful for a SupplierEmployee/
+// Freelancer mobilisation (typed directly; an Employee's comes from their
+// linked record instead).
+const optionalIqama = z
+  .string()
+  .trim()
+  .optional()
+  .or(z.literal(''))
+  .refine((value) => !value || /^\d{10}$/.test(value), {
+    message: 'Iqama number must be exactly 10 digits.',
+  });
 
 // Saudi mobile only (this company operates in Saudi Arabia) — local
 // 05XXXXXXXX (10 digits) or international +9665XXXXXXXX/9665XXXXXXXX (966 +
 // 9 digits starting with 5). Mirrors the server's own regex in
 // mobilisation.validation.js — scoped to Mobilisation's phone field only.
 const SAUDI_PHONE_REGEX = /^(?:\+?9665\d{8}|05\d{8})$/;
+// '+966' alone is the form's own pre-filled placeholder (see
+// emptyMobilisationForm below), not a value the coordinator actually typed
+// — treat it the same as empty, or every Own Employee mobilisation (whose
+// phone field isn't even rendered — the real number lives on their
+// Employee record) fails validation on a placeholder that was never
+// really "filled in". Bug found 2026-09-12: this silently blocked every
+// Own Employee Draft save with no visible error, since the errored field
+// wasn't in the DOM for that worker type — the toast/error UI had nothing
+// to point at. The transform also means '+966' never reaches the server
+// as if it were a real value.
 const optionalSaudiPhone = z
   .string()
   .trim()
   .optional()
   .or(z.literal(''))
+  .transform((value) => (value === '+966' ? '' : value))
   .refine((value) => !value || SAUDI_PHONE_REGEX.test(value), {
     message: 'Enter a valid Saudi mobile number (e.g. 05XXXXXXXX or +9665XXXXXXXX).',
   });
 
 export const WORKER_TYPES = ['Employee', 'SupplierEmployee', 'Freelancer'];
+
+// Mirrors the server's own FTA_TYPES in mobilisation.model.js — what the
+// `fta` amount actually covers. 'FTA' means Food+Travel+Accommodation
+// combined; the other three are the individual components.
+export const FTA_TYPES = ['FoodOnly', 'TravelOnly', 'AccommodationOnly', 'FTA'];
 
 const mobilisationFields = {
   workerType: z.enum(WORKER_TYPES),
@@ -32,27 +91,60 @@ const mobilisationFields = {
   // typed directly — required by the superRefine below, not here.
   worker: z.string().optional().or(z.literal('')),
   workerName: optionalStr(150),
-  iqamaNumber: optionalStr(50),
+  iqamaNumber: optionalIqama,
   nationality: optionalStr(80),
   phone: optionalSaudiPhone,
   jobTitle: z.string().trim().min(1, 'Job title is required.').max(150),
+  // Both moved into Worker & Job (2026-09-13, the user's own ask) — set by
+  // the coordinator/whoever creates this mobilisation up front, instead of
+  // waiting on the current-step reviewer's later Section 2 pass (see
+  // commercialDetailsFormSchema below, which no longer has them).
+  requiredTimesheetHours: optionalRateNumberString,
+  // otClientRate = billed to the client per OT hour; otEmployeeRate = paid
+  // out per OT hour to whoever actually worked it, no matter their worker
+  // type (2026-09-14 correction — see mobilisation.model.js).
+  otClientRate: optionalRateNumberString,
+  otEmployeeRate: optionalRateNumberString,
 
   client: z.string().min(1, 'Select a client.'),
-  clientRate: optionalNumberString,
-  clientCommission: optionalNumberString,
-  fta: optionalNumberString,
-  allowance: optionalNumberString,
-  requiredTimesheetHours: optionalNumberString,
+  site: optionalStr(150),
+  // Required (2026-09-13, the user's own ask) — every mobilisation needs a
+  // real client rate from the start.
+  clientRate: requiredRateNumberString('Client rate is required.'),
+  clientCommission: optionalRateNumberString,
+  fta: optionalRateNumberString,
+  ftaType: z.string().optional().or(z.literal('')),
+  allowance: optionalRateNumberString,
+  allowanceRemark: optionalStr(200),
+  // One-time cost of mobilising this worker (2026-09-19, the user's own
+  // ask) — mirrors mobilisation.model.js's own field.
+  mobilisationCost: optionalMoneyNumberString,
 
   // Subcontractor block only applies to SupplierEmployee — see superRefine.
   subcontractor: z.string().optional().or(z.literal('')),
-  subcontractorRate: optionalNumberString,
-  subcontractorCommission: optionalNumberString,
+  subcontractorRate: optionalRateNumberString,
+  subcontractorCommission: optionalRateNumberString,
+  // No otSubcontractorRate/otSubcontractorCommission here (removed
+  // 2026-09-14) — see otEmployeeRate above.
 
   mobilisationDate: z.string().min(1, 'Mobilisation date is required.'),
   checkoutDate: z.string().optional().or(z.literal('')),
 
   remark: optionalStr(1000),
+
+  // Only ever shown/used when an Office Secretary creates this "for" a
+  // Coordinator who's busy — see MobilisationForm's coordinatorCandidates
+  // prop. Left plain-optional here (the server is the real "required for
+  // Office Secretary" gate) since this same schema is shared with every
+  // other creator, for whom the field is simply never rendered.
+  onBehalfOf: z.string().optional().or(z.literal('')),
+
+  // Create-only, like onBehalfOf: the Requirements card + candidate this
+  // mobilisation was started from ("Start mobilisation" on a candidate). Never
+  // shown or typed — MobilisationNewPage fills them in from the URL, and the
+  // server verifies them. Blank for every mobilisation that didn't start there.
+  requirement: z.string().optional().or(z.literal('')),
+  requirementCandidate: z.string().optional().or(z.literal('')),
 };
 
 export const mobilisationFormSchema = z.object(mobilisationFields).superRefine((data, ctx) => {
@@ -65,6 +157,17 @@ export const mobilisationFormSchema = z.object(mobilisationFields).superRefine((
   if (data.workerType === 'SupplierEmployee' && !data.subcontractor) {
     ctx.addIssue({ code: 'custom', path: ['subcontractor'], message: 'Select a subcontractor.' });
   }
+  // Mirrors the server's own withFtaTypeRefine — the amount input is also
+  // disabled in the form until a type is picked, so this mostly guards
+  // against a stale value left over from unchecking the type. `fta` stays a
+  // STRING here (see this file's own header comment — numeric fields aren't
+  // coerced client-side), so a real bug: `data.fta && ...` treated the
+  // string "0" as truthy, wrongly demanding a type on every record whose FTA
+  // amount is exactly zero (the model's own default). `Number(data.fta) > 0`
+  // is the actual "was a real amount entered" check.
+  if (Number(data.fta) > 0 && !data.ftaType) {
+    ctx.addIssue({ code: 'custom', path: ['ftaType'], message: 'Select what this FTA amount is for.' });
+  }
 });
 
 export const emptyMobilisationForm = {
@@ -73,28 +176,42 @@ export const emptyMobilisationForm = {
   workerName: '',
   iqamaNumber: '',
   nationality: '',
-  phone: '',
+  phone: '+966',
   jobTitle: '',
+  requiredTimesheetHours: '',
+  otClientRate: '',
+  otEmployeeRate: '',
   client: '',
+  site: '',
   clientRate: '',
   clientCommission: '',
   fta: '',
+  ftaType: '',
   allowance: '',
-  requiredTimesheetHours: '',
+  allowanceRemark: '',
+  mobilisationCost: '',
   subcontractor: '',
   subcontractorRate: '',
   subcontractorCommission: '',
   mobilisationDate: new Date().toISOString().slice(0, 10),
   checkoutDate: '',
   remark: '',
+  onBehalfOf: '',
+  requirement: '',
+  requirementCandidate: '',
 };
 
 // --- M3: current-step reviewer's Section 2 (Office Secretary, then
-// Marketing Manager, once configured) — quotation/PO, actual timesheet
-// hours, overtime rates, remark. Every field optional: a reviewer fills in
-// what they have as it arrives. `otHours` is NOT here — it's server-derived
-// from clientTimesheetHours - requiredTimesheetHours (see
-// mobilisation.service.js's computeProfitFields), never typed in. ---
+// Marketing Manager, once configured) — the client/sub quotation-PO paper
+// trail, remark. Every field optional: a reviewer fills in what they have
+// as it arrives. No actual-hours field here at all (removed 2026-09-12) —
+// a real worker isn't placed yet at this stage, so there's no timesheet to
+// enter; that now lives entirely on the Deployment this mobilisation
+// produces once Approved (see features/deployments/deployments.schema.js's
+// day-by-day grid, filled in month by month as the client's real
+// timesheets arrive). No OT rate fields here either as of 2026-09-13 — the
+// user's own ask moved that responsibility to Section 1 (mobilisationFields
+// above), filled by the coordinator up front instead of the reviewer. ---
 
 export const commercialDetailsFormSchema = z.object({
   clientQuotation: optionalStr(100),
@@ -105,30 +222,8 @@ export const commercialDetailsFormSchema = z.object({
   subQuotationDate: z.string().optional().or(z.literal('')),
   subPO: optionalStr(100),
   subPODate: z.string().optional().or(z.literal('')),
-  clientTimesheetHours: optionalNumberString,
-  otClientRate: optionalNumberString,
-  otClientCommission: optionalNumberString,
-  otSubcontractorRate: optionalNumberString,
-  otSubcontractorCommission: optionalNumberString,
   remark: optionalStr(1000),
 });
-
-export const emptyCommercialDetailsForm = {
-  clientQuotation: '',
-  clientQuotationDate: '',
-  clientPO: '',
-  clientPODate: '',
-  subQuotation: '',
-  subQuotationDate: '',
-  subPO: '',
-  subPODate: '',
-  clientTimesheetHours: '',
-  otClientRate: '',
-  otClientCommission: '',
-  otSubcontractorRate: '',
-  otSubcontractorCommission: '',
-  remark: '',
-};
 
 export function commercialDetailsToForm(m) {
   return {
@@ -140,24 +235,25 @@ export function commercialDetailsToForm(m) {
     subQuotationDate: m.subQuotationDate ? m.subQuotationDate.slice(0, 10) : '',
     subPO: m.subPO ?? '',
     subPODate: m.subPODate ? m.subPODate.slice(0, 10) : '',
-    clientTimesheetHours: String(m.clientTimesheetHours ?? ''),
-    otClientRate: String(m.otClientRate ?? ''),
-    otClientCommission: String(m.otClientCommission ?? ''),
-    otSubcontractorRate: String(m.otSubcontractorRate ?? ''),
-    otSubcontractorCommission: String(m.otSubcontractorCommission ?? ''),
     remark: m.remark ?? '',
   };
 }
 
-/** Rejecting requires a note so the coordinator knows what to fix. */
+/** Rejecting requires a note (what to fix) and a rejectionTarget (who it
+ *  goes back to — Coordinator/OfficeSecretary/Both, mirrors the server's
+ *  decideMobilisationSchema exactly). */
 export const decideMobilisationFormSchema = z
   .object({
     status: z.enum(['Approved', 'Rejected']),
     decisionNote: optionalStr(500),
+    rejectionTarget: z.enum(['Coordinator', 'OfficeSecretary', 'Both']).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.status === 'Rejected' && !data.decisionNote) {
       ctx.addIssue({ code: 'custom', path: ['decisionNote'], message: 'Explain what needs fixing before rejecting.' });
+    }
+    if (data.status === 'Rejected' && !data.rejectionTarget) {
+      ctx.addIssue({ code: 'custom', path: ['rejectionTarget'], message: 'Choose who this should go back to.' });
     }
   });
 
@@ -168,14 +264,20 @@ export function mobilisationToForm(m) {
     workerName: m.workerName ?? '',
     iqamaNumber: m.iqamaNumber ?? '',
     nationality: m.nationality ?? '',
-    phone: m.phone ?? '',
+    phone: m.phone || '+966',
     jobTitle: m.jobTitle,
+    requiredTimesheetHours: String(m.requiredTimesheetHours ?? ''),
+    otClientRate: String(m.otClientRate ?? ''),
+    otEmployeeRate: String(m.otEmployeeRate ?? ''),
     client: m.client,
+    site: m.site ?? '',
     clientRate: String(m.clientRate ?? ''),
     clientCommission: String(m.clientCommission ?? ''),
     fta: String(m.fta ?? ''),
+    ftaType: m.ftaType ?? '',
     allowance: String(m.allowance ?? ''),
-    requiredTimesheetHours: String(m.requiredTimesheetHours ?? ''),
+    allowanceRemark: m.allowanceRemark ?? '',
+    mobilisationCost: String(m.mobilisationCost ?? ''),
     subcontractor: m.subcontractor ?? '',
     subcontractorRate: String(m.subcontractorRate ?? ''),
     subcontractorCommission: String(m.subcontractorCommission ?? ''),

@@ -13,15 +13,29 @@ import * as companySettingsService from './companySettings.service.js';
 const actor = (req) => ({ userId: req.user.id, role: req.user.role, ip: req.ip });
 
 async function assertCanManage(req) {
-  const allowed = await canAccessSection('companySettings', actor(req));
+  const allowed = await canAccessSection('companySettings', actor(req), 'write');
   if (!allowed) throw new ApiError(403, 'You do not have permission to manage company settings.');
 }
 
-/** GET /api/company-settings   (Section Access: companySettings) */
+async function assertCanRead(req) {
+  const allowed = await canAccessSection('companySettings', actor(req), 'read');
+  if (!allowed) throw new ApiError(403, 'You do not have permission to view company settings.');
+}
+
+/** GET /api/company-settings   (Section Access: companySettings, read) */
 export async function get(req, res) {
-  await assertCanManage(req);
+  await assertCanRead(req);
   const settings = await companySettingsService.getCompanySettings();
   res.json(new ApiResponse('Company settings.', settings));
+}
+
+/** GET /api/company-settings/branding — public, no auth, no Section Access
+ *  check (see companySettings.routes.js and the service function's own doc
+ *  comment): just the logo/name the app shell needs to brand itself,
+ *  everywhere from the pre-login screen to the ESS portal. */
+export async function getBranding(req, res) {
+  const branding = await companySettingsService.getCompanyBranding();
+  res.json(new ApiResponse('Company branding.', branding));
 }
 
 /** PATCH /api/company-settings   (Section Access: companySettings) */

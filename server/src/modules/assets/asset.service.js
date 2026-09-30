@@ -10,10 +10,8 @@ import AssetAssignment from './assetAssignment.model.js';
 import Employee from '../employees/employee.model.js';
 import ApiError from '../../utils/ApiError.js';
 import { logAudit } from '../audit/audit.service.js';
-
-function escapeRegex(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+import { assertEmployeeVisibleToActor } from '../employees/employee.service.js';
+import { escapeRegex } from '../../utils/escapeRegex.js';
 
 export async function createAsset(data, actor) {
   const existing = await Asset.findOne({ assetTag: data.assetTag.toUpperCase() }).lean();
@@ -32,6 +30,16 @@ export async function createAsset(data, actor) {
 }
 
 export async function updateAsset(id, data, actor) {
+  // Fixed 2026-09-17, a follow-up QA-audit gap: getAsset already checks
+  // team ownership on a currently-assigned asset (below); update never did,
+  // so a Coordinator granted asset write could edit an asset in use by a
+  // foreign team. A no-op for any non-Coordinator role, and an unassigned
+  // asset (nobody's) stays editable, same convention as getAsset.
+  const existing = await Asset.findById(id).lean();
+  if (!existing) throw new ApiError(404, 'Asset not found.');
+  if (existing.currentEmployee) {
+    await assertEmployeeVisibleToActor(existing.currentEmployee, actor);
+  }
   const asset = await Asset.findByIdAndUpdate(id, data, { new: true, runValidators: true }).lean();
   if (!asset) throw new ApiError(404, 'Asset not found.');
   await logAudit({
@@ -98,6 +106,20 @@ export async function assignAsset(assetId, data, actor) {
   if (employee.status === 'Exited') {
     throw new ApiError(400, 'This employee has exited the company and cannot be assigned an asset.');
   }
+  await assertEmployeeVisibleToActor(employee._id, actor);
+
+  // Fixed 2026-09-29, a real audit finding: `assignedAt` had no range check
+  // at all, on either layer — an asset could be assigned before it was ever
+  // purchased, or arbitrarily far in the future. The purchase-date check
+  // needs the real Asset record, so it belongs here, not in the Zod schema.
+  const assignedAt = data.assignedAt ?? new Date();
+  if (asset.purchaseDate && assignedAt < asset.purchaseDate) {
+    throw new ApiError(400, 'Assignment date cannot be before the asset was purchased.');
+  }
+  const oneDayFromNow = new Date(Date.now() + 86_400_000);
+  if (assignedAt > oneDayFromNow) {
+    throw new ApiError(400, 'Assignment date cannot be in the future.');
+  }
 
   const session = await mongoose.startSession();
   try {
@@ -111,7 +133,7 @@ export async function assignAsset(assetId, data, actor) {
             assetName: asset.name,
             employee: employee._id,
             employeeName: employee.fullName,
-            assignedAt: data.assignedAt ?? new Date(),
+            assignedAt,
             notes: data.notes,
             status: 'Active',
           },
@@ -146,6 +168,10 @@ export async function returnAsset(assetId, data, actor) {
   if (!asset) throw new ApiError(404, 'Asset not found.');
   const active = await AssetAssignment.findOne({ asset: assetId, status: 'Active' });
   if (!active) throw new ApiError(400, 'This asset is not currently assigned.');
+  // Fixed 2026-09-15, a real QA-audit-found gap — A1: same missing
+  // team-ownership check as assignAsset above (which already had it) —
+  // returning had none at all, unassigning a foreign employee's asset.
+  await assertEmployeeVisibleToActor(active.employee, actor);
 
   const session = await mongoose.startSession();
   try {
@@ -170,13 +196,23 @@ export async function returnAsset(assetId, data, actor) {
   }
 }
 
-export async function listAssets({ page, limit, category, status, search }) {
+// Fixed 2026-09-15, a real QA-audit-found gap — A1: this had no actor-based
+// scoping at all, unlike getAsset below — a Coordinator could list every
+// asset including who's currently holding each one, even though opening a
+// foreign employee's own assigned asset correctly 403s. Same pattern as
+// listDocuments/listEmployeeAssignments: an unassigned asset (nobody's) is
+// always visible; one assigned to a foreign employee is not.
+export async function listAssets({ page, limit, category, status, search }, actor) {
   const conditions = [];
   if (category) conditions.push({ category });
   if (status) conditions.push({ status });
   if (search) {
     const rx = { $regex: escapeRegex(search), $options: 'i' };
     conditions.push({ $or: [{ assetTag: rx }, { name: rx }] });
+  }
+  if (actor?.role === 'Coordinator') {
+    const teamIds = await Employee.find({ coordinator: actor.userId }).distinct('_id');
+    conditions.push({ $or: [{ currentEmployee: null }, { currentEmployee: { $in: teamIds } }] });
   }
   const filter = conditions.length > 0 ? { $and: conditions } : {};
 
@@ -192,15 +228,35 @@ export async function listAssets({ page, limit, category, status, search }) {
   return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }
 
-export async function getAsset(id) {
+export async function getAsset(id, actor) {
   const asset = await Asset.findById(id).populate('currentEmployee', 'fullName employeeId').lean();
   if (!asset) throw new ApiError(404, 'Asset not found.');
-  const history = await AssetAssignment.find({ asset: id }).sort({ assignedAt: -1 }).lean();
+  if (asset.currentEmployee) {
+    await assertEmployeeVisibleToActor(asset.currentEmployee._id, actor);
+  }
+  let history = await AssetAssignment.find({ asset: id }).sort({ assignedAt: -1 }).lean();
+  // Fixed 2026-09-17, a follow-up QA-audit gap: the ownership check above
+  // only fires while the asset is CURRENTLY assigned — once returned,
+  // currentEmployee goes back to null and the full history (every past
+  // assignment, any team) was returned unfiltered. Rather than blocking the
+  // whole (now-unassigned, nobody's) asset, filter the history itself —
+  // same team lookup listAssets already does. A no-op for any
+  // non-Coordinator role.
+  if (actor?.role === 'Coordinator') {
+    const teamIds = await Employee.find({ coordinator: actor.userId }).distinct('_id');
+    const teamIdSet = new Set(teamIds.map(String));
+    history = history.filter((h) => teamIdSet.has(String(h.employee)));
+  }
   return { ...asset, history };
 }
 
 /** An employee's currently-assigned assets + their assignment history — used
- *  by both the Employee profile panel and /api/me/assets. */
-export async function listEmployeeAssignments(employeeId) {
+ *  by both the Employee profile panel and /api/me/assets (the latter passes
+ *  no `actor` — a Worker/Staff viewing their OWN assets needs no Coordinator
+ *  scoping, since assertEmployeeVisibleToActor is a no-op for any non-
+ *  Coordinator actor, undefined included). Coordinator scoping added
+ *  2026-09-14, a real QA-audit-found gap: this had none at all before. */
+export async function listEmployeeAssignments(employeeId, actor) {
+  await assertEmployeeVisibleToActor(employeeId, actor);
   return AssetAssignment.find({ employee: employeeId }).sort({ assignedAt: -1 }).lean();
 }

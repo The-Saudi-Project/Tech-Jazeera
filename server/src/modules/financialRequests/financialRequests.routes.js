@@ -61,7 +61,7 @@ const router = Router();
 
 router.use(requireAuth);
 
-const canDecideFinancialRequests = requireSectionAccess('financialRequests');
+const canDecideFinancialRequests = requireSectionAccess('financialRequests', 'write');
 const canHandleMoney = requireRoles('Admin', 'Manager', 'HR', 'Accounts');
 
 router.get(
@@ -128,7 +128,6 @@ router.patch(
 
 /** Same orphaned-upload cleanup as me.routes.js/document.routes.js — only
  *  the reimbursement POST above ever sets req.file on this router. */
-// eslint-disable-next-line no-unused-vars
 router.use((err, req, res, next) => {
   if (req.file?.filename) {
     destroyDocumentFile(req.file.filename).catch((cleanupErr) =>

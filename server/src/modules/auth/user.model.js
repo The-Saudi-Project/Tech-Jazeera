@@ -59,12 +59,14 @@ import mongoose from 'mongoose';
  * (typically HR, Accounts, or the self-service `Staff`).
  *
  * `Office Secretary` (added for the Mobilisation module's post-Coordinator
- * review stage) is narrow like `Executive`, NOT `Coordinator` — excluded
- * from STAFF_ROLES (see rbac.js), so it is denied every CRUD module by
- * default. It reaches a specific mobilisation only by being an ApprovalRole
- * member on that record's current workflow step — the same mechanism
- * Marketing Manager already used before this role existed — never a blanket
- * company-wide grant. See `requireStaffOrOfficeSecretary` in rbac.js.
+ * review stage) started narrow like `Executive` — excluded from
+ * STAFF_ROLES, denied every CRUD module by default, reaching a specific
+ * mobilisation only via ApprovalRole membership on its current workflow
+ * step. Moved INTO STAFF_ROLES 2026-09-13 (see rbac.js's own doc comment
+ * and docs/RBAC-notes.md) once a second real use case — self-marking her
+ * own attendance — came up: full company-wide floor now, same as
+ * Coordinator/HR/Manager/Accounts, gated the normal way by real Section
+ * Access grants rather than being structurally unreachable.
  */
 export const ROLES = [
   'Admin',
@@ -99,6 +101,32 @@ const userSchema = new mongoose.Schema(
     // Links a login to its person record. Universal for every non-Admin
     // login (Own or Client Employee.type alike) — null only for Admin.
     employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', default: null },
+    // Set on every password change/reset (self-service or Admin-initiated),
+    // never on any other update (added 2026-09-14, a real QA-audit-found
+    // gap) — kept as a plain audit/display timestamp. `null` (no password
+    // change on record yet, e.g. seed-admin's first run) is normal.
+    passwordChangedAt: { type: Date, default: null },
+    // The actual access-token revocation mechanism (added 2026-09-15,
+    // replacing the 2026-09-14 fix above's own approach — a real QA-audit-
+    // found gap, F8): requireAuth used to compare `passwordChangedAt`
+    // (millisecond precision) against the access token's `iat` claim
+    // (jsonwebtoken always floors this to whole SECONDS, a JWT/JOSE spec
+    // requirement, not a bug in that library) — a token issued a fraction
+    // of a second after a password reset, in the SAME calendar second,
+    // read as "issued before" the reset and was wrongly rejected,
+    // including on the very login that reset just enabled. Comparing two
+    // clocks of different precision has no safe rounding direction (the
+    // report that found this confirmed rounding the other way just
+    // reauthorizes a genuinely-old same-second token instead) — a
+    // monotonic counter sidesteps clock precision entirely. Every
+    // newly-issued access token embeds the CURRENT `tokenVersion`
+    // (auth.service.js's issueTokens); every password change/reset
+    // increments it; requireAuth rejects a token whose embedded value
+    // doesn't match. A token from before this field existed carries no
+    // `tokenVersion` claim, treated as 0 — the same as this field's own
+    // default — so no already-logged-in session is force-invalidated by
+    // this fix shipping.
+    tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

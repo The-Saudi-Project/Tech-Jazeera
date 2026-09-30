@@ -1,7 +1,10 @@
 /**
  * NfcCompanyProfilePage — one company: its brand + details (editable) and the
  * people under it, each with the NFC card they hold and actions to assign,
- * change, edit, or remove. Admin-only.
+ * change, edit, or remove. Gated by the real 'nfc' Section Access grant
+ * (fixed 2026-09-14 — see NfcCompanyListPage's doc comment); every write
+ * action (edit/delete company, add/edit/delete a person, assign a card)
+ * additionally needs the Write tier specifically.
  */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +21,7 @@ import Button from '../../../components/ui/Button.jsx';
 import Table from '../../../components/ui/Table.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
+import ProfileField from '../../../components/ui/ProfileField.jsx';
 import NfcCompanyFormModal from '../components/NfcCompanyFormModal.jsx';
 import NfcEmployeeFormModal from '../components/NfcEmployeeFormModal.jsx';
 import AssignCardModal from '../components/AssignCardModal.jsx';
@@ -25,22 +29,14 @@ import AssignCardModal from '../components/AssignCardModal.jsx';
 /** Window for the per-person tap counts shown beside each name. */
 const ANALYTICS_DAYS = 30;
 
-function Field({ label, children }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-0.5 text-sm">{children || '—'}</dd>
-    </div>
-  );
-}
-
 export default function NfcCompanyProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const isAdmin = user.role === 'Admin';
+  const canRead = Boolean(user.sectionAccess?.includes('nfc'));
+  const canWrite = Boolean(user.sectionAccessWrite?.includes('nfc'));
 
   const [editingCompany, setEditingCompany] = useState(false);
   const [deletingCompany, setDeletingCompany] = useState(false);
@@ -52,7 +48,7 @@ export default function NfcCompanyProfilePage() {
   const { data: company, isPending, isError } = useQuery({
     queryKey: ['nfc-company', id],
     queryFn: () => getNfcCompany(id),
-    enabled: isAdmin,
+    enabled: canRead,
   });
 
   // Loaded separately so the profile is never held up by an aggregation; the
@@ -60,7 +56,7 @@ export default function NfcCompanyProfilePage() {
   const { data: activity } = useQuery({
     queryKey: ['nfc-company-analytics', id, ANALYTICS_DAYS],
     queryFn: () => getNfcCompanyAnalytics(id, ANALYTICS_DAYS),
-    enabled: isAdmin,
+    enabled: canRead,
   });
   const tapsByPerson = new Map((activity?.byEmployee ?? []).map((r) => [r.employee, r]));
 
@@ -84,7 +80,40 @@ export default function NfcCompanyProfilePage() {
     onError: (error) => toast.error(apiMessage(error)),
   });
 
-  if (!isAdmin) return <Navigate to="/" replace />;
+  const handleExport = () => {
+    const withCards = company.employees.filter((p) => p.card);
+    if (withCards.length === 0) {
+      toast.error('No employees have cards assigned.');
+      return;
+    }
+
+    const headers = ['Name', 'Job Title', 'Card Token', 'Card URL', 'Taps (30D)'];
+    const csvRows = [headers.join(',')];
+
+    withCards.forEach((p) => {
+      const t = tapsByPerson.get(p._id);
+      const taps = t ? t.views : 0;
+      const row = [
+        `"${(p.name || '').replace(/"/g, '""')}"`,
+        `"${(p.jobTitle || '').replace(/"/g, '""')}"`,
+        `"${(p.card.token || '').replace(/"/g, '""')}"`,
+        `"${(p.card.url || '').replace(/"/g, '""')}"`,
+        taps
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvData = csvRows.join('\n');
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${company.companyName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_cards.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (!canRead) return <Navigate to="/" replace />;
 
   if (isPending) {
     return (
@@ -117,7 +146,7 @@ export default function NfcCompanyProfilePage() {
             <Link to={`/nfc/cards/${p.card._id}`} className="font-mono text-xs text-primary hover:underline">
               {p.card.token}
             </Link>
-            <a href={p.card.url} target="_blank" rel="noopener" title="Open tap page" className="text-muted hover:text-text">
+            <a href={p.card.url} target="_blank" rel="noopener noreferrer" title="Open tap page" className="text-muted hover:text-text">
               ↗
             </a>
           </span>
@@ -143,19 +172,20 @@ export default function NfcCompanyProfilePage() {
     {
       key: 'actions',
       header: '',
-      render: (p) => (
-        <div className="flex justify-end gap-2">
-          <Button size="sm" variant="secondary" onClick={() => setAssigningTo(p)}>
-            {p.card ? 'Change card' : 'Assign card'}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setEditingPerson(p)}>
-            Edit
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setDeletingPerson(p)}>
-            Delete
-          </Button>
-        </div>
-      ),
+      render: (p) =>
+        canWrite ? (
+          <div className="flex justify-end gap-2 whitespace-nowrap">
+            <Button size="sm" variant="secondary" onClick={() => setAssigningTo(p)}>
+              {p.card ? 'Change card' : 'Assign card'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditingPerson(p)}>
+              Edit
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setDeletingPerson(p)}>
+              Delete
+            </Button>
+          </div>
+        ) : null,
     },
   ];
 
@@ -179,14 +209,16 @@ export default function NfcCompanyProfilePage() {
         description={company.city || 'NFC customer'}
         onBack={() => navigate(-1)}
         actions={
-          <>
-            <Button variant="secondary" onClick={() => setEditingCompany(true)}>
-              Edit
-            </Button>
-            <Button variant="danger" onClick={() => setDeletingCompany(true)}>
-              Delete
-            </Button>
-          </>
+          canWrite && (
+            <>
+              <Button variant="secondary" onClick={() => setEditingCompany(true)}>
+                Edit
+              </Button>
+              <Button variant="danger" onClick={() => setDeletingCompany(true)}>
+                Delete
+              </Button>
+            </>
+          )
         }
       />
 
@@ -194,33 +226,33 @@ export default function NfcCompanyProfilePage() {
         <Card>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Company</h2>
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label="Contact person">{company.contactPerson}</Field>
-            <Field label="Phone">{company.phone}</Field>
-            <Field label="Email">{company.email}</Field>
-            <Field label="Website">
+            <ProfileField label="Contact person">{company.contactPerson}</ProfileField>
+            <ProfileField label="Phone">{company.phone}</ProfileField>
+            <ProfileField label="Email">{company.email}</ProfileField>
+            <ProfileField label="Website">
               {company.website ? (
-                <a href={/^https?:\/\//i.test(company.website) ? company.website : `https://${company.website}`} target="_blank" rel="noopener" className="text-primary hover:underline">
+                <a href={/^https?:\/\//i.test(company.website) ? company.website : `https://${company.website}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                   {company.website}
                 </a>
               ) : null}
-            </Field>
-            <Field label="Address">
+            </ProfileField>
+            <ProfileField label="Address">
               {company.address ? (
                 mapsHref ? (
-                  <a href={mapsHref} target="_blank" rel="noopener" className="text-primary hover:underline">
+                  <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                     {company.address}
                   </a>
                 ) : (
                   company.address
                 )
               ) : null}
-            </Field>
-            <Field label="Brand colour">
+            </ProfileField>
+            <ProfileField label="Brand colour">
               <span className="inline-flex items-center gap-2">
                 <span className="inline-block h-3.5 w-3.5 rounded-full ring-1 ring-inset ring-black/10" style={{ backgroundColor: company.brandColour || '#4F46E5' }} />
                 <span className="font-mono text-xs">{company.brandColour || '#4F46E5'}</span>
               </span>
-            </Field>
+            </ProfileField>
           </dl>
           {company.notes && (
             <div className="mt-4">
@@ -235,9 +267,16 @@ export default function NfcCompanyProfilePage() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
               People ({company.employees.length})
             </h2>
-            <Button size="sm" onClick={() => setAddingPerson(true)}>
-              Add person
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="secondary" onClick={handleExport}>
+                Export Excel
+              </Button>
+              {canWrite && (
+                <Button size="sm" onClick={() => setAddingPerson(true)}>
+                  Add person
+                </Button>
+              )}
+            </div>
           </div>
           <Table
             columns={columns}
@@ -247,7 +286,7 @@ export default function NfcCompanyProfilePage() {
               <EmptyState
                 title="No people yet"
                 description="Add the first person, then assign them a card."
-                action={<Button onClick={() => setAddingPerson(true)}>Add person</Button>}
+                action={canWrite && <Button onClick={() => setAddingPerson(true)}>Add person</Button>}
               />
             }
           />

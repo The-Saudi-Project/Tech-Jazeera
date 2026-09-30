@@ -3,7 +3,9 @@
  * top of the Timesheet Processor's exported .xlsx AND every generated PDF's
  * letterhead (invoices, quotations, EOSB settlements, certificates,
  * payslips — see server's companySettings/letterhead.pdf.js). Lives on the
- * Company Settings page; whoever can reach that page can manage the logo.
+ * Company Settings page; `canWrite` (the page's own 'companySettings' write
+ * check) hides the upload/replace/remove actions for a read-only viewer —
+ * they can still see the logo, just not change it.
  */
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,11 +15,12 @@ import { useToast } from '../../../components/ui/Toast.jsx';
 import Card from '../../../components/ui/Card.jsx';
 import Button from '../../../components/ui/Button.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
+import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
 
 const MAX_MB = 2;
 const ACCEPT = 'image/png,image/jpeg,image/webp';
 
-export default function CompanyLogoCard() {
+export default function CompanyLogoCard({ canWrite }) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef(null);
@@ -28,7 +31,13 @@ export default function CompanyLogoCard() {
     queryFn: getCompanySettings,
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['company-settings'] });
+  // Also invalidates 'company-branding' — BrandLogo's separate, public
+  // query (header/login-screen logo) — so a logo change shows up
+  // immediately instead of waiting out its 5-minute staleTime.
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['company-settings'] });
+    queryClient.invalidateQueries({ queryKey: ['company-branding'] });
+  };
 
   const uploadMutation = useMutation({
     mutationFn: uploadCompanyLogo,
@@ -42,10 +51,12 @@ export default function CompanyLogoCard() {
     },
   });
 
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const removeMutation = useMutation({
     mutationFn: removeCompanyLogo,
     onSuccess: () => {
       toast.success('Logo removed.');
+      setConfirmingRemove(false);
       invalidate();
     },
     onError: (error) => toast.error(apiMessage(error)),
@@ -87,30 +98,33 @@ export default function CompanyLogoCard() {
             ) : (
               <span className="text-sm text-muted">No logo set — exports skip the logo band.</span>
             )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ACCEPT}
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              isLoading={uploadMutation.isPending}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {data?.logoUrl ? 'Replace' : 'Upload logo'}
-            </Button>
-            {data?.logoUrl && (
-              <Button
-                type="button"
-                variant="danger-ghost"
-                isLoading={removeMutation.isPending}
-                onClick={() => removeMutation.mutate()}
-              >
-                Remove
-              </Button>
+            {canWrite && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPT}
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  isLoading={uploadMutation.isPending}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {data?.logoUrl ? 'Replace' : 'Upload logo'}
+                </Button>
+                {data?.logoUrl && (
+                  <Button
+                    type="button"
+                    variant="danger-ghost"
+                    onClick={() => setConfirmingRemove(true)}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </>
             )}
           </div>
         )}
@@ -120,6 +134,19 @@ export default function CompanyLogoCard() {
           {formError}
         </p>
       )}
+
+      {/* Fixed 2026-09-29, a real audit finding: this used to fire on click
+          with no confirmation, unlike every other destructive action in the
+          app — removing the logo affects every future generated PDF/export
+          letterhead immediately. */}
+      <ConfirmDialog
+        open={confirmingRemove}
+        title="Remove company logo?"
+        message="Every future invoice, quotation, settlement, certificate, payslip, and exported timesheet will render without a logo band until a new one is uploaded."
+        loading={removeMutation.isPending}
+        onConfirm={() => removeMutation.mutate()}
+        onCancel={() => setConfirmingRemove(false)}
+      />
     </Card>
   );
 }

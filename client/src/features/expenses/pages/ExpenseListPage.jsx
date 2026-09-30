@@ -5,22 +5,11 @@
  * Invoice's full detail-page pattern — there is no sub-workflow here (no
  * payments/PDF), just records.
  */
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  listExpenses,
-  getExpenseSummary,
-  createExpense,
-  updateExpense,
-  deleteExpense,
-  downloadExpenseReceipt,
-} from '../expenses.api.js';
-import { expenseFormSchema, emptyExpenseForm, expenseToForm } from '../expenses.schema.js';
-import { listClients } from '../../clients/clients.api.js';
-import { listDeployments } from '../../deployments/deployments.api.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { listExpenses, getExpenseSummary, deleteExpense, downloadExpenseReceipt } from '../expenses.api.js';
 import { apiMessage, formatDate, formatMoney } from '../../../lib/utils.js';
 import { EXPENSE_CATEGORIES } from '../../../lib/constants.js';
 import { useToast } from '../../../components/ui/Toast.jsx';
@@ -31,13 +20,9 @@ import Card from '../../../components/ui/Card.jsx';
 import Button from '../../../components/ui/Button.jsx';
 import Input from '../../../components/ui/Input.jsx';
 import Select from '../../../components/ui/Select.jsx';
-import Textarea from '../../../components/ui/Textarea.jsx';
-import Modal from '../../../components/ui/Modal.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
-
-const RECEIPT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp';
-const RECEIPT_MAX_MB = 10;
+import ExpenseFormModal from '../components/ExpenseFormModal.jsx';
 
 function SummaryBar() {
   const { data, isPending } = useQuery({
@@ -74,13 +59,16 @@ export default function ExpenseListPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  // 'expenses' has a real Read/Write split — reaching this page only
+  // implies Read (2026-09-14 fix, a real QA-audit-found gap: Add/Edit/
+  // Delete were all unconditional, never checking write access at all).
+  const canWrite = Boolean(user.sectionAccessWrite?.includes('expenses'));
 
   const [search, setSearch] = useState('');
   const [params, setParams] = useState({ page: 1, limit: 20, search: '', category: '', from: '', to: '' });
   const [editing, setEditing] = useState(null); // null = closed, {} = new, {...} = edit
   const [toDelete, setToDelete] = useState(null);
-  const fileInputRef = useRef(null);
-  const [pendingFile, setPendingFile] = useState(null);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -103,95 +91,38 @@ export default function ExpenseListPage() {
     placeholderData: keepPreviousData,
   });
 
-  const { data: clientData } = useQuery({
-    queryKey: ['clients', 'all-for-expense'],
-    queryFn: () => listClients({ limit: 100, sortBy: 'companyName', sortOrder: 'asc' }),
-    enabled: Boolean(editing),
-  });
-  const clients = clientData?.items ?? [];
-
-  const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm({ resolver: zodResolver(expenseFormSchema), defaultValues: emptyExpenseForm });
-
-  const selectedClient = useWatch({ control, name: 'client' });
-
-  const { data: deploymentData } = useQuery({
-    queryKey: ['deployments', 'for-expense', selectedClient],
-    queryFn: () => listDeployments({ client: selectedClient, limit: 100 }),
-    enabled: Boolean(editing) && Boolean(selectedClient),
-  });
-  const deployments = deploymentData?.items ?? [];
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['expenses'] });
-  };
-
-  function resetFile() {
-    setPendingFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }
-
-  function handleFileChange(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > RECEIPT_MAX_MB * 1024 * 1024) {
-      toast.error(`File is too large (maximum ${RECEIPT_MAX_MB} MB).`);
-      e.target.value = '';
-      return;
-    }
-    setPendingFile(file);
-  }
-
-  const saveMutation = useMutation({
-    mutationFn: (values) => {
-      // Update sends the full form (like Holidays) — an untouched optional
-      // field just re-affirms its current value; an emptied one (client set
-      // back to "No client link") clears it, since the key stays present in
-      // the JSON body either way (see expense.validation.js's emptyToUndef).
-      if (editing?._id) return updateExpense(editing._id, values);
-      const fd = new FormData();
-      for (const [key, value] of Object.entries(values)) {
-        if (value) fd.append(key, value); // skip empty optional fields entirely
-      }
-      if (pendingFile) fd.append('file', pendingFile);
-      return createExpense(fd);
-    },
-    onSuccess: () => {
-      toast.success(editing?._id ? 'Expense updated.' : 'Expense recorded.');
-      closeModal();
-      invalidate();
-    },
-    onError: (error) => toast.error(apiMessage(error)),
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (id) => deleteExpense(id),
     onSuccess: () => {
       toast.success(`Expense from ${toDelete.vendor} removed.`);
       setToDelete(null);
-      invalidate();
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
     },
     onError: (error) => toast.error(apiMessage(error)),
   });
 
+  // Recurring expenses (rent, subscriptions, ...) get re-typed every month —
+  // deliberately kept a one-click, human-confirmed prefill rather than a
+  // real recurrence scheduler: nothing about money should be created
+  // unattended (same posture as every other financial mutation in this
+  // app). No schema change needed — it's just the same form, pre-filled.
+  const [duplicateFrom, setDuplicateFrom] = useState(null);
+
   function openNew() {
-    reset(emptyExpenseForm);
-    resetFile();
+    setDuplicateFrom(null);
     setEditing({});
   }
   function openEdit(expense) {
-    reset(expenseToForm(expense));
-    resetFile();
+    setDuplicateFrom(null);
     setEditing(expense);
+  }
+  function openDuplicate(expense) {
+    setDuplicateFrom(expense);
+    setEditing({});
   }
   function closeModal() {
     setEditing(null);
-    resetFile();
+    setDuplicateFrom(null);
   }
 
   async function handleDownload(expense) {
@@ -204,7 +135,24 @@ export default function ExpenseListPage() {
 
   const columns = [
     { key: 'date', header: 'Date', render: (e) => formatDate(e.date) },
-    { key: 'category', header: 'Category', render: (e) => e.category },
+    {
+      key: 'category',
+      header: 'Category',
+      render: (e) => (
+        <span className="flex items-center gap-1.5">
+          {e.category}
+          {e.sourceReimbursement && (
+            <Link
+              to={`/financial-requests?tab=reimbursements&claim=${e.sourceReimbursement}`}
+              className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary hover:bg-primary/20"
+              title="View the original reimbursement claim"
+            >
+              Claim
+            </Link>
+          )}
+        </span>
+      ),
+    },
     { key: 'vendor', header: 'Vendor', render: (e) => e.vendor },
     { key: 'client', header: 'Client', hideOnMobile: true, render: (e) => e.clientName ?? '—' },
     { key: 'amount', header: 'Amount', className: 'text-right', render: (e) => <span className="tabular-nums">{formatMoney(e.amount)}</span> },
@@ -225,29 +173,36 @@ export default function ExpenseListPage() {
       key: 'actions',
       header: '',
       className: 'text-right',
-      render: (e) => (
-        <span className="flex justify-end gap-2">
-          <Button size="sm" variant="ghost" onClick={() => openEdit(e)}>
-            Edit
-          </Button>
-          <Button size="sm" variant="danger-ghost" onClick={() => setToDelete(e)}>
-            Delete
-          </Button>
-        </span>
-      ),
+      render: (e) =>
+        canWrite ? (
+          <span className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={() => openEdit(e)}>
+              Edit
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => openDuplicate(e)}>
+              Duplicate
+            </Button>
+            {!e.sourceReimbursement && (
+              <Button size="sm" variant="danger-ghost" onClick={() => setToDelete(e)}>
+                Delete
+              </Button>
+            )}
+          </span>
+        ) : null,
     },
   ];
 
   const noFilters = !params.search && !params.category && !params.from && !params.to;
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-[1600px]">
       <PageHeader
         title="Expenses"
         description="Company costs — rent, fuel, purchases, utilities — the other half of profit alongside invoices."
         onBack={() => navigate(-1)}
         actions={
-          !isError && (
+          !isError &&
+          canWrite && (
             <Button size="sm" onClick={openNew}>
               Add expense
             </Button>
@@ -311,7 +266,7 @@ export default function ExpenseListPage() {
               <EmptyState
                 title={noFilters ? 'No expenses recorded yet' : 'No expenses match'}
                 description={noFilters ? 'Record your first company expense above.' : 'Try clearing the search or filters.'}
-                action={noFilters && <Button variant="secondary" onClick={openNew}>Add expense</Button>}
+                action={noFilters && canWrite && <Button variant="secondary" onClick={openNew}>Add expense</Button>}
               />
             }
           />
@@ -337,69 +292,7 @@ export default function ExpenseListPage() {
         </>
       )}
 
-      <Modal open={!!editing} onClose={closeModal} title={editing?._id ? 'Edit expense' : 'Add expense'} size="lg">
-        <form onSubmit={handleSubmit((values) => saveMutation.mutate(values))} noValidate className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input label="Date *" type="date" error={errors.date?.message} {...register('date')} />
-            <Select label="Category *" error={errors.category?.message} {...register('category')}>
-              <option value="">Choose a category…</option>
-              {EXPENSE_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Select>
-            <Input label="Vendor *" placeholder="e.g. ACME Trading Est." error={errors.vendor?.message} {...register('vendor')} />
-            <Input label="Amount (SAR) *" type="number" step="0.01" min="0.01" error={errors.amount?.message} {...register('amount')} />
-            <Select label="Client (optional)" error={errors.client?.message} {...register('client')}>
-              <option value="">No client link</option>
-              {clients.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.companyName}
-                </option>
-              ))}
-            </Select>
-            <Select label="Deployment (optional)" disabled={!selectedClient} error={errors.deployment?.message} {...register('deployment')}>
-              <option value="">{selectedClient ? 'No deployment link' : 'Select a client first'}</option>
-              {deployments.map((d) => (
-                <option key={d._id} value={d._id}>
-                  {d.site} — {d.worker?.fullName} ({d.status})
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Textarea label="Notes" placeholder="Optional" error={errors.notes?.message} {...register('notes')} />
-
-          {editing?._id ? (
-            editing.receipt && (
-              <p className="text-sm text-muted">
-                Receipt: {editing.receipt.originalName} — attached at entry, cannot be changed here.
-              </p>
-            )
-          ) : (
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Receipt (optional)</label>
-              <input ref={fileInputRef} type="file" accept={RECEIPT_ACCEPT} className="hidden" onChange={handleFileChange} />
-              <div className="flex items-center gap-3">
-                <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                  {pendingFile ? 'Change file' : 'Choose file'}
-                </Button>
-                {pendingFile && <span className="truncate text-sm text-muted">{pendingFile.name}</span>}
-              </div>
-              <p className="mt-1 text-xs text-muted">PDF, JPG, PNG, or WEBP — up to {RECEIPT_MAX_MB} MB.</p>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={closeModal} disabled={saveMutation.isPending}>
-              Cancel
-            </Button>
-            <Button type="submit" isLoading={saveMutation.isPending}>
-              Save
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <ExpenseFormModal open={!!editing} editing={editing} duplicateFrom={duplicateFrom} onClose={closeModal} />
 
       <ConfirmDialog
         open={Boolean(toDelete)}

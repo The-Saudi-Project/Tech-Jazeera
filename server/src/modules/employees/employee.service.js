@@ -11,6 +11,7 @@ import Subcontractor from '../subcontractors/subcontractor.model.js';
 import ApiError from '../../utils/ApiError.js';
 import { hashPassword, generateTempPassword } from '../auth/auth.service.js';
 import { logAudit } from '../audit/audit.service.js';
+import { escapeRegex } from '../../utils/escapeRegex.js';
 
 /**
  * A document counts as "needs attention" when it expires within this many
@@ -18,6 +19,25 @@ import { logAudit } from '../audit/audit.service.js';
  * if you change it, change client/src/lib/constants.js too.
  */
 export const EXPIRY_WARNING_DAYS = 30;
+
+/**
+ * A Coordinator may only see/act on employees assigned to them — the one
+ * scoping rule this app enforces everywhere an Employee is the subject
+ * (listEmployees, Attendance, Leave, ...). Added here as a single shared
+ * export (2026-09-14, a real QA-audit-found gap) after Documents, Assets,
+ * EOSB Settlements, and Deployment detail were all found reading/mutating
+ * an arbitrary employee's records with no team check at all, despite the
+ * employee's OWN profile correctly 403ing for the same Coordinator — every
+ * one of those had grown its own copy-pasted (or entirely missing) version
+ * of this exact check. No-op for every non-Coordinator actor; Admin's own
+ * bypass lives in the STAFF_ROLES/Section-Access floor upstream of this,
+ * unrelated to team scope.
+ */
+export async function assertEmployeeVisibleToActor(employeeId, actor) {
+  if (!employeeId || actor?.role !== 'Coordinator') return;
+  const owned = await Employee.exists({ _id: employeeId, coordinator: actor.userId });
+  if (!owned) throw new ApiError(403, 'You do not have access to this employee.');
+}
 
 /** Fields the expiry-alert filter inspects. */
 const EXPIRY_FIELDS = [
@@ -28,11 +48,6 @@ const EXPIRY_FIELDS = [
   'drivingLicense.expiry',
 ];
 
-/** Escape user text before embedding it in a $regex — prevents both regex
- *  injection and accidental syntax errors from names like "O'Brien (Ops)". */
-function escapeRegex(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 /**
  * Paginated, searchable, sortable listing.
@@ -43,12 +58,21 @@ function escapeRegex(text) {
  * thresholdDays→ override the alert window (P2-M2, customizable per viewer)
  * client       → only employees currently assigned to that client
  * team         → 'mine' (Manager only) — only employees under their coordinators
+ * loginRole    → only employees whose OWN linked login has this role (e.g.
+ *                'Worker' — Mobilisation's "Own Employee" picker needs real
+ *                field workers, not any Own-type employee who happens to be
+ *                staff for payroll purposes)
+ *
+ * Every returned item also carries `.login` (id/email/role/isActive, or
+ * null) — same shape getEmployee already attaches, batched here into one
+ * query rather than one per row — so a caller can distinguish login roles
+ * itself without a second round-trip, independent of the loginRole filter.
  *
  * `actor` (role + userId) is optional so internal callers (e.g. a future
  * script) can still list company-wide; every HTTP call supplies it.
  */
 export async function listEmployees(
-  { page, limit, search, status, type, alerts, thresholdDays, client, unassigned, team, createdByRole, sortBy, sortOrder },
+  { page, limit, search, status, type, alerts, thresholdDays, client, team, createdByRole, loginRole, sortBy, sortOrder },
   actor
 ) {
   // Each condition is AND-ed; search and alerts are each internally OR-ed.
@@ -62,7 +86,6 @@ export async function listEmployees(
   if (status) conditions.push({ status });
   if (type) conditions.push({ type });
   if (client) conditions.push({ currentClient: client });
-  if (unassigned === 'true') conditions.push({ currentClient: null });
   if (alerts === 'true') {
     const days = thresholdDays ?? EXPIRY_WARNING_DAYS;
     const threshold = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -73,6 +96,10 @@ export async function listEmployees(
   if (createdByRole === 'Coordinator') {
     const coordinatorIds = await User.find({ role: 'Coordinator' }).distinct('_id');
     conditions.push({ createdBy: { $in: coordinatorIds } });
+  }
+  if (loginRole) {
+    const employeeIds = await User.find({ role: loginRole, employee: { $ne: null } }).distinct('employee');
+    conditions.push({ _id: { $in: employeeIds } });
   }
   // P2-M2: a Coordinator sees their own assigned employees — this is not a
   // filter the caller can opt out of. Milestone 5: PLUS every standby
@@ -110,7 +137,25 @@ export async function listEmployees(
       .lean(),
     Employee.countDocuments(filter),
   ]);
-  return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
+
+  // Same '.login' shape getEmployee already attaches (minimal, non-sensitive
+  // fields — never the hash) — batched in one query rather than one per row,
+  // so a caller can tell an office-staff Own employee apart from a real
+  // Worker-login one without a second round-trip per row (see Mobilisation's
+  // "Own Employee" picker, the reason this got added).
+  const logins = await User.find({ employee: { $in: items.map((e) => e._id) } })
+    .select('employee email role isActive')
+    .lean();
+  const loginByEmployeeId = new Map(logins.map((l) => [l.employee.toString(), l]));
+  const withLogin = items.map((e) => {
+    const login = loginByEmployeeId.get(e._id.toString());
+    return {
+      ...e,
+      login: login ? { id: login._id.toString(), email: login.email, role: login.role, isActive: login.isActive } : null,
+    };
+  });
+
+  return { items: withLogin, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }
 
 export async function getEmployee(id, actor) {
@@ -286,6 +331,10 @@ export async function resetEmployeeLoginPassword(employeeId, actor) {
 
   const tempPassword = generateTempPassword();
   login.passwordHash = await hashPassword(tempPassword);
+  login.passwordChangedAt = new Date();
+  // The real revocation signal for an already-issued access token — see
+  // user.model.js's tokenVersion doc comment (F8, 2026-09-15).
+  login.tokenVersion = (login.tokenVersion ?? 0) + 1;
   await login.save();
   await RefreshToken.deleteMany({ user: login._id });
 
@@ -333,11 +382,21 @@ export async function updateEmployee(id, data, actor) {
   if ('manager' in data) await assertValidManager(data.manager);
   if ('approvalWorkflow' in data) await assertValidApprovalWorkflow(data.approvalWorkflow);
   if ('subcontractor' in data) await assertValidSubcontractor(data.subcontractor);
-  const employee = await Employee.findByIdAndUpdate(id, data, {
-    new: true, // return the updated document, not the stale one
-    runValidators: true, // Mongoose skips schema validation on updates unless told
-  }).lean();
+  // Fetch + assign + save, NOT findByIdAndUpdate (fixed 2026-09-14, a real
+  // QA-audit-found gap): Mongoose's update validators (`runValidators`)
+  // don't reliably see the FULL merged document inside a conditional
+  // `required: function(){...}` validator (requiredForWorkforce etc. above
+  // — `this` inside an update validator isn't the same as it is during a
+  // normal `.save()`). A PATCH that changed only `{ type: 'Subcontracted' }`
+  // — nothing else — passed validation and saved, even though the schema
+  // now requires `subcontractor`/`nationality`/`mobile` for that type and
+  // none of them were present on the document. `.save()`'s validation runs
+  // against the real, complete, merged document, which these conditional
+  // validators need to work correctly.
+  const employee = await Employee.findById(id);
   if (!employee) throw new ApiError(404, 'Employee not found.');
+  Object.assign(employee, data);
+  await employee.save();
   await logAudit({
     user: actor.userId,
     action: 'employee.update',
@@ -346,7 +405,7 @@ export async function updateEmployee(id, data, actor) {
     meta: { employeeId: employee.employeeId, fields: Object.keys(data) },
     ip: actor.ip,
   });
-  return employee;
+  return employee.toObject();
 }
 
 /**

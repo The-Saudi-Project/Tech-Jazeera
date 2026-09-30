@@ -12,6 +12,7 @@
 import env from '../config/env.js';
 import logger from '../config/logger.js';
 import ApiError from '../utils/ApiError.js';
+import { captureError } from '../config/sentry.js';
 
 /** 404 for routes that matched nothing. Registered after all real routes. */
 export function notFoundHandler(req, res, next) {
@@ -34,9 +35,18 @@ function normalizeError(err) {
     const field = Object.keys(err.keyValue ?? {})[0] ?? 'field';
     return new ApiError(409, `A record with this ${field} already exists.`);
   }
-  // Mongoose schema validation (last-resort net — Zod should catch these first)
+  // Mongoose schema validation (last-resort net — Zod should catch these first).
+  // A nested CastError's own .message embeds the raw submitted value, its
+  // JS type, and the full field path verbatim (fixed 2026-09-14, a real
+  // QA-audit-found gap: this went straight into the client-visible response
+  // `details`, in production too — only the top-level `stack` field was ever
+  // production-gated). Sanitized the same way the top-level CastError case
+  // above already is; every other sub-error here is a real Mongoose
+  // validator message (required/enum/custom), already written to be shown.
   if (err.name === 'ValidationError') {
-    const details = Object.values(err.errors).map((e) => ({ field: e.path, message: e.message }));
+    const details = Object.values(err.errors).map((e) =>
+      e.name === 'CastError' ? { field: e.path, message: `Invalid value for "${e.path}".` } : { field: e.path, message: e.message }
+    );
     return new ApiError(400, 'Validation failed.', details);
   }
   // body-parser: malformed JSON body
@@ -68,12 +78,15 @@ export function errorHandler(err, req, res, next) {
 
   // Log bugs loudly with the ORIGINAL error and stack; expected failures
   // (404s, bad input) at warn level without stacks to keep logs readable.
+  // Only a genuine bug is reported to error tracking — an expected ApiError
+  // (400/403/404) isn't something anyone needs paged for.
   if (error.isOperational) {
     logger.warn(`${req.method} ${req.originalUrl} → ${error.statusCode}: ${error.message}`);
   } else {
     logger.error(`${req.method} ${req.originalUrl} → 500 unhandled error`, {
       stack: (error.cause ?? err).stack,
     });
+    captureError(error.cause ?? err, { method: req.method, url: req.originalUrl, body: req.body });
   }
 
   res.status(error.statusCode).json({

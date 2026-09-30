@@ -12,6 +12,8 @@ import ApiError from '../../utils/ApiError.js';
 import { logAudit } from '../audit/audit.service.js';
 import { resolveApprovalWorkflow } from '../approvals/approvals.service.js';
 import { decideApprovalStep, annotateCanDecide, notifySubmission } from '../approvals/approvalEngine.service.js';
+import { assertEmployeeVisibleToActor } from '../employees/employee.service.js';
+import { canAccessSection } from '../sectionAccess/sectionAccess.service.js';
 
 /** The ORIGINAL decide-route role gate — preserved exactly as the
  *  authorization used whenever no ApprovalWorkflow governs a request. */
@@ -90,10 +92,21 @@ export async function cancelExitReentry(employeeId, id, actor) {
   return request.toObject();
 }
 
+// Fixed 2026-09-15, a real QA-audit-found gap — A2's sibling case
+// (certificate.service.js's own equivalent fix has the full reasoning):
+// this module had no Coordinator team-scoping anywhere either.
 export async function listExitReentry({ page, limit, status, employee }, actor) {
   const filter = {};
   if (status) filter.status = status;
   if (employee) filter.employee = employee;
+  if (actor?.role === 'Coordinator') {
+    if (employee) {
+      await assertEmployeeVisibleToActor(employee, actor);
+    } else {
+      const teamIds = await Employee.find({ coordinator: actor.userId }).distinct('_id');
+      filter.employee = { $in: teamIds };
+    }
+  }
   const [rawItems, total] = await Promise.all([
     ExitReentryRequest.find(filter)
       .sort({ createdAt: -1 })
@@ -110,10 +123,15 @@ export async function listExitReentry({ page, limit, status, employee }, actor) 
   // Real, server-computed "can this viewer decide it" per row — see
   // approvalEngine.service.js. Convenience for the UI only; decideExitReentry
   // remains the actual gate.
-  const items = await annotateCanDecide(rawItems, actor, {
+  const annotated = await annotateCanDecide(rawItems, actor, {
     pendingStatus: 'Pending',
     legacyAllowedRoles: LEGACY_DECIDE_ROLES,
   });
+  // Fixed 2026-09-15, the same class of gap the 2026-09-14 audit found and
+  // fixed for financialRequests only — never carried over here. See
+  // leave.service.js's listLeaveRequests for the full reasoning.
+  const hasSectionWrite = actor ? await canAccessSection('exitDocuments', actor, 'write') : false;
+  const items = annotated.map((item) => ({ ...item, canDecideCurrentStep: item.canDecideCurrentStep && hasSectionWrite }));
   return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }
 
@@ -132,6 +150,7 @@ export async function decideExitReentry(id, { status, decisionNote }, actor) {
     actor,
     pendingStatus: 'Pending',
     legacyAllowedRoles: LEGACY_DECIDE_ROLES,
+    assertScope: assertEmployeeVisibleToActor,
     notFoundMessage: 'Exit re-entry request not found.',
     auditAction: 'exitReentry',
     buildFinalNotification: (doc) => ({

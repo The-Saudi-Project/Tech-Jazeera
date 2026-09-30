@@ -3,7 +3,8 @@
  * reimbursement claims: approve/reject, download the receipt, then mark
  * paid once Accounts has actually reimbursed it.
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,7 +17,7 @@ import {
 } from '../reimbursements.api.js';
 import { reimbursementFormSchema, emptyReimbursementForm } from '../financialRequests.schema.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { apiMessage, formatDate, formatMoney } from '../../../lib/utils.js';
+import { apiMessage, formatDate, formatMoney, collectFormErrorMessages } from '../../../lib/utils.js';
 import {
   REIMBURSEMENT_STATUSES,
   REIMBURSEMENT_STATUS_VARIANT,
@@ -96,10 +97,15 @@ export function SubmitReimbursementPanel() {
     submitMutation.mutate(values);
   }
 
+  const onInvalid = (formErrors) => {
+    console.error('[financialRequests] reimbursement form invalid', formErrors);
+    toast.error(collectFormErrorMessages(formErrors).join(' ') || 'Please check the form and try again.');
+  };
+
   return (
     <Card>
       <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Submit your own reimbursement claim</h2>
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select label="Category *" error={errors.category?.message} {...register('category')}>
             <option value="">Choose a category…</option>
@@ -139,16 +145,26 @@ export default function ReimbursementReviewPanel() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const canPay = FINANCIAL_REQUEST_MONEY_ROLES.includes(user.role);
-  const [status, setStatus] = useState('');
+  // Arriving from an Expense row's "Claim" tag (?claim=<id>) — that link
+  // only ever exists on an auto-created Expense, which only ever happens
+  // once the claim is Paid (see reimbursement.service.js's
+  // markReimbursementPaid), so defaulting the filter to Paid is always the
+  // right starting point, not a guess.
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get('claim');
+  const [status, setStatus] = useState(highlightId ? 'Paid' : '');
   const [downloadingId, setDownloadingId] = useState(null);
   const [confirming, setConfirming] = useState(null); // { claim, decision } or null
+  const highlightRef = useRef(null);
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['financial-requests', 'reimbursements', { status }],
     queryFn: () => listReimbursements({ limit: 50, ...(status && { status }) }),
     // Same reasoning as the Leave review queue: a submission from another
-    // session has no way to reach this already-open queue otherwise.
-    refetchInterval: 10_000,
+    // session has no way to reach this already-open queue otherwise. 20s,
+    // not 10s (2026-09-22, a real QA-audit finding — P1) — see
+    // LeavePage.jsx's own comment on this exact change.
+    refetchInterval: 20_000,
     refetchOnWindowFocus: true,
   });
 
@@ -184,6 +200,14 @@ export default function ReimbursementReviewPanel() {
     }
   }
 
+  // Scrolls the deep-linked claim into view once it's actually in the
+  // loaded page — a no-op (and harmless) if it isn't on this page/filter.
+  useEffect(() => {
+    if (highlightId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightId, data]);
+
   return (
       <Card>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -211,7 +235,13 @@ export default function ReimbursementReviewPanel() {
       ) : (
         <div className="divide-y divide-border">
           {data.items.map((c) => (
-            <div key={c._id} className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm">
+            <div
+              key={c._id}
+              ref={c._id === highlightId ? highlightRef : null}
+              className={`flex flex-wrap items-start justify-between gap-3 rounded-lg py-3 text-sm ${
+                c._id === highlightId ? 'ring-2 ring-primary/50 bg-primary/5 px-2' : ''
+              }`}
+            >
               <div className="min-w-0">
                 <p className="font-medium">
                   {c.employee?.fullName} <span className="font-normal text-muted">({c.employee?.employeeId})</span>
@@ -220,7 +250,12 @@ export default function ReimbursementReviewPanel() {
                   {c.category} · {formatMoney(c.amount)} · expense {formatDate(c.expenseDate)}
                 </p>
                 {c.description && <p className="mt-1 text-xs text-muted">{c.description}</p>}
-                <ApprovalTrailView request={c} />
+                {/* Fixed 2026-09-29, a real audit finding: without this,
+                    ApprovalTrailView defaulted to Leave's own pending
+                    literal ('PendingReview') instead of ReimbursementClaim's
+                    real one ('Pending' — see reimbursement.model.js), so the
+                    current step never got its in-progress highlight. */}
+                <ApprovalTrailView request={c} pendingStatus="Pending" />
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
                 <Badge variant={REIMBURSEMENT_STATUS_VARIANT[c.status]}>{c.status}</Badge>

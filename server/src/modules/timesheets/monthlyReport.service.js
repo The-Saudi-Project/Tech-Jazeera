@@ -3,19 +3,48 @@
  * Timesheet Processor's device-log report. Same day-by-day row shape
  * (Date/Day/Login/Logout/Worked/Required/Deficiency/Overtime/Status) and
  * the same .xlsx renderer (timesheetProcessor/timesheet.export.js), but
- * built from this employee's actual Attendance records (phone self-punch
- * or staff-marked) for the whole month instead of a parsed device file.
+ * built from this employee's actual attendance for the whole month instead
+ * of a parsed device file.
+ *
+ * Two real data sources (added 2026-09-13, when this became the Monthly
+ * Report tab's own list+view — previously only ever called for the on-site
+ * Outsourced/Subcontracted workforce): a full staff login (Coordinator/HR/
+ * Manager/Accounts/Executive/Office Secretary/Admin) self-punches through
+ * the separate User-keyed StaffAttendance collection (see
+ * staffAttendance.model.js's own doc comment on why it's kept separate);
+ * everyone else — the deployed/mobilised field workforce, AND a Worker/Staff
+ * self-service login — reads Employee-based Attendance instead.
+ *
+ * **Picked by the linked User's login role, not `employee.type`** — a real,
+ * shipped bug (2026-09-13, found the next day by a QA audit and fixed same
+ * day): an 'Own'-type internal-staff Employee record can be linked to
+ * EITHER kind of login — Coordinator/HR/Manager/Accounts (StaffAttendance),
+ * or a lightweight self-service-only `Staff` login reusing the Worker ESS
+ * portal verbatim (see WORKFORCE-MODEL-notes.md) — and the latter punches
+ * through Employee-based Attendance exactly like a Worker does, never
+ * StaffAttendance. Branching on `employee.type === 'Own'` alone silently
+ * showed "No Attendance" for every day of every such employee's real,
+ * existing punches. Fixed by checking the linked User's actual `role`:
+ * `Worker`/`Staff` → Attendance; any other role (or no linked login at all,
+ * where it doesn't matter which empty source is queried) → StaffAttendance.
+ *
+ * A StaffAttendance day has no `status` field — there's no Absent/Leave/Sick
+ * concept for a self-punch, those go through the Leave module entirely — so
+ * every day from that source falls through to Holiday/Off/No-Attendance/a
+ * real punch, same as an Attendance record with no special status ever did.
  *
  * Mirrors two already-established rules elsewhere in the app rather than
  * inventing new ones:
- *  - Precedence for a day with no real record — a real Attendance record
- *    always wins; otherwise infer Holiday, then the employee's own
- *    weeklyOffDay — is EXACTLY RecordsGrid.jsx's markFor() logic.
+ *  - Precedence for a day with no real record — a real record always wins;
+ *    otherwise infer Holiday, then the employee's own weeklyOffDay — is
+ *    EXACTLY RecordsGrid.jsx's markFor() logic.
  *  - A staff-marked Present day with no clock times counts as
  *    expectedDailyHours worked (never an invented default) — exactly
  *    timesheets/timesheet.service.js's computeTotals() rule.
  */
 import Attendance from '../attendance/attendance.model.js';
+import StaffAttendance from '../staffAttendance/staffAttendance.model.js';
+import User from '../auth/user.model.js';
 import Holiday from '../holidays/holiday.model.js';
 import { minutesToHHMM, daysInMonth, weekdayShort } from '../timesheetProcessor/timesheet.time.js';
 import { DEFAULT_REQUIRED_MINUTES } from '../timesheetProcessor/timesheet.constants.js';
@@ -61,10 +90,16 @@ export async function buildMonthlyAttendanceReport(employee, { year, month }) {
   const periodStart = new Date(Date.UTC(year, month - 1, 1));
   const periodEnd = new Date(Date.UTC(year, month - 1, totalDays, 23, 59, 59));
 
-  const [records, holidays] = await Promise.all([
-    Attendance.find({ employee: employee._id, date: { $gte: periodStart, $lte: periodEnd } }).lean(),
+  const [linkedUser, holidays] = await Promise.all([
+    User.findOne({ employee: employee._id }).select('_id role').lean(),
     Holiday.find({ startDate: { $lte: periodEnd }, endDate: { $gte: periodStart } }).lean(),
   ]);
+  // See this file's own top doc comment for why this is keyed on the
+  // linked login's role, not employee.type.
+  const usesStaffAttendance = Boolean(linkedUser) && !['Worker', 'Staff'].includes(linkedUser.role);
+  const records = usesStaffAttendance
+    ? await StaffAttendance.find({ user: linkedUser._id, date: { $gte: periodStart, $lte: periodEnd } }).lean()
+    : await Attendance.find({ employee: employee._id, date: { $gte: periodStart, $lte: periodEnd } }).lean();
   const byDate = new Map(records.map((r) => [r.date.toISOString().slice(0, 10), r]));
 
   const requiredMinutes =

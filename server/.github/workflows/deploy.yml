@@ -1,0 +1,24 @@
+name: Deploy to Oracle Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Oracle VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ~/Tech-Jazeera-Backend
+            git pull origin main
+            npm install
+            pm2 restart aljazeera-backend
+            pm2 save

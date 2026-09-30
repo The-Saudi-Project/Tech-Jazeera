@@ -1,83 +1,137 @@
 /**
- * Route table + auth guard. Two worlds:
+ * Route table + auth guard. Three worlds:
  *   - AuthLayout wraps guest screens (/login)
- *   - RequireAuth → DashboardLayout wraps everything signed-in
+ *   - RequireAuth → RoleRouter → DashboardLayout wraps staff
+ *   - RequireAuth → WorkerRouter → EssLayout wraps Worker/Staff logins
  *
  * RequireAuth is the guard: while the silent session-restore runs it shows a
  * full-screen spinner (NOT a redirect — bouncing a logged-in user to /login
  * for a half second on every reload is the classic mistake), then either
  * renders the app or redirects to /login.
+ *
+ * `errorElement: <ErrorPage />` on both top-level branches catches any
+ * uncaught render/loader error in that subtree — without it, React Router
+ * falls back to its own raw stack-trace screen (the "Hey developer" default
+ * you get today). Placed on each branch rather than one outer route so a
+ * crash inside the signed-in shell doesn't strand a guest, and vice versa.
  */
-import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext.jsx';
+// AuthLayout stays eager — it's small (41 lines) and every guest needs it
+// immediately, before any auth state is even known. DashboardLayout/
+// EssLayout are lazy (2026-09-22, a real QA-audit finding — P6): the two
+// are mutually exclusive per session (a login is either staff or Worker/
+// Staff-ESS, never both), each pulls in its own real, disjoint set of
+// feature imports (nav config, modals, etc.), yet both used to ship in the
+// SAME entry chunk for every login regardless of role — and both loaded
+// before the user even authenticated, since router.jsx itself is imported
+// from main.jsx synchronously. See the <FullScreenFallback /> usage below
+// for why each needs its OWN Suspense boundary (a lazy component needs an
+// ANCESTOR Suspense to catch its own chunk load — the boundary each layout
+// already provides around its own <Outlet> only covers its CHILDREN, not
+// itself).
 import AuthLayout from './layouts/AuthLayout.jsx';
-import DashboardLayout from './layouts/DashboardLayout.jsx';
-import EssLayout from './layouts/EssLayout.jsx';
-import LoginPage from '../features/auth/pages/LoginPage.jsx';
-import DashboardPage from '../features/dashboard/pages/DashboardPage.jsx';
-import EmployeeListPage from '../features/employees/pages/EmployeeListPage.jsx';
-import EmployeeNewPage from '../features/employees/pages/EmployeeNewPage.jsx';
-import EmployeeProfilePage from '../features/employees/pages/EmployeeProfilePage.jsx';
-import EmployeeEditPage from '../features/employees/pages/EmployeeEditPage.jsx';
-import ClientListPage from '../features/clients/pages/ClientListPage.jsx';
-import ClientNewPage from '../features/clients/pages/ClientNewPage.jsx';
-import ClientProfilePage from '../features/clients/pages/ClientProfilePage.jsx';
-import ClientEditPage from '../features/clients/pages/ClientEditPage.jsx';
-import DeploymentListPage from '../features/deployments/pages/DeploymentListPage.jsx';
-import DeploymentNewPage from '../features/deployments/pages/DeploymentNewPage.jsx';
-import MobilisationListPage from '../features/mobilisations/pages/MobilisationListPage.jsx';
-import MobilisationNewPage from '../features/mobilisations/pages/MobilisationNewPage.jsx';
-import MobilisationDetailPage from '../features/mobilisations/pages/MobilisationDetailPage.jsx';
-import MobilisationEditPage from '../features/mobilisations/pages/MobilisationEditPage.jsx';
-import MobilisationSettingsPage from '../features/mobilisationSettings/pages/MobilisationSettingsPage.jsx';
-import CompanySettingsPage from '../features/companySettings/pages/CompanySettingsPage.jsx';
-import SectionAccessPage from '../features/sectionAccess/pages/SectionAccessPage.jsx';
-import SubcontractorListPage from '../features/subcontractors/pages/SubcontractorListPage.jsx';
-import AttendancePage from '../features/attendance/pages/AttendancePage.jsx';
-import AttendanceSummaryPage from '../features/attendance/pages/AttendanceSummaryPage.jsx';
-import DocumentListPage from '../features/documents/pages/DocumentListPage.jsx';
-import QuotationListPage from '../features/quotations/pages/QuotationListPage.jsx';
-import QuotationNewPage from '../features/quotations/pages/QuotationNewPage.jsx';
-import QuotationViewPage from '../features/quotations/pages/QuotationViewPage.jsx';
-import QuotationEditPage from '../features/quotations/pages/QuotationEditPage.jsx';
-import TimesheetProcessorPage from '../features/timesheetProcessor/pages/TimesheetProcessorPage.jsx';
-import NfcCompanyListPage from '../features/nfc/pages/NfcCompanyListPage.jsx';
-import NfcCompanyProfilePage from '../features/nfc/pages/NfcCompanyProfilePage.jsx';
-import NfcCardListPage from '../features/nfc/pages/NfcCardListPage.jsx';
-import NfcCardDetailPage from '../features/nfc/pages/NfcCardDetailPage.jsx';
-import NfcAnalyticsPage from '../features/nfc/pages/NfcAnalyticsPage.jsx';
-import UserListPage from '../features/users/pages/UserListPage.jsx';
-import CoordinatorActivityPage from '../features/coordinatorActivity/pages/CoordinatorActivityPage.jsx';
-import LeavePage from '../features/leave/pages/LeavePage.jsx';
-import HolidayListPage from '../features/holidays/pages/HolidayListPage.jsx';
-import SettlementListPage from '../features/eosb/pages/SettlementListPage.jsx';
-import SettlementNewPage from '../features/eosb/pages/SettlementNewPage.jsx';
-import SettlementViewPage from '../features/eosb/pages/SettlementViewPage.jsx';
-import FinancialRequestsPage from '../features/financialRequests/pages/FinancialRequestsPage.jsx';
-import AssetListPage from '../features/assets/pages/AssetListPage.jsx';
-import ExitDocumentsPage from '../features/exitDocuments/pages/ExitDocumentsPage.jsx';
-import TimesheetsPage from '../features/timesheets/pages/TimesheetsPage.jsx';
-import PayrollListPage from '../features/payroll/pages/PayrollListPage.jsx';
-import PayrollRunPage from '../features/payroll/pages/PayrollRunPage.jsx';
-import InvoiceListPage from '../features/invoices/pages/InvoiceListPage.jsx';
-import InvoiceViewPage from '../features/invoices/pages/InvoiceViewPage.jsx';
-import ExpenseListPage from '../features/expenses/pages/ExpenseListPage.jsx';
-import AuditLogPage from '../features/audit/pages/AuditLogPage.jsx';
-import ApprovalsPage from '../features/approvals/pages/ApprovalsPage.jsx';
-import ApprovalLogPage from '../features/approvals/pages/ApprovalLogPage.jsx';
-import MyProfilePage from '../features/ess/pages/MyProfilePage.jsx';
-import MyDocumentsPage from '../features/ess/pages/MyDocumentsPage.jsx';
-import MyLeavePage from '../features/ess/pages/MyLeavePage.jsx';
-import MyRequestsPage from '../features/ess/pages/MyRequestsPage.jsx';
-import MyPayslipsPage from '../features/ess/pages/MyPayslipsPage.jsx';
-import MyExitDocumentsPage from '../features/ess/pages/MyExitDocumentsPage.jsx';
-import MyAttendancePage from '../features/ess/pages/MyAttendancePage.jsx';
+const DashboardLayout = lazy(() => import('./layouts/DashboardLayout.jsx'));
+const EssLayout = lazy(() => import('./layouts/EssLayout.jsx'));
+// Every page below is lazy-loaded (Vite/Rollup splits each `import()` into
+// its own chunk, fetched only when its route is actually visited) — this
+// file used to eagerly import all 66 of them, producing one 1.27MB bundle
+// regardless of which single page a login actually lands on. Composes with
+// `guarded`/`guardedWrite` below with ZERO changes to either, since they
+// just wrap whatever element they're given — a lazy component works as a
+// drop-in replacement for a normal one as long as something up the tree
+// provides a <Suspense> boundary, which each layout now does around its own
+// <Outlet> (see layouts/*.jsx). NoPortalAccessPage is the one deliberate
+// exception, kept eager: WorkerRouter renders it directly in place of
+// <EssLayout> (not through EssLayout's own <Outlet>/<Suspense>), so there is
+// no Suspense boundary above it to catch a lazy load.
+const LoginPage = lazy(() => import('../features/auth/pages/LoginPage.jsx'));
+const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage.jsx'));
+const EmployeeListPage = lazy(() => import('../features/employees/pages/EmployeeListPage.jsx'));
+const EmployeeNewPage = lazy(() => import('../features/employees/pages/EmployeeNewPage.jsx'));
+const EmployeeProfilePage = lazy(() => import('../features/employees/pages/EmployeeProfilePage.jsx'));
+const EmployeeEditPage = lazy(() => import('../features/employees/pages/EmployeeEditPage.jsx'));
+const OutsourcedEmployeesPage = lazy(() => import('../features/employees/OutsourcedEmployeesPage.jsx'));
+const ClientListPage = lazy(() => import('../features/clients/pages/ClientListPage.jsx'));
+const ClientNewPage = lazy(() => import('../features/clients/pages/ClientNewPage.jsx'));
+const ClientProfilePage = lazy(() => import('../features/clients/pages/ClientProfilePage.jsx'));
+const ClientEditPage = lazy(() => import('../features/clients/pages/ClientEditPage.jsx'));
+const DeploymentListPage = lazy(() => import('../features/deployments/pages/DeploymentListPage.jsx'));
+const DeploymentDetailPage = lazy(() => import('../features/deployments/pages/DeploymentDetailPage.jsx'));
+const StandbyListPage = lazy(() => import('../features/deployments/pages/StandbyListPage.jsx'));
+const HoursReviewPage = lazy(() => import('../features/deployments/pages/HoursReviewPage.jsx'));
+const PaymentsDuePage = lazy(() => import('../features/deployments/pages/PaymentsDuePage.jsx'));
+const PaymentsReviewPage = lazy(() => import('../features/deployments/pages/PaymentsReviewPage.jsx'));
+const ReadyToInvoicePage = lazy(() => import('../features/deployments/pages/ReadyToInvoicePage.jsx'));
+const PaidInvoicesPage = lazy(() => import('../features/deployments/pages/PaidInvoicesPage.jsx'));
+const MobilisationListPage = lazy(() => import('../features/mobilisations/pages/MobilisationListPage.jsx'));
+const MobilisationNewPage = lazy(() => import('../features/mobilisations/pages/MobilisationNewPage.jsx'));
+const MobilisationDetailPage = lazy(() => import('../features/mobilisations/pages/MobilisationDetailPage.jsx'));
+const MobilisationEditPage = lazy(() => import('../features/mobilisations/pages/MobilisationEditPage.jsx'));
+const WorkerHistoryPage = lazy(() => import('../features/mobilisations/pages/WorkerHistoryPage.jsx'));
+const MobilisationSettingsPage = lazy(() => import('../features/mobilisationSettings/pages/MobilisationSettingsPage.jsx'));
+const CompanySettingsPage = lazy(() => import('../features/companySettings/pages/CompanySettingsPage.jsx'));
+const SectionAccessPage = lazy(() => import('../features/sectionAccess/pages/SectionAccessPage.jsx'));
+const SubcontractorListPage = lazy(() => import('../features/subcontractors/pages/SubcontractorListPage.jsx'));
+const AttendancePage = lazy(() => import('../features/attendance/pages/AttendancePage.jsx'));
+const AttendanceSummaryPage = lazy(() => import('../features/attendance/pages/AttendanceSummaryPage.jsx'));
+const DocumentListPage = lazy(() => import('../features/documents/pages/DocumentListPage.jsx'));
+const TimesheetProcessorPage = lazy(() => import('../features/timesheetProcessor/pages/TimesheetProcessorPage.jsx'));
+const NfcCompanyListPage = lazy(() => import('../features/nfc/pages/NfcCompanyListPage.jsx'));
+const NfcCompanyProfilePage = lazy(() => import('../features/nfc/pages/NfcCompanyProfilePage.jsx'));
+const NfcCardListPage = lazy(() => import('../features/nfc/pages/NfcCardListPage.jsx'));
+const NfcCardDetailPage = lazy(() => import('../features/nfc/pages/NfcCardDetailPage.jsx'));
+const NfcAnalyticsPage = lazy(() => import('../features/nfc/pages/NfcAnalyticsPage.jsx'));
+const UserListPage = lazy(() => import('../features/users/pages/UserListPage.jsx'));
+const CoordinatorActivityPage = lazy(() => import('../features/coordinatorActivity/pages/CoordinatorActivityPage.jsx'));
+const LeavePage = lazy(() => import('../features/leave/pages/LeavePage.jsx'));
+const HolidayListPage = lazy(() => import('../features/holidays/pages/HolidayListPage.jsx'));
+const SettlementListPage = lazy(() => import('../features/eosb/pages/SettlementListPage.jsx'));
+const SettlementNewPage = lazy(() => import('../features/eosb/pages/SettlementNewPage.jsx'));
+const SettlementViewPage = lazy(() => import('../features/eosb/pages/SettlementViewPage.jsx'));
+const FinancialRequestsPage = lazy(() => import('../features/financialRequests/pages/FinancialRequestsPage.jsx'));
+const AssetListPage = lazy(() => import('../features/assets/pages/AssetListPage.jsx'));
+const ExitDocumentsPage = lazy(() => import('../features/exitDocuments/pages/ExitDocumentsPage.jsx'));
+const TimesheetsPage = lazy(() => import('../features/timesheets/pages/TimesheetsPage.jsx'));
+
+const ExpenseListPage = lazy(() => import('../features/expenses/pages/ExpenseListPage.jsx'));
+const AuditLogPage = lazy(() => import('../features/audit/pages/AuditLogPage.jsx'));
+const ReconciliationPage = lazy(() => import('../features/reconciliation/pages/ReconciliationPage.jsx'));
+const DailyUpdatesPage = lazy(() => import('../features/dailyUpdates/pages/DailyUpdatesPage.jsx'));
+const RequirementsBoardPage = lazy(() => import('../features/requirements/pages/RequirementsBoardPage.jsx'));
+const LocationsSettingsPage = lazy(() => import('../features/locations/pages/LocationsSettingsPage.jsx'));
+const ApprovalsPage = lazy(() => import('../features/approvals/pages/ApprovalsPage.jsx'));
+const ApprovalLogPage = lazy(() => import('../features/approvals/pages/ApprovalLogPage.jsx'));
+const MyProfilePage = lazy(() => import('../features/ess/pages/MyProfilePage.jsx'));
+const MyDocumentsPage = lazy(() => import('../features/ess/pages/MyDocumentsPage.jsx'));
+const MyLeavePage = lazy(() => import('../features/ess/pages/MyLeavePage.jsx'));
+const MyRequestsPage = lazy(() => import('../features/ess/pages/MyRequestsPage.jsx'));
+const MyPayslipsPage = lazy(() => import('../features/ess/pages/MyPayslipsPage.jsx'));
+const MyExitDocumentsPage = lazy(() => import('../features/ess/pages/MyExitDocumentsPage.jsx'));
+const MyAttendancePage = lazy(() => import('../features/ess/pages/MyAttendancePage.jsx'));
+// Kept eager — see the doc comment above.
 import NoPortalAccessPage from '../features/ess/pages/NoPortalAccessPage.jsx';
-import WorkforceHubPage from './pages/WorkforceHubPage.jsx';
-import SalesHubPage from './pages/SalesHubPage.jsx';
-import FinancialHubPage from './pages/FinancialHubPage.jsx';
-import AdminToolsHubPage from './pages/AdminToolsHubPage.jsx';
+import RequireSectionRead from '../components/shared/RequireSectionRead.jsx';
+import RequireSectionWrite from '../components/shared/RequireSectionWrite.jsx';
+import ErrorPage from './pages/ErrorPage.jsx';
+const WorkforceHubPage = lazy(() => import('./pages/WorkforceHubPage.jsx'));
+const SalesHubPage = lazy(() => import('./pages/SalesHubPage.jsx'));
+const FinancialHubPage = lazy(() => import('./pages/FinancialHubPage.jsx'));
+const AdminToolsHubPage = lazy(() => import('./pages/AdminToolsHubPage.jsx'));
 import Spinner from '../components/ui/Spinner.jsx';
+
+/** Full-screen (not content-area-scoped like RouteFallback — there's no
+ *  sidebar/header on screen yet, since the LAYOUT itself is what's
+ *  loading) fallback for DashboardLayout/EssLayout's own lazy chunk load.
+ *  Same spinner RequireAuth's own loading state above already uses. */
+function FullScreenFallback() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-bg">
+      <Spinner className="h-8 w-8 text-primary" />
+    </div>
+  );
+}
 
 function RequireAuth() {
   const { status } = useAuth();
@@ -107,23 +161,17 @@ const SELF_SERVICE_ROLES = ['Worker', 'Staff'];
  * redirect OUT of this branch entirely (to `/me`, under the sibling
  * WorkerRouter branch below) so RoleRouter never runs again for them.
  *
- * Office Secretary is a narrower case: it stays in the admin shell (not the
- * ESS portal), but is deny-by-default like Executive — unlike Executive, it
- * was never allow-listed into the Dashboard endpoint (its only legitimate
- * destination is Mobilisations), so `/` — where every login lands after
- * sign-in — would just 403 on GET /api/dashboard. Unlike Worker/Staff's
- * redirect target, `/mobilisations` is still INSIDE this same RoleRouter-
- * guarded branch, so the location check is required — without it, RoleRouter
- * would re-run on the redirected-to URL and redirect again, never once
- * reaching <Outlet/> and leaving the whole page blank.
+ * Office Secretary used to have her own narrower redirect here too (bounced
+ * to `/mobilisations` from anywhere else, since she was deny-by-default and
+ * `/api/dashboard` would just 403 for her). Moved into STAFF_ROLES
+ * 2026-09-13 (see rbac.js's own doc comment) — `/api/dashboard` now passes
+ * her through `requireStaffOrExecutive` like any other staff role, so the
+ * redirect is gone; she reaches `/` and anything else she's actually been
+ * granted, same as Coordinator/HR/Manager/Accounts.
  */
 function RoleRouter() {
   const { user } = useAuth();
-  const location = useLocation();
   if (SELF_SERVICE_ROLES.includes(user.role)) return <Navigate to="/me" replace />;
-  if (user.role === 'Office Secretary' && !location.pathname.startsWith('/mobilisations')) {
-    return <Navigate to="/mobilisations" replace />;
-  }
   return <Outlet />;
 }
 
@@ -141,77 +189,145 @@ function WorkerRouter() {
   return <Outlet />;
 }
 
+/** Wrap a route's element with the Read gate for its section (see
+ *  RequireSectionRead) — only for the sections that are now Section-Access
+ *  read-gated. Routes deliberately left unwrapped: Mobilisation's list/
+ *  view/new routes (visibility is per-record, not a blanket section — see
+ *  mobilisation.service.js; MobilisationEditPage does its own in-page
+ *  isPrimary-or-Admin/canEditSection1 check since that's per-record too),
+ *  Financial Requests (list/submit stays on the broader
+ *  requireStaffOrExecutive floor, unchanged), Company Settings/Approval Log
+ *  (already have their own dynamic in-page 403 handling). */
+const guarded = (sectionKey, element, officeSecretaryBypass) => (
+  <RequireSectionRead sectionKey={sectionKey} officeSecretaryBypass={officeSecretaryBypass}>
+    {element}
+  </RequireSectionRead>
+);
+
+/** Same idea as `guarded`, but for a "new"/"edit" sub-route: checks Write,
+ *  not Read (see RequireSectionWrite). These routes are normally reached
+ *  via a button that's already canWrite-gated, but a direct URL/bookmark
+ *  had no guard at all until this was added 2026-09-14 (found alongside the
+ *  Company Settings read-only-viewer-gets-a-live-form bug) — the server was
+ *  the only real backstop. */
+const guardedWrite = (sectionKey, element, officeSecretaryBypass) => (
+  <RequireSectionWrite sectionKey={sectionKey} officeSecretaryBypass={officeSecretaryBypass}>
+    {element}
+  </RequireSectionWrite>
+);
+
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
+    errorElement: <ErrorPage />,
     children: [{ path: '/login', element: <LoginPage /> }],
   },
   {
     element: <RequireAuth />,
+    errorElement: <ErrorPage />,
     children: [
       {
         element: <RoleRouter />,
         children: [
           {
-            element: <DashboardLayout />,
+            element: (
+              <Suspense fallback={<FullScreenFallback />}>
+                <DashboardLayout />
+              </Suspense>
+            ),
             children: [
               { path: '/', element: <DashboardPage /> },
               { path: '/workforce', element: <WorkforceHubPage /> },
               { path: '/sales', element: <SalesHubPage /> },
               { path: '/financial', element: <FinancialHubPage /> },
               { path: '/admin-tools', element: <AdminToolsHubPage /> },
-              { path: '/employees', element: <EmployeeListPage /> },
-              { path: '/employees/new', element: <EmployeeNewPage /> },
-              { path: '/employees/:id', element: <EmployeeProfilePage /> },
+              { path: '/employees', element: guarded('employeeCreate', <EmployeeListPage />) },
+              { path: '/employees/new', element: guardedWrite('employeeCreate', <EmployeeNewPage />) },
+              { path: '/employees/:id', element: guarded('employeeCreate', <EmployeeProfilePage />) },
+              { path: '/outsourced-employees', element: guarded('employeeCreate', <OutsourcedEmployeesPage />) },
+              // NOT guardedWrite('employeeCreate', ...): editing an employee is
+              // gated by a DIFFERENT, hardcoded role list (Admin/Manager/HR —
+              // see employee.routes.js's PATCH /:id) than creating one
+              // ('employeeCreate' Section Access, POST /). EmployeeEditPage
+              // does its own in-page EMPLOYEE_WRITE_ROLES check instead.
               { path: '/employees/:id/edit', element: <EmployeeEditPage /> },
-              { path: '/clients', element: <ClientListPage /> },
-              { path: '/clients/new', element: <ClientNewPage /> },
-              { path: '/clients/:id', element: <ClientProfilePage /> },
-              { path: '/clients/:id/edit', element: <ClientEditPage /> },
-              { path: '/deployments', element: <DeploymentListPage /> },
-              { path: '/deployments/new', element: <DeploymentNewPage /> },
+              { path: '/clients', element: guarded('clientsManage', <ClientListPage />) },
+              { path: '/clients/new', element: guardedWrite('clientsManage', <ClientNewPage />) },
+              { path: '/clients/:id', element: guarded('clientsManage', <ClientProfilePage />) },
+              { path: '/clients/:id/edit', element: guardedWrite('clientsManage', <ClientEditPage />) },
+              // officeSecretaryBypass: true — mirrors deployment.routes.js's
+              // own hardcoded canReadDeployments exception (she needs to
+              // find the deployment she's about to enter hours against).
+              { path: '/deployments', element: guarded('deploymentsRelease', <DeploymentListPage />, true) },
+              // Before the /deployments/:id catch-all, or "standby" is read as a deployment id.
+              { path: '/deployments/standby', element: guarded('deploymentsRelease', <StandbyListPage />, true) },
+              // Before the /deployments/:id catch-all.
+              { path: '/deployments/hours-review', element: guarded('deploymentsHoursDecide', <HoursReviewPage />) },
+              { path: '/deployments/:id', element: guarded('deploymentsRelease', <DeploymentDetailPage />, true) },
               { path: '/mobilisations', element: <MobilisationListPage /> },
-              { path: '/mobilisations/new', element: <MobilisationNewPage /> },
+              { path: '/mobilisations/new', element: guardedWrite('mobilisationsSelfMobilise', <MobilisationNewPage />, true) },
+              // Before the /mobilisations/:id catch-all, same reasoning as
+              // /deployments/standby above. Admin-only, checked inside the
+              // page itself (same posture as /section-access) — not worth a
+              // dedicated Section Access key for a single hardcoded-Admin
+              // utility.
+              { path: '/mobilisations/worker-history', element: <WorkerHistoryPage /> },
               { path: '/mobilisations/:id', element: <MobilisationDetailPage /> },
               { path: '/mobilisations/:id/edit', element: <MobilisationEditPage /> },
               { path: '/mobilisation-settings', element: <MobilisationSettingsPage /> },
+              { path: '/locations', element: <LocationsSettingsPage /> },
               { path: '/company-settings', element: <CompanySettingsPage /> },
               { path: '/section-access', element: <SectionAccessPage /> },
-              { path: '/subcontractors', element: <SubcontractorListPage /> },
-              { path: '/attendance', element: <AttendancePage /> },
-              { path: '/attendance/summary', element: <AttendanceSummaryPage /> },
-              { path: '/documents', element: <DocumentListPage /> },
-              { path: '/quotations', element: <QuotationListPage /> },
-              { path: '/quotations/new', element: <QuotationNewPage /> },
-              { path: '/quotations/:id', element: <QuotationViewPage /> },
-              { path: '/quotations/:id/edit', element: <QuotationEditPage /> },
-              { path: '/timesheet-processor', element: <TimesheetProcessorPage /> },
-              { path: '/team', element: <UserListPage /> },
+              { path: '/subcontractors', element: guarded('subcontractorsManage', <SubcontractorListPage />) },
+              { path: '/attendance', element: guarded(['attendanceRecords', 'attendanceSignInOut', 'attendanceOfficeLocation'], <AttendancePage />) },
+              { path: '/attendance/summary', element: guarded('attendanceRecords', <AttendanceSummaryPage />) },
+              { path: '/documents', element: guarded('documentsManage', <DocumentListPage />) },
+              { path: '/timesheet-processor', element: guarded('timesheetProcessor', <TimesheetProcessorPage />) },
+              { path: '/team', element: guarded('team', <UserListPage />) },
               { path: '/coordinator-activity', element: <CoordinatorActivityPage /> },
-              { path: '/leave', element: <LeavePage /> },
+              { path: '/leave', element: guarded('leaveRequests', <LeavePage />) },
               { path: '/holidays', element: <HolidayListPage /> },
-              { path: '/eosb', element: <SettlementListPage /> },
+              { path: '/eosb', element: guarded('eosb', <SettlementListPage />) },
               // Before the /eosb/:id catch-all, or "new" is read as a settlement id.
-              { path: '/eosb/new', element: <SettlementNewPage /> },
-              { path: '/eosb/:id', element: <SettlementViewPage /> },
+              { path: '/eosb/new', element: guardedWrite('eosb', <SettlementNewPage />) },
+              { path: '/eosb/:id', element: guarded('eosb', <SettlementViewPage />) },
               { path: '/financial-requests', element: <FinancialRequestsPage /> },
-              { path: '/assets', element: <AssetListPage /> },
-              { path: '/exit-documents', element: <ExitDocumentsPage /> },
-              { path: '/timesheets', element: <TimesheetsPage /> },
-              { path: '/payroll', element: <PayrollListPage /> },
-              { path: '/payroll/:id', element: <PayrollRunPage /> },
-              { path: '/invoices', element: <InvoiceListPage /> },
-              { path: '/invoices/:id', element: <InvoiceViewPage /> },
-              { path: '/expenses', element: <ExpenseListPage /> },
-              { path: '/security-log', element: <AuditLogPage /> },
-              { path: '/approvals', element: <ApprovalsPage /> },
+              { path: '/assets', element: guarded('assetsManage', <AssetListPage />) },
+              { path: '/exit-documents', element: guarded('exitDocuments', <ExitDocumentsPage />) },
+              { path: '/timesheets', element: guarded('timesheetRequests', <TimesheetsPage />) },
+
+              // Client billing — the internal tracking layer on top of
+              // Deployment.monthlyHours (2026-09-27, moved out of the
+              // Deployment detail page into its own Financial-section home,
+              // the user's own ask: "financial should be for accountants and
+              // FM to do their stuff," not scattered across a workforce
+              // module). No dedicated Section Access gate on either route —
+              // each page's own data is already correctly scoped
+              // server-side (deploymentsInvoicing/mobilisationsViewer for
+              // Ready to Invoice; coordinator-own/mobilisationsViewer for
+              // Payments Due), same reasoning the old
+              // /deployments/payments-due route already used.
+              { path: '/financial/ready-to-invoice', element: guarded(['deploymentsInvoicing', 'mobilisationsViewer'], <ReadyToInvoicePage />) },
+              { path: '/financial/payments-due', element: <PaymentsDuePage /> },
+              { path: '/financial/paid-invoices', element: <PaidInvoicesPage /> },
+              { path: '/financial/payments-review', element: guarded('deploymentsPaymentDecide', <PaymentsReviewPage />) },
+              { path: '/expenses', element: guarded('expenses', <ExpenseListPage />) },
+              { path: '/security-log', element: guarded('auditLog', <AuditLogPage />) },
+              { path: '/reconciliation', element: guarded('reconciliation', <ReconciliationPage />) },
+              // Two independently-granted keys (own workspace / every coordinator) —
+              // the route opens for either; the page and the server sort out which.
+              { path: '/daily-updates', element: guarded(['dailyUpdatesOwn', 'dailyUpdatesTeam'], <DailyUpdatesPage />) },
+              // Same two-key shape; `requirementStages` (who edits the columns) is
+              // deliberately not an entry key — it only unlocks a button on the board.
+              { path: '/requirements', element: guarded(['requirementsOwn', 'requirementsTeam'], <RequirementsBoardPage />) },
+              { path: '/approvals', element: guarded('approvalHierarchy', <ApprovalsPage />) },
               { path: '/approvals/log', element: <ApprovalLogPage /> },
-              { path: '/nfc', element: <NfcCompanyListPage /> },
-              { path: '/nfc/cards', element: <NfcCardListPage /> },
-              { path: '/nfc/cards/:id', element: <NfcCardDetailPage /> },
+              { path: '/nfc', element: guarded('nfc', <NfcCompanyListPage />) },
+              { path: '/nfc/cards', element: guarded('nfc', <NfcCardListPage />) },
+              { path: '/nfc/cards/:id', element: guarded('nfc', <NfcCardDetailPage />) },
               // Before the /nfc/:id catch-all, or "analytics" is read as a company id.
-              { path: '/nfc/analytics', element: <NfcAnalyticsPage /> },
-              { path: '/nfc/:id', element: <NfcCompanyProfilePage /> },
+              { path: '/nfc/analytics', element: guarded('nfc', <NfcAnalyticsPage />) },
+              { path: '/nfc/:id', element: guarded('nfc', <NfcCompanyProfilePage />) },
             ],
           },
         ],
@@ -220,7 +336,11 @@ export const router = createBrowserRouter([
         element: <WorkerRouter />,
         children: [
           {
-            element: <EssLayout />,
+            element: (
+              <Suspense fallback={<FullScreenFallback />}>
+                <EssLayout />
+              </Suspense>
+            ),
             children: [
               { path: '/me', element: <MyProfilePage /> },
               { path: '/me/documents', element: <MyDocumentsPage /> },

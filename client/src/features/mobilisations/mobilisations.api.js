@@ -16,16 +16,73 @@ export async function listCoordinatorCandidates() {
   return data.data;
 }
 
-/** Live autocomplete for a free-typed worker-identity field (SupplierEmployee/
- *  Freelancer only — see MobilisationForm) — string[] of past values. */
-export async function getMobilisationSuggestions(field) {
-  const { data } = await api.get('/mobilisations/suggestions', { params: { field } });
+/** "Is this worker already known?" — a SupplierEmployee/Freelancer's most
+ *  recent mobilisation snapshot, by their exact 10-digit Iqama, or null.
+ *  See MobilisationForm's auto-fill-on-Iqama-match behavior. */
+export async function lookupMobilisationWorkerByIqama(iqamaNumber) {
+  const { data } = await api.get('/mobilisations/lookup-by-iqama', { params: { iqamaNumber } });
   return data.data;
+}
+
+/** "Who have we mobilised before?" — for SupplierEmployee, scoped to one
+ *  subcontractor; for Freelancer, company-wide (no grouping entity exists).
+ *  See MobilisationForm's PreviousWorkerPicker — click one, its fields
+ *  auto-fill, same as the Iqama-typed lookup above. */
+export async function listPreviousMobilisedWorkers({ workerType, subcontractor }) {
+  const { data } = await api.get('/mobilisations/previous-workers', { params: { workerType, subcontractor } });
+  return data.data;
+}
+
+/** Everything known about one Freelancer/SupplierEmployee worker, by their
+ *  exact 10-digit Iqama — Admin only. See WorkerHistoryPage.jsx. */
+export async function getWorkerHistory(iqamaNumber) {
+  const { data } = await api.get('/mobilisations/worker-history', { params: { iqamaNumber } });
+  return data.data;
+}
+
+/** Archives every Mobilisation (and resulting Deployment) for this worker —
+ *  hidden from lists/lookups, not deleted; reversible. Admin only. */
+export async function archiveWorkerData(iqamaNumber) {
+  await api.post('/mobilisations/worker-history/archive', { iqamaNumber });
+}
+
+/** Reverses archiveWorkerData above. Admin only. */
+export async function unarchiveWorkerData(iqamaNumber) {
+  await api.post('/mobilisations/worker-history/unarchive', { iqamaNumber });
 }
 
 export async function getMobilisation(id) {
   const { data } = await api.get(`/mobilisations/${id}`);
   return data.data;
+}
+
+/** Download this one mobilisation as a .xlsx (an authenticated Blob — a
+ *  plain <a>/<img> can't send the in-memory bearer token). */
+export async function downloadMobilisationExport(id, serialNumber) {
+  const res = await api.get(`/mobilisations/${id}/export`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mobilisation_${serialNumber}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Download every mobilisation matching the given list filters as one
+ *  .xlsx (same filters the list page itself uses — status/client/worker/
+ *  search/sort — pagination doesn't apply to an export). */
+export async function downloadMobilisationsExport(filters) {
+  const res = await api.get('/mobilisations/export', { params: filters, responseType: 'blob' });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mobilisations_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 export async function createMobilisation(payload) {
@@ -36,13 +93,6 @@ export async function createMobilisation(payload) {
 export async function updateMobilisation(id, payload) {
   const { data } = await api.patch(`/mobilisations/${id}`, payload);
   return data.data;
-}
-
-// TEMPORARY — pre-production cleanup only, Admin-only. Remove this function
-// along with its call sites and the server route/service/controller behind
-// it before going live.
-export async function deleteMobilisation(id) {
-  await api.delete(`/mobilisations/${id}`);
 }
 
 // --- M2: joint coordinators + submit ---
@@ -62,16 +112,21 @@ export async function confirmCoordinator(id, userId) {
   return data.data;
 }
 
+export async function setCoordinatorShares(id, shares) {
+  const { data } = await api.put(`/mobilisations/${id}/coordinator-shares`, { shares });
+  return data.data;
+}
+
+export async function clearCoordinatorShares(id) {
+  const { data } = await api.delete(`/mobilisations/${id}/coordinator-shares`);
+  return data.data;
+}
+
 export async function submitMobilisation(id) {
   const { data } = await api.post(`/mobilisations/${id}/submit`);
   return data.data;
 }
 
-/** Approved → Completed (Milestone 5) — releases the worker back to standby. */
-export async function completeMobilisation(id) {
-  const { data } = await api.patch(`/mobilisations/${id}/complete`);
-  return data.data;
-}
 
 // --- M3: Marketing Manager review ---
 
@@ -114,4 +169,12 @@ export async function downloadMobilisationDocument(id, fileId, originalName) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+/** Fetch a mobilisation document's bytes as a Blob, for inline preview
+ *  (mirrors documents.api.js's fetchFileBlob) — no download side effect,
+ *  the caller turns it into an object URL itself. */
+export async function fetchMobilisationDocumentBlob(id, fileId) {
+  const res = await api.get(`/mobilisations/${id}/documents/${fileId}/file`, { responseType: 'blob' });
+  return res.data;
 }

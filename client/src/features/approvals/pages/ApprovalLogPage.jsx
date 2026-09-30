@@ -8,16 +8,44 @@
  * run and render its result" approach the review screens use for
  * canDecideCurrentStep.
  *
- * Only Leave is wired to workflows so far (Milestone 4) — Salary Advance /
- * Reimbursement / Timesheet appear here automatically once their own
- * milestones add `workflow`/`approvalTrail` fields (see
- * approvals.service.js's LOG_SOURCES).
+ * Leave, ExitReentry, Certificate, Timesheet, SalaryAdvance, and
+ * Reimbursement are all wired in (see approvals.service.js's LOG_SOURCES).
+ * Mobilisation is the one deliberate holdout — its `coordinators` are Users
+ * directly, not an Employee ref, so it doesn't fit this log's shared
+ * `employee`-scoped shape without its own pass.
  */
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { listApprovalLog } from '../approvals.api.js';
 import { APPROVAL_REQUEST_TYPES, APPROVAL_REQUEST_TYPE_LABELS } from '../../../lib/constants.js';
+
+// Fixed 2026-09-15, the QA audit's own UX suggestion #7 ("the approval-log
+// UI should not offer a request type that is intentionally unimplemented
+// without explaining it"): Mobilisation is a real, valid
+// APPROVAL_REQUEST_TYPES member (used correctly elsewhere, e.g. the
+// Approval Hierarchy's own workflow-type picker) but is deliberately absent
+// from this log's own LOG_SOURCES (see approvals.service.js and this file's
+// own doc comment) — picking it here always silently returned zero results,
+// indistinguishable from "no decisions yet." Filtered out of THIS page's
+// own dropdown only; the shared constant itself is untouched.
+const LOG_FILTER_TYPES = APPROVAL_REQUEST_TYPES.filter((t) => t !== 'Mobilisation');
+
+// Fixed 2026-09-29, a real audit finding: ApprovalTrailView was rendered
+// with no `pendingStatus`, so it always defaulted to Leave's own literal
+// ('PendingReview') — every Timesheet/SalaryAdvance/Reimbursement/
+// ExitReentry/Certificate row (each with a DIFFERENT real pending literal —
+// see each module's own `pendingStatus` in its service file) silently never
+// got the current-step in-progress highlight this log otherwise shows
+// correctly for Leave.
+const PENDING_STATUS_BY_TYPE = {
+  Leave: 'PendingReview',
+  Timesheet: 'Submitted',
+  SalaryAdvance: 'Pending',
+  Reimbursement: 'Pending',
+  ExitReentry: 'Pending',
+  Certificate: 'Pending',
+};
 import { apiMessage, formatDate } from '../../../lib/utils.js';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
 import ApprovalTrailView from '../../../components/shared/ApprovalTrailView.jsx';
@@ -29,9 +57,18 @@ import Select from '../../../components/ui/Select.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 
-const STATUS_OPTIONS = ['PendingReview', 'Approved', 'Rejected'];
-const STATUS_VARIANT = { PendingReview: 'warning', Approved: 'success', Rejected: 'danger' };
-const statusLabel = (s) => (s === 'PendingReview' ? 'Pending review' : s);
+// Fixed 2026-09-15, a real QA-audit-found gap — F9: the filter now sends
+// the server's normalized 'Pending' value (see approvals.validation.js),
+// not Leave's own literal 'PendingReview' — that string alone silently
+// excluded every other source type from the filtered results. Real ITEMS
+// still come back with their own source type's actual status literal
+// (Leave's 'PendingReview', Timesheet's 'Submitted', every other type's
+// 'Pending') — PENDING_STATUSES is how the badge/label below recognizes
+// all of them as the same "awaiting decision" state for display.
+const STATUS_OPTIONS = ['Pending', 'Approved', 'Rejected'];
+const PENDING_STATUSES = new Set(['Pending', 'PendingReview', 'Submitted']);
+const statusVariant = (s) => (PENDING_STATUSES.has(s) ? 'warning' : s === 'Approved' ? 'success' : s === 'Rejected' ? 'danger' : 'default');
+const statusLabel = (s) => (PENDING_STATUSES.has(s) ? 'Pending review' : s);
 
 export default function ApprovalLogPage() {
   const navigate = useNavigate();
@@ -43,8 +80,10 @@ export default function ApprovalLogPage() {
     queryKey: ['approval-log', { type, status }],
     queryFn: () => listApprovalLog({ limit: 100, ...(type && { type }), ...(status && { status }) }),
     // Same reasoning as the Leave review queue: a decision made from another
-    // session has no way to reach this already-open log otherwise.
-    refetchInterval: 10_000,
+    // session has no way to reach this already-open log otherwise. 20s, not
+    // 10s (2026-09-22, a real QA-audit finding — P1) — see LeavePage.jsx's
+    // own comment on this exact change.
+    refetchInterval: 20_000,
     refetchOnWindowFocus: true,
   });
 
@@ -73,7 +112,7 @@ export default function ApprovalLogPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Select label="Request type" value={type} onChange={(e) => setType(e.target.value)}>
             <option value="">All types</option>
-            {APPROVAL_REQUEST_TYPES.map((t) => (
+            {LOG_FILTER_TYPES.map((t) => (
               <option key={t} value={t}>
                 {APPROVAL_REQUEST_TYPE_LABELS[t]}
               </option>
@@ -120,9 +159,9 @@ export default function ApprovalLogPage() {
                       {APPROVAL_REQUEST_TYPE_LABELS[item.requestType]} · {item.typeName} · {formatDate(item.createdAt)}
                     </p>
                   </div>
-                  <Badge variant={STATUS_VARIANT[item.status] ?? 'default'}>{statusLabel(item.status)}</Badge>
+                  <Badge variant={statusVariant(item.status)}>{statusLabel(item.status)}</Badge>
                 </div>
-                <ApprovalTrailView request={item} />
+                <ApprovalTrailView request={item} pendingStatus={PENDING_STATUS_BY_TYPE[item.requestType]} />
               </div>
             ))}
           </div>

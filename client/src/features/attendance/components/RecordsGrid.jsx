@@ -4,8 +4,9 @@
  * horizontally inside its own container so the page never does.
  *
  * Two row groups: workers (Employee-based Attendance, click any cell to
- * correct) and, for Admin/Manager/HR, a read-only "Coordinators & Staff"
- * group below (StaffAttendance — a separate collection by design, see
+ * correct) and, for whoever holds 'attendanceSignInOut' Read, a read-only
+ * "Coordinators & Staff" group below (StaffAttendance — a separate
+ * collection by design, see
  * server/src/modules/staffAttendance/staffAttendance.model.js; merged here
  * for display only, never combined into one lookup keyed by bare id).
  *
@@ -16,7 +17,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { listEmployees } from '../../employees/employees.api.js';
+import { useEmployeePicker } from '../../../lib/useEmployeePicker.js';
 import { listStaffUsers } from '../../users/users.api.js';
 import { listAttendance, adjustAttendance, markBulk } from '../attendance.api.js';
 import { listAllStaffAttendance } from '../staffAttendance.api.js';
@@ -36,7 +37,6 @@ import { useAuth } from '../../auth/AuthContext.jsx';
 import {
   ATTENDANCE_STATUS_META,
   ATTENDANCE_STATUSES,
-  ATTENDANCE_WRITE_ROLES,
   STAFF_SELF_ATTENDANCE_ROLES,
   HOLIDAY_DISPLAY_META,
 } from '../../../lib/constants.js';
@@ -51,16 +51,25 @@ import Input from '../../../components/ui/Input.jsx';
 import Textarea from '../../../components/ui/Textarea.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
 
-/** ISO datetime -> "HH:MM" in the viewer's local time, for a time input. */
+/** ISO datetime -> "HH:MM" in UTC — fixed 2026-09-29, a real audit finding:
+ *  this used to read the viewer's browser-LOCAL time while `toIsoDateTime`
+ *  below (and every other date computation in this module — see
+ *  attendance.dates.js's own header comment) is explicitly UTC-anchored.
+ *  On a Riyadh (UTC+3) browser, correcting a punch between 00:00-02:59 for
+ *  a given date produced a `checkInTime` whose UTC day was the PREVIOUS
+ *  day, silently disagreeing with the record's own `date` key. Both
+ *  functions must stay exact inverses of each other. */
 function toTimeInput(iso) {
   if (!iso) return '';
-  return new Date(iso).toTimeString().slice(0, 5);
+  return new Date(iso).toISOString().slice(11, 16);
 }
 
-/** "YYYY-MM-DD" + "HH:MM" (local) -> ISO datetime, or null if no time given. */
+/** "YYYY-MM-DD" + "HH:MM" (UTC) -> ISO datetime, or null if no time given. */
 function toIsoDateTime(dateKey, timeInput) {
   if (!timeInput) return null;
-  return new Date(`${dateKey}T${timeInput}:00`).toISOString();
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const [hours, minutes] = timeInput.split(':').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, hours, minutes, 0)).toISOString();
 }
 
 export default function RecordsGrid() {
@@ -68,8 +77,12 @@ export default function RecordsGrid() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const canEdit = Boolean(user.sectionAccess?.includes('attendanceManage'));
-  const canSeeStaffRows = ATTENDANCE_WRITE_ROLES.includes(user.role);
+  const canEdit = Boolean(user.sectionAccessWrite?.includes('attendanceRecords'));
+  // 'attendanceSignInOut' Read governs the oversight view of everyone's
+  // punches (see staffAttendance.routes.js) — the same key that gates the
+  // merged log on the Sign In/Out tab, reused here for the "Coordinators &
+  // Staff" read-only group below the worker rows.
+  const canSeeStaffRows = Boolean(user.sectionAccess?.includes('attendanceSignInOut'));
 
   const [mode, setMode] = useState('month'); // 'month' | 'week'
   const [ref, setRef] = useState(todayKey());
@@ -78,15 +91,11 @@ export default function RecordsGrid() {
 
   const range = useMemo(() => (mode === 'month' ? monthRange(ref) : weekRange(ref)), [mode, ref]);
 
-  const { data: employeeData, isPending: employeesLoading } = useQuery({
-    queryKey: ['employees', { forAttendance: true }],
-    // Not filtered by type server-side — the grid tracks the supplied
-    // workforce (Client + Subcontracted), filtered client-side below.
-    // Own-type employees (Manager/HR/Coordinator/Accounts) already have
-    // their own section below, sourced from StaffAttendance, not this
-    // Attendance query.
-    queryFn: () => listEmployees({ limit: 100, sortBy: 'fullName', sortOrder: 'asc' }),
-  });
+  // Not filtered by type server-side — the grid tracks the supplied
+  // workforce (Client + Subcontracted), filtered client-side below.
+  // Own-type employees (Manager/HR/Coordinator/Accounts) already have their
+  // own section below, sourced from StaffAttendance, not this query.
+  const { data: employeeData, isPending: employeesLoading } = useEmployeePicker();
   const { data: records, isPending: recordsLoading } = useQuery({
     queryKey: ['attendance', 'range', range.from, range.to],
     queryFn: () => listAttendance({ from: range.from, to: range.to }),
@@ -139,6 +148,14 @@ export default function RecordsGrid() {
   }, [staffRecords]);
 
   const workers = (employeeData?.items ?? []).filter((e) => e.type !== 'Own' && e.status !== 'Exited');
+  // STAFF_SELF_ATTENDANCE_ROLES here is a display-roster convenience only
+  // (which login-role TYPES normally use the punch card), not an access
+  // gate — real self-mark eligibility is 'attendanceSignInOut' Write,
+  // admin-configurable per Approval Role. If that key is ever granted to a
+  // role outside this list, that person's own punches still work and are
+  // still readable via listAllStaffAttendance; they just won't get a
+  // "not signed in today" placeholder row here until they've punched at
+  // least once. A known, cosmetic limitation, not a security gap.
   const staffRows = canSeeStaffRows
     ? (staffUsers ?? []).filter((u) => STAFF_SELF_ATTENDANCE_ROLES.includes(u.role) && u.isActive)
     : [];

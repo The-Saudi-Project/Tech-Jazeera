@@ -9,6 +9,7 @@ import { pipeline } from 'node:stream/promises';
 import ApiError from '../../utils/ApiError.js';
 import ApiResponse from '../../utils/ApiResponse.js';
 import { contentDisposition } from '../../utils/contentDisposition.js';
+import { buildMobilisationXlsx, buildMobilisationsListXlsx } from './mobilisation.export.js';
 import * as mobilisationService from './mobilisation.service.js';
 
 const actor = (req) => ({ userId: req.user.id, role: req.user.role, ip: req.ip });
@@ -19,10 +20,37 @@ export async function listCoordinatorCandidates(req, res) {
   res.json(new ApiResponse('Coordinators.', candidates));
 }
 
-/** GET /api/mobilisations/suggestions?field=... — 200 → data: string[] */
-export async function suggestions(req, res) {
-  const values = await mobilisationService.getFieldSuggestions(req.query.field);
-  res.json(new ApiResponse('Suggestions.', values));
+/** GET /api/mobilisations/lookup-by-iqama?iqamaNumber=... — 200 → data: worker snapshot | null */
+export async function lookupByIqama(req, res) {
+  const worker = await mobilisationService.lookupWorkerByIqama(req.query.iqamaNumber);
+  res.json(new ApiResponse(worker ? 'Worker found.' : 'No previous mobilisation for this Iqama.', worker));
+}
+
+/** GET /api/mobilisations/previous-workers?workerType=&subcontractor=... —
+ *  200 → data: worker[] */
+export async function previousWorkers(req, res) {
+  const workers = await mobilisationService.listPreviousWorkers(req.query.workerType, req.query.subcontractor);
+  res.json(new ApiResponse('Previous workers.', workers));
+}
+
+/** GET /api/mobilisations/worker-history?iqamaNumber=... — 200 → data:
+ *  worker history | null (never a 404 — "nothing found for this Iqama" is
+ *  a normal, expected search result, not an error). */
+export async function getWorkerHistory(req, res) {
+  const history = await mobilisationService.getWorkerHistory(req.query.iqamaNumber);
+  res.json(new ApiResponse(history ? 'Worker history.' : 'No mobilisations found for this Iqama.', history));
+}
+
+/** POST /api/mobilisations/worker-history/archive — 200 → data: null */
+export async function archiveWorker(req, res) {
+  await mobilisationService.archiveWorkerData(req.body.iqamaNumber, actor(req));
+  res.json(new ApiResponse('Worker data archived.'));
+}
+
+/** POST /api/mobilisations/worker-history/unarchive — 200 → data: null */
+export async function unarchiveWorker(req, res) {
+  await mobilisationService.unarchiveWorkerData(req.body.iqamaNumber, actor(req));
+  res.json(new ApiResponse('Worker data restored.'));
 }
 
 /** GET /api/mobilisations — 200 → data: { items, total, page, pages } */
@@ -31,10 +59,34 @@ export async function list(req, res) {
   res.json(new ApiResponse('Mobilisations.', data));
 }
 
+/** GET /api/mobilisations/export?... — downloads a .xlsx, one row per
+ *  mobilisation matching the caller's current filters/visibility (same
+ *  rules as `list`). */
+export async function exportAll(req, res) {
+  const mobilisations = await mobilisationService.exportMobilisations(req.query, actor(req));
+  const buffer = await buildMobilisationsListXlsx(mobilisations);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="mobilisations_${new Date().toISOString().slice(0, 10)}.xlsx"`
+  );
+  res.send(buffer);
+}
+
 /** GET /api/mobilisations/:id — 200 → data: mobilisation · 403/404 */
 export async function get(req, res) {
   const mobilisation = await mobilisationService.getMobilisation(req.params.id, actor(req));
   res.json(new ApiResponse('Mobilisation.', mobilisation));
+}
+
+/** GET /api/mobilisations/:id/export — downloads a single-row .xlsx for
+ *  this mobilisation, respecting the exact same access rules as `get`. */
+export async function exportOne(req, res) {
+  const mobilisation = await mobilisationService.getMobilisation(req.params.id, actor(req));
+  const buffer = await buildMobilisationXlsx(mobilisation);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="mobilisation_${mobilisation.serialNumber}.xlsx"`);
+  res.send(buffer);
 }
 
 /** POST /api/mobilisations — 201 → data: mobilisation (Draft) · 403 wrong role */
@@ -71,17 +123,22 @@ export async function confirmCoordinator(req, res) {
   res.json(new ApiResponse('Confirmed.', mobilisation));
 }
 
+/** PUT /api/mobilisations/:id/coordinator-shares — 200 → data: mobilisation */
+export async function setCoordinatorShares(req, res) {
+  const mobilisation = await mobilisationService.setCoordinatorShares(req.params.id, req.body.shares, actor(req));
+  res.json(new ApiResponse('Coordinator shares set.', mobilisation));
+}
+
+/** DELETE /api/mobilisations/:id/coordinator-shares — 200 → data: mobilisation */
+export async function clearCoordinatorShares(req, res) {
+  const mobilisation = await mobilisationService.clearCoordinatorShares(req.params.id, actor(req));
+  res.json(new ApiResponse('Coordinator shares reset to even split.', mobilisation));
+}
+
 /** POST /api/mobilisations/:id/submit — 200 → data: mobilisation (PendingReview) */
 export async function submit(req, res) {
   const mobilisation = await mobilisationService.submitMobilisation(req.params.id, actor(req));
   res.json(new ApiResponse('Mobilisation submitted for review.', mobilisation));
-}
-
-/** PATCH /api/mobilisations/:id/complete — 200 → data: mobilisation (Completed) ·
- *  400 not Approved · 403 not the primary coordinator */
-export async function complete(req, res) {
-  const mobilisation = await mobilisationService.completeMobilisation(req.params.id, actor(req));
-  res.json(new ApiResponse('Mobilisation marked complete.', mobilisation));
 }
 
 // ---------------------------------------------------------------------------
@@ -97,18 +154,14 @@ export async function saveCommercialDetails(req, res) {
 /** PATCH /api/mobilisations/:id/decide — 200 → data: mobilisation */
 export async function decide(req, res) {
   const mobilisation = await mobilisationService.decideMobilisation(req.params.id, req.body, actor(req));
-  res.json(new ApiResponse(`Mobilisation ${mobilisation.status.toLowerCase()}.`, mobilisation));
-}
-
-// ---------------------------------------------------------------------------
-// TEMPORARY — pre-production cleanup only. Remove alongside the service
-// function and route — see the note in mobilisation.service.js.
-// ---------------------------------------------------------------------------
-
-/** DELETE /api/mobilisations/:id — Admin only, hard delete. */
-export async function remove(req, res) {
-  await mobilisationService.deleteMobilisation(req.params.id, actor(req));
-  res.json(new ApiResponse('Mobilisation deleted.'));
+  // A rejection targeting 'OfficeSecretary' never leaves 'PendingReview' —
+  // status alone can't tell that apart from an ordinary in-progress record,
+  // so the request's own intent (req.body.status) picks the message instead.
+  const message =
+    req.body.status === 'Rejected' && mobilisation.status === 'PendingReview'
+      ? 'Mobilisation sent back to Office Secretary for rework.'
+      : `Mobilisation ${mobilisation.status.toLowerCase()}.`;
+  res.json(new ApiResponse(message, mobilisation));
 }
 
 // ---------------------------------------------------------------------------

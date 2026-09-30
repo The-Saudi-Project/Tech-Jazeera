@@ -12,12 +12,23 @@
     "migrate:unify-employees": "node src/scripts/migrate-unify-employees.js",
     "migrate:rename-outsourced": "node src/scripts/migrate-rename-outsourced-employees.js",
     "migrate:mobilisation-phase4": "node src/scripts/migrate-mobilisation-phase4.js",
-    "generate:vapid": "node src/scripts/generate-vapid-keys.js"
+    "migrate:section-access-tiers": "node src/scripts/migrate-section-access-tiers.js",
+    "migrate:section-access-approval-roles": "node src/scripts/migrate-section-access-approval-roles.js",
+    "migrate:seed-locations": "node src/scripts/migrate-seed-locations.js",
+    "grant:profit-visibility": "node src/scripts/grant-profit-visibility.js",
+    "grant:deployments-edit": "node src/scripts/grant-deployments-edit.js",
+    "grant:mobilisations-viewer": "node src/scripts/grant-mobilisations-viewer.js",
+    "grant:daily-updates": "node src/scripts/grant-daily-updates.js",
+    "generate:vapid": "node src/scripts/generate-vapid-keys.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint ."
   },
   "engines": {
     "node": ">=20.6.0"
   },
   "dependencies": {
+    "@sentry/node": "^10.75.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.10.0",
     "cookie-parser": "^1.4.7",
@@ -38,5 +49,16 @@
     "winston": "^3.17.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.4.3"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^15.15.0",
+    "mongodb-memory-server": "^11.2.0",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   }
 }

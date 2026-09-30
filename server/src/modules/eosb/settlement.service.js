@@ -4,11 +4,13 @@
  * every figure is computed HERE from the employee's real record, never
  * accepted from the client.
  *
- * Scope note (see docs/P3-A-notes.md for the full reasoning): only the three
- * exit reasons the PRD actually specifies are modeled. Article 80
- * (termination for an employee's serious misconduct, which can forfeit the
- * award entirely) is a distinct, contentious legal category this app does
- * not attempt to adjudicate — not offered as an exit reason here.
+ * Scope note (see docs/P3-A-notes.md for the full reasoning): only the exit
+ * reasons the PRD actually specifies (plus 'SponsorshipTransfer', added
+ * 2026-09-12 for Deployment's demobilise feature — see settlement.model.js)
+ * are modeled. Article 80 (termination for an employee's serious
+ * misconduct, which can forfeit the award entirely) is a distinct,
+ * contentious legal category this app does not attempt to adjudicate — not
+ * offered as an exit reason here.
  */
 import Employee from '../employees/employee.model.js';
 import LeaveType from '../leave/leaveType.model.js';
@@ -16,6 +18,7 @@ import { evaluateEligibility, monthsOfService } from '../leave/leave.service.js'
 import Settlement from './settlement.model.js';
 import ApiError from '../../utils/ApiError.js';
 import { logAudit } from '../audit/audit.service.js';
+import { assertEmployeeVisibleToActor } from '../employees/employee.service.js';
 
 /** Round to 2 decimal places (money). */
 const money = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -75,6 +78,10 @@ async function unusedLeaveDaysAsOf(employee, exitDate) {
 export async function createSettlement(data, actor) {
   const employee = await Employee.findById(data.employee).lean();
   if (!employee) throw new ApiError(404, 'Employee not found.');
+  // Fixed 2026-09-15, a real QA-audit-found gap — A1: computing (and
+  // persisting real wage data for) a settlement had no team-ownership check
+  // at all, unlike getSettlement/listSettlements below.
+  await assertEmployeeVisibleToActor(employee._id, actor);
   if (!employee.joiningDate) throw new ApiError(400, 'This employee has no joining date on file.');
   if (!employee.salary) throw new ApiError(400, 'This employee has no salary on file.');
 
@@ -132,9 +139,15 @@ export async function createSettlement(data, actor) {
   return settlement.toObject();
 }
 
-export async function listSettlements({ page, limit, employee }) {
+export async function listSettlements({ page, limit, employee }, actor) {
   const filter = {};
-  if (employee) filter.employee = employee;
+  if (employee) {
+    await assertEmployeeVisibleToActor(employee, actor);
+    filter.employee = employee;
+  } else if (actor?.role === 'Coordinator') {
+    const teamIds = await Employee.find({ coordinator: actor.userId }).distinct('_id');
+    filter.employee = { $in: teamIds };
+  }
 
   const [items, total] = await Promise.all([
     Settlement.find(filter)
@@ -147,15 +160,21 @@ export async function listSettlements({ page, limit, employee }) {
   return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }
 
-export async function getSettlement(id) {
+export async function getSettlement(id, actor) {
   const settlement = await Settlement.findById(id).lean();
   if (!settlement) throw new ApiError(404, 'Settlement not found.');
+  await assertEmployeeVisibleToActor(settlement.employee, actor);
   return settlement;
 }
 
 export async function deleteSettlement(id, actor) {
-  const settlement = await Settlement.findByIdAndDelete(id).lean();
+  // Fixed 2026-09-15, a real QA-audit-found gap — A1: this deleted straight
+  // off the id with no ownership check whatsoever — worse than the other
+  // A1 gaps, since it never even fetched the record first to check against.
+  const settlement = await Settlement.findById(id).lean();
   if (!settlement) throw new ApiError(404, 'Settlement not found.');
+  await assertEmployeeVisibleToActor(settlement.employee, actor);
+  await Settlement.deleteOne({ _id: id });
   await logAudit({
     user: actor.userId,
     action: 'eosb.settlement.delete',

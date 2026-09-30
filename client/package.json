@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",
@@ -18,6 +19,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.1.1",
+    "@sentry/react": "^10.75.0",
     "@tanstack/react-query": "^5.80.0",
     "axios": "^1.10.0",
     "i18next": "^26.4.0",
@@ -31,11 +33,22 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.4.3",
+    "@eslint/js": "^9.39.5",
     "@vitejs/plugin-react": "^6.0.4",
     "autoprefixer": "^10.4.21",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "globals": "^15.15.0",
     "postcss": "^8.5.4",
     "tailwindcss": "^3.4.17",
     "tslib": "^2.8.1",
     "vite": "^8.1.5"
+  },
+  "overrides": {
+    "@capacitor/assets": {
+      "tar": "^7.5.22"
+    }
   }
 }

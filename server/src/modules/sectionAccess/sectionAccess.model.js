@@ -1,71 +1,124 @@
 /**
  * SectionAccess — the generic "who else can open this section" mechanism,
- * one document per section key. Extracted from the same pattern
- * CompanySettings.manageRoles and MobilisationSettings.viewerRoles each
- * built independently for their own one module — this is that pattern made
- * reusable, so a THIRD module (Payroll/Expenses, and any future one) doesn't
- * grow its own bespoke copy again.
+ * one document per section key, with TWO independent tiers: Read (can view)
+ * and Write (can create/edit/decide/delete — and always implies Read, so a
+ * Write grantee never needs to be listed twice). Extracted from the same
+ * pattern CompanySettings.manageRoles and MobilisationSettings.viewerRoles
+ * each built independently for their own one module — this is that pattern
+ * made reusable, so a THIRD module (Payroll/Expenses, and any future one)
+ * doesn't grow its own bespoke copy again.
  *
- * `allowedRoles` are literal User.role values (e.g. 'Accounts') — for a
- * grant tied to the fixed login-role enum. `allowedApprovalRoles` are
- * ApprovalRole ids (e.g. an admin-named "Financial Manager" or "COO" role) —
- * for a grant tied to a real person regardless of their login role, the same
- * indirection Company Settings/Mobilisation Settings already use. A section
- * with no document yet (nobody has configured it) falls back to a
- * hardcoded per-section default in sectionAccess.service.js — never an empty
- * "nobody but Admin" surprise for a section that already had a sensible
- * owner before this system existed.
+ * `writeApprovalRoles`/`readApprovalRoles` are `ApprovalRole` ids (e.g. an
+ * admin-named "Financial Manager" or "COO" role) — a grant tied to a real
+ * person regardless of their login role, the same indirection Company
+ * Settings/Mobilisation Settings already use. This used to also support a
+ * second grant type tied directly to the fixed login-role enum
+ * (`readRoles`/`writeRoles`); the user asked to drop that entirely so
+ * Approval Roles are the only way anything is granted here — see
+ * docs/SECTION-ACCESS-notes.md's 2026-09-13 follow-up and
+ * src/scripts/migrate-section-access-approval-roles.js, which converted every
+ * section's pre-existing login-role grant into a matching Approval Role
+ * before this field was removed. A section with no document yet (nobody has
+ * configured it) has an empty grant — Admin-only until an Admin grants an
+ * Approval Role — see sectionAccess.service.js's `defaultFor`.
+ *
+ * Not every section has a real "write" action tied to this key (e.g.
+ * `mobilisationsViewer` is pure-read by design — Mobilisation's actual write
+ * path is the separate `mobilisationsSelfMobilise` key; `team`'s real write
+ * is a permanently hardcoded Admin-only rail, not this key at all) — for
+ * those, `writeApprovalRoles` simply stays empty and nothing ever checks it.
+ * See sectionAccess.service.js's canAccessSection for how the two tiers are
+ * checked, and docs/SECTION-ACCESS-notes.md for the per-section
+ * categorization behind the migration that introduced this.
  */
 import mongoose from 'mongoose';
-import { ROLES } from '../auth/user.model.js';
 
 /** Every section this mechanism currently governs. Add a key here (and a
  *  default in sectionAccess.service.js) to bring a new page under
  *  admin-configurable access without touching this model again. */
 export const SECTION_KEYS = [
-  'payroll',
+
   'expenses',
   'employeeCreate',
   'companySettings',
   'mobilisationsViewer',
   'mobilisationsSelfMobilise',
-  'invoices',
   'eosb',
   'financialRequests',
   'auditLog',
   'timesheetProcessor',
   'nfc',
   'clientsManage',
-  'deploymentsManage',
+  'deploymentsHours',
+  'deploymentsHoursDecide',
+  'deploymentsInvoicing',
+  'deploymentsPaymentDecide',
+  'deploymentsRelease',
+  'deploymentsEdit',
   'subcontractorsManage',
-  'attendanceManage',
+  'attendanceRecords',
+  'attendanceSignInOut',
+  'attendanceOfficeLocation',
   'documentsManage',
   'assetsManage',
-  'quotationsManage',
   'ramadanManage',
   'team',
   'approvalHierarchy',
   'leaveRequests',
   'timesheetRequests',
   'exitDocuments',
+  'holidays',
+  // Added 2026-09-15, the user's own ask (a Coordinator/Manager/HR
+  // cost-and-profit view): gates the Dashboard's real "Actual Performance"
+  // profit figure (verified client payments − Expenses, see
+  // deployment.service.js's getActualPerformanceSummary) on its OWN key,
+  // independent from needing raw read access to Payroll/Expenses
+  // individually — same "a derived figure gets its own narrower
+  // authorization, decoupled from the raw underlying fields' own access
+  // grants" precedent Mobilisation/Deployment's own `profit` field already
+  // follows. See dashboard.service.js's getDashboard.
+  'dashboardProfit',
+  // Added 2026-09-15, the QA audit's own suggestion #6 ("add reconciliation
+  // checks for ledger totals, finalized payroll, and deployments missing
+  // from approved mobilisations") — a read-only oversight report, same
+  // shape as 'auditLog': no write action, Admin-only until granted. See
+  // reconciliation.service.js.
+  'reconciliation',
+  // Added 2026-09-20 — the Daily Updates module (a coordinator's day-to-day
+  // log and to-do list). Two keys because there are two genuinely different
+  // circles: `dailyUpdatesOwn` is a coordinator's own workspace (Read: see
+  // their own; Write: add/edit their own and tick off what's assigned to
+  // them), `dailyUpdatesTeam` is oversight of everyone (Read: see every
+  // coordinator's; Write: assign tasks to any coordinator, edit/delete/tick
+  // anyone's). See dailyUpdate.service.js for how the two combine.
+  'dailyUpdatesOwn',
+  'dailyUpdatesTeam',
+  // Added 2026-09-20 — the pre-mobilisation Requirements board (milestone 2 of
+  // the Coordinator Workflow). Same own/team pair as Daily Updates:
+  // `requirementsOwn` (Read: see the requirements I'm a coordinator on; Write:
+  // add requirements as myself, edit/move/delete my own, add updates to my
+  // cards) and `requirementsTeam` (Read: see every requirement; Write: assign
+  // any coordinators, edit/move/delete anyone's; members are also who gets
+  // notified when a card reaches a "notify" stage). `requirementStages` is a
+  // Write-only key — who may add/rename/reorder/delete the board's stages;
+  // Admin only until granted, per "admin editable". Reading the stages needs
+  // no key of its own: they arrive with the board itself.
+  'requirementsOwn',
+  'requirementsTeam',
+  'requirementStages',
+  // Added 2026-09-21 — Mobilisation Targets: who may set/edit/remove a
+  // monthly mobilisation-count target (and its incentive %) for a
+  // coordinator. A coordinator's own read of their own target is always
+  // allowed (ungated); this key governs the write path (set/edit/remove)
+  // AND the management overview (all coordinators' progress).
+  'mobilisationTargets',
 ];
-
-/** Worker/Staff (the ESS self-service personas) are never grantable here —
- *  same floor requireStaff/requireStaffOrExecutive enforce everywhere else.
- *  This system only ever ADDS access on top of that floor. Office Secretary
- *  is excluded too, deliberately: unlike every other role here, it's
- *  designed to reach things ONLY via ApprovalRole membership on a specific
- *  workflow step (see requireStaffOrOfficeSecretary's own doc comment),
- *  never a blanket per-section grant — canAccessSection's own floor check
- *  (STAFF_ROLES) already excludes it, so allowing it here would just be a
- *  silently-broken option in the UI (picking it saves fine, grants nothing). */
-export const GRANTABLE_ROLES = ROLES.filter((role) => !['Worker', 'Staff', 'Office Secretary'].includes(role));
 
 const sectionAccessSchema = new mongoose.Schema(
   {
     sectionKey: { type: String, enum: SECTION_KEYS, required: true, unique: true },
-    allowedRoles: { type: [{ type: String, enum: GRANTABLE_ROLES }], default: [] },
-    allowedApprovalRoles: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalRole' }], default: [] },
+    readApprovalRoles: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalRole' }], default: [] },
+    writeApprovalRoles: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalRole' }], default: [] },
   },
   { timestamps: true }
 );

@@ -65,10 +65,6 @@ export async function generateNfcBatch(payload) {
   const { data } = await api.post('/nfc/batches', payload);
   return data.data;
 }
-export async function listNfcBatches() {
-  const { data } = await api.get('/nfc/batches');
-  return data.data;
-}
 /** Download a batch's cards as CSV. */
 export async function downloadBatchCsv(batchId, label) {
   const res = await api.get(`/nfc/batches/${batchId}/cards.csv`, { responseType: 'blob' });
@@ -114,6 +110,11 @@ export async function cardAction(id, action) {
 /** Fetch the card's QR PNG as an object URL (authenticated). */
 export async function getCardQrObjectUrl(id) {
   const res = await api.get(`/nfc/cards/${id}/qr.png`, { responseType: 'blob' });
+  return URL.createObjectURL(res.data);
+}
+/** Fetch the offline-contact QR PNG (vCard encoded directly, no URL) as an object URL. */
+export async function getCardQrOfflineObjectUrl(id) {
+  const res = await api.get(`/nfc/cards/${id}/qr-offline.png`, { responseType: 'blob' });
   return URL.createObjectURL(res.data);
 }
 

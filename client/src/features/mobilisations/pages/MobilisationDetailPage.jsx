@@ -12,35 +12,38 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   getMobilisation,
   listCoordinatorCandidates,
   addCoordinator,
   removeCoordinator,
   confirmCoordinator,
+  setCoordinatorShares,
+  clearCoordinatorShares,
   submitMobilisation,
-  completeMobilisation,
-  deleteMobilisation,
   saveCommercialDetails,
   decideMobilisation,
   uploadMobilisationDocuments,
   deleteMobilisationDocument,
   downloadMobilisationDocument,
+  downloadMobilisationExport,
 } from '../mobilisations.api.js';
 import {
   commercialDetailsFormSchema,
   commercialDetailsToForm,
   decideMobilisationFormSchema,
 } from '../mobilisations.schema.js';
+import MobilisationDocumentPreviewModal from '../components/MobilisationDocumentPreviewModal.jsx';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { apiMessage, cn, formatDate, formatMoney } from '../../../lib/utils.js';
+import { apiMessage, cn, formatDate, formatMoney, profitClass } from '../../../lib/utils.js';
 import { MOBILISATION_STATUS_VARIANT, MOBILISATION_DOCUMENT_CATEGORIES, MOBILISATION_DOCUMENT_CATEGORY_LABELS } from '../../../lib/constants.js';
 import { useToast } from '../../../components/ui/Toast.jsx';
 import ApprovalTrailView from '../../../components/shared/ApprovalTrailView.jsx';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
 import BackButton from '../../../components/shared/BackButton.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
+import PickerLoadWarning from '../../../components/shared/PickerLoadWarning.jsx';
 import Card from '../../../components/ui/Card.jsx';
 import Badge from '../../../components/ui/Badge.jsx';
 import Button from '../../../components/ui/Button.jsx';
@@ -51,21 +54,63 @@ import Modal from '../../../components/ui/Modal.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 
-function Field({ label, value, valueClassName }) {
-  if (value === undefined || value === null || value === '') return null;
+/** A small inline warning triangle — no icon library in this app (Tailwind
+ *  only), so every icon here is a hand-drawn SVG, same as the header's
+ *  hamburger/theme-toggle icons. */
+function WarningIcon({ className }) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
-      <dd className={cn('text-sm', valueClassName)}>{value}</dd>
-    </div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.29 2.25h17.78A1.5 1.5 0 0 0 22.18 18L13.71 3.86a1.5 1.5 0 0 0-2.62 0Z" />
+    </svg>
   );
 }
 
-/** Green when profit, red when loss — zero stays neutral (not a loss). */
-function profitClass(amount) {
-  if (amount > 0) return 'text-success';
-  if (amount < 0) return 'text-danger';
-  return undefined;
+/** Label/value rows as a real table — reads top-to-bottom instead of
+ *  scattered across a grid, which is the point for a section with a dozen+
+ *  fields. By default a row with no value is simply omitted (an optional
+ *  field genuinely not set, e.g. checkout date — nothing to flag). A row
+ *  marked `required: true` behaves differently: it's ALWAYS shown, and an
+ *  empty value renders as a visible "Missing" warning instead of vanishing
+ *  — for fields someone was actually supposed to fill in (Office
+ *  Secretary's quotation/PO details), silently hiding an empty one looks
+ *  identical to "nothing to see here" when it's really "this hasn't been
+ *  done yet". `overflow-x-auto` is defensive — two columns of this width
+ *  never actually needs it, but every wide-ish container in this app
+ *  carries its own scroll per the project's no-horizontal-page-scroll
+ *  rule. */
+function DetailTable({ rows }) {
+  const { t } = useTranslation();
+  const isEmpty = (value) => value === undefined || value === null || value === '';
+  const visible = rows.filter((r) => r.required || !isEmpty(r.value));
+  if (!visible.length) return null;
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-sm">
+        <tbody className="divide-y divide-border">
+          {visible.map((r) => {
+            const missing = r.required && isEmpty(r.value);
+            return (
+              <tr key={r.label}>
+                <td className="w-2/5 bg-bg/40 px-3 py-2 align-top text-xs uppercase tracking-wide text-muted">
+                  {r.label}
+                </td>
+                <td className={cn('px-3 py-2 font-medium', missing ? 'text-danger' : r.valueClassName)}>
+                  {missing ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <WarningIcon className="h-4 w-4 shrink-0" />
+                      {t('staffMobilisations.detail.missing')}
+                    </span>
+                  ) : (
+                    r.value
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function userId(entry) {
@@ -80,25 +125,112 @@ function userId(entry) {
  * `undefined` from the loading-state render and never repopulate — RHF only
  * reads defaultValues at mount.)
  */
-function CommercialDetailsCard({ m, canDecide, onSave, saving, onApprove, onReject }) {
+/** Approve/Reject, shared by both the read-only and editable renderings
+ *  below — identical either way, just placed at the very end of whichever
+ *  one is showing. */
+function DecideButtons({ canDecide, isFinalStep, onApprove, onReject, saving }) {
+  const { t } = useTranslation();
+  if (!canDecide) return null;
+  if (!isFinalStep) {
+    // Not the final step (Office Secretary today) — nothing upstream of
+    // them to reject, so their only action is to move it forward. Same
+    // underlying call as Approve (advances currentStep), just never
+    // offered a Reject alongside it.
+    return (
+      <Button type="button" isLoading={saving} onClick={onApprove}>
+        {t('staffMobilisations.detail.submitToNextStep')}
+      </Button>
+    );
+  }
+  return (
+    <>
+      <Button type="button" variant="danger-ghost" disabled={saving} onClick={onReject}>
+        {t('common.reject')}
+      </Button>
+      <Button type="button" isLoading={saving} onClick={onApprove}>
+        {t('common.approve')}
+      </Button>
+    </>
+  );
+}
+
+function CommercialDetailsCard({ m, canEdit, canDecide, isFinalStep, onSave, saving, onApprove, onReject }) {
+  const { t } = useTranslation();
+
+  // View-only (Marketing Manager, or any other viewer without edit rights)
+  // — a table like every other section on this page, not a form full of
+  // disabled inputs nobody can tell apart from an editable one. The
+  // overtime/timesheet numbers are deliberately absent here: they're
+  // already in the Rates & Financials table above, and repeating them in a
+  // second, form-shaped table right below was the actual complaint — same
+  // numbers, shown twice, one copy looking editable when it wasn't.
+  if (!canEdit) {
+    return (
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+          {t('staffMobilisations.detail.detailsSharedByClient')}
+        </h2>
+        <DetailTable
+          rows={[
+            // Client quotation/PO always apply — every mobilisation bills a
+            // client, so these are flagged as missing when Office Secretary
+            // hasn't filled them in yet rather than silently disappearing.
+            { label: t('staffMobilisations.detail.clientQuotation'), value: m.clientQuotation, required: true },
+            {
+              label: t('staffMobilisations.detail.clientQuotationDate'),
+              value: m.clientQuotationDate && formatDate(m.clientQuotationDate),
+              required: true,
+            },
+            { label: t('staffMobilisations.detail.clientPO'), value: m.clientPO, required: true },
+            {
+              label: t('staffMobilisations.detail.clientPODate'),
+              value: m.clientPODate && formatDate(m.clientPODate),
+              required: true,
+            },
+            // Sub quotation/PO only "required" when there's actually a
+            // subcontractor to get one from — otherwise an empty value is
+            // correctly N/A, not missing, and stays silently hidden.
+            { label: t('staffMobilisations.detail.subQuotation'), value: m.subQuotation, required: m.hasSubcontractor },
+            {
+              label: t('staffMobilisations.detail.subQuotationDate'),
+              value: m.subQuotationDate && formatDate(m.subQuotationDate),
+              required: m.hasSubcontractor,
+            },
+            { label: t('staffMobilisations.detail.subPO'), value: m.subPO, required: m.hasSubcontractor },
+            {
+              label: t('staffMobilisations.detail.subPODate'),
+              value: m.subPODate && formatDate(m.subPODate),
+              required: m.hasSubcontractor,
+            },
+          ]}
+        />
+        {canDecide && (
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            {/* Called with no arguments (not the raw click event) — this
+                branch has no form to save, unlike CommercialDetailsForm's
+                own DecideButtons below. */}
+            <DecideButtons canDecide={canDecide} isFinalStep={isFinalStep} saving={saving} onApprove={() => onApprove()} onReject={() => onReject()} />
+          </div>
+        )}
+      </Card>
+    );
+  }
+
+  // Editable (Office Secretary during their own turn, or Admin) — the real
+  // data-entry form, now just the client/sub quotation-PO paper trail. OT
+  // rate fields moved to the New/Edit form (2026-09-13) — this page no
+  // longer types them in at all, only shows them read-only in Rates &
+  // Financials above (they're Section 1 data now, same as clientRate).
+  return <CommercialDetailsForm m={m} canDecide={canDecide} isFinalStep={isFinalStep} onSave={onSave} saving={saving} onApprove={onApprove} onReject={onReject} />;
+}
+
+function CommercialDetailsForm({ m, canDecide, isFinalStep, onSave, saving, onApprove, onReject }) {
   const { t } = useTranslation();
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm({ resolver: zodResolver(commercialDetailsFormSchema), defaultValues: commercialDetailsToForm(m) });
-
-  // Server-derived, never typed in (see mobilisation.service.js's
-  // computeProfitFields): max(0, client timesheet hours - required
-  // timesheet hours), live-updating as the reviewer types the client's
-  // actual hours in above.
-  const clientTimesheetHoursRaw = watch('clientTimesheetHours');
-  const clientTimesheetHours = Number(clientTimesheetHoursRaw);
-  const otHoursPreview =
-    clientTimesheetHoursRaw !== '' && Number.isFinite(clientTimesheetHours)
-      ? Math.max(0, clientTimesheetHours - (m.requiredTimesheetHours ?? 0))
-      : 0;
 
   return (
     <Card>
@@ -107,90 +239,39 @@ function CommercialDetailsCard({ m, canDecide, onSave, saving, onApprove, onReje
       </h2>
       <form onSubmit={handleSubmit(onSave)} noValidate className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input label={t('staffMobilisations.detail.clientQuotation')} disabled={!canDecide} error={errors.clientQuotation?.message} {...register('clientQuotation')} />
-          <Input label={t('staffMobilisations.detail.clientQuotationDate')} type="date" disabled={!canDecide} error={errors.clientQuotationDate?.message} {...register('clientQuotationDate')} />
-          <Input label={t('staffMobilisations.detail.clientPO')} disabled={!canDecide} error={errors.clientPO?.message} {...register('clientPO')} />
-          <Input label={t('staffMobilisations.detail.clientPODate')} type="date" disabled={!canDecide} error={errors.clientPODate?.message} {...register('clientPODate')} />
-          <Input label={t('staffMobilisations.detail.subQuotation')} disabled={!canDecide} error={errors.subQuotation?.message} {...register('subQuotation')} />
-          <Input label={t('staffMobilisations.detail.subQuotationDate')} type="date" disabled={!canDecide} error={errors.subQuotationDate?.message} {...register('subQuotationDate')} />
-          <Input label={t('staffMobilisations.detail.subPO')} disabled={!canDecide} error={errors.subPO?.message} {...register('subPO')} />
-          <Input label={t('staffMobilisations.detail.subPODate')} type="date" disabled={!canDecide} error={errors.subPODate?.message} {...register('subPODate')} />
+          <Input label={t('staffMobilisations.detail.clientQuotation')} error={errors.clientQuotation?.message} {...register('clientQuotation')} />
+          <Input label={t('staffMobilisations.detail.clientQuotationDate')} type="date" error={errors.clientQuotationDate?.message} {...register('clientQuotationDate')} />
+          <Input label={t('staffMobilisations.detail.clientPO')} error={errors.clientPO?.message} {...register('clientPO')} />
+          <Input label={t('staffMobilisations.detail.clientPODate')} type="date" error={errors.clientPODate?.message} {...register('clientPODate')} />
+          <Input label={t('staffMobilisations.detail.subQuotation')} error={errors.subQuotation?.message} {...register('subQuotation')} />
+          <Input label={t('staffMobilisations.detail.subQuotationDate')} type="date" error={errors.subQuotationDate?.message} {...register('subQuotationDate')} />
+          <Input label={t('staffMobilisations.detail.subPO')} error={errors.subPO?.message} {...register('subPO')} />
+          <Input label={t('staffMobilisations.detail.subPODate')} type="date" error={errors.subPODate?.message} {...register('subPODate')} />
         </div>
-        <div className="border-t border-border pt-4">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">{t('staffMobilisations.detail.sectionOvertimeTimesheet')}</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label={t('staffMobilisations.detail.clientTimesheetHours')}
-              type="number"
-              step="0.01"
-              min="0"
-              disabled={!canDecide}
-              error={errors.clientTimesheetHours?.message}
-              {...register('clientTimesheetHours')}
-            />
-            <Input
-              label={t('staffMobilisations.detail.otHours')}
-              type="text"
-              readOnly
-              disabled
-              value={otHoursPreview}
-            />
-            <Input
-              label={t('staffMobilisations.detail.otClientRate')}
-              type="number"
-              step="0.01"
-              min="0"
-              disabled={!canDecide}
-              error={errors.otClientRate?.message}
-              {...register('otClientRate')}
-            />
-            <Input
-              label={t('staffMobilisations.detail.otClientCommission')}
-              type="number"
-              step="0.01"
-              min="0"
-              disabled={!canDecide}
-              error={errors.otClientCommission?.message}
-              {...register('otClientCommission')}
-            />
-            {m.workerType === 'SupplierEmployee' && (
-              <>
-                <Input
-                  label={t('staffMobilisations.detail.otSubcontractorRate')}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  disabled={!canDecide}
-                  error={errors.otSubcontractorRate?.message}
-                  {...register('otSubcontractorRate')}
-                />
-                <Input
-                  label={t('staffMobilisations.detail.otSubcontractorCommission')}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  disabled={!canDecide}
-                  error={errors.otSubcontractorCommission?.message}
-                  {...register('otSubcontractorCommission')}
-                />
-              </>
-            )}
-          </div>
+        <Textarea label={t('staffMobilisations.form.remark')} error={errors.remark?.message} {...register('remark')} />
+        <div className="flex flex-wrap justify-end gap-2 pt-2">
+          <Button type="submit" variant="secondary" isLoading={saving}>
+            {t('staffMobilisations.detail.saveDetails')}
+          </Button>
+          {/* Approve/Reject ('Submit to next step') used to bypass this form
+              entirely — DecideButtons' buttons are type="button", so clicking
+              one skipped handleSubmit(onSave) and went straight to the
+              approval modal, silently discarding anything just typed here
+              (real bug found 2026-09-14: Office Secretary filled in every
+              field, clicked Submit, and the record moved to Marketing
+              Manager's step with every field still null). Routing both
+              through handleSubmit — the same validator "Save details" uses —
+              means the current field values are always saved (and the step
+              never advances) before the decide flow opens, whichever button
+              is clicked first. */}
+          <DecideButtons
+            canDecide={canDecide}
+            isFinalStep={isFinalStep}
+            saving={saving}
+            onApprove={handleSubmit((values) => onApprove(values))}
+            onReject={handleSubmit((values) => onReject(values))}
+          />
         </div>
-        <Textarea label={t('staffMobilisations.form.remark')} disabled={!canDecide} error={errors.remark?.message} {...register('remark')} />
-        {canDecide && (
-          <div className="flex flex-wrap justify-end gap-2 pt-2">
-            <Button type="submit" variant="secondary" isLoading={saving}>
-              {t('staffMobilisations.detail.saveDetails')}
-            </Button>
-            <Button type="button" variant="danger-ghost" onClick={onReject}>
-              {t('common.reject')}
-            </Button>
-            <Button type="button" onClick={onApprove}>
-              {t('common.approve')}
-            </Button>
-          </div>
-        )}
       </form>
     </Card>
   );
@@ -205,15 +286,15 @@ export default function MobilisationDetailPage() {
   const queryClient = useQueryClient();
   const [inviteId, setInviteId] = useState('');
   const [toRemove, setToRemove] = useState(null);
+  const [shareEdits, setShareEdits] = useState({});
   const [decideNote, setDecideNote] = useState('');
+  const [rejectionTarget, setRejectionTarget] = useState('');
   const [pendingDecision, setPendingDecision] = useState(null); // 'Approved' | 'Rejected' | null
-  const [confirmingComplete, setConfirmingComplete] = useState(false);
   const [files, setFiles] = useState([]);
   const [category, setCategory] = useState('Contract');
-  // TEMPORARY — pre-production cleanup only. Remove confirmingDelete,
-  // deleteMutation, the "Delete" button below, and its ConfirmDialog before
-  // going live — see the note in mobilisations.api.js.
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState(null);
+  const [confirmingUnuploadedFiles, setConfirmingUnuploadedFiles] = useState(false);
+  const [confirmingNoDocuments, setConfirmingNoDocuments] = useState(false);
 
   const { data: m, isPending, isError } = useQuery({
     queryKey: ['mobilisation', id],
@@ -225,7 +306,7 @@ export default function MobilisationDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['mobilisations'] });
   };
 
-  const { data: candidates } = useQuery({
+  const { data: candidates, isError: candidatesError } = useQuery({
     queryKey: ['mobilisations', 'coordinator-candidates'],
     queryFn: listCoordinatorCandidates,
     enabled: Boolean(m) && ['Draft', 'Rejected'].includes(m?.status),
@@ -239,6 +320,26 @@ export default function MobilisationDetailPage() {
     },
     onError: (error) => toast.error(apiMessage(error)),
   });
+
+  // CommercialDetailsForm now routes its Approve/Reject clicks through
+  // handleSubmit too (see that component's own comment), so `values` is the
+  // form's current, validated field values when the reviewer is still in
+  // the editable Section 2 form — undefined from the read-only branch,
+  // which has no form to save. Saving before opening the decide modal is
+  // what actually closes the bug: without it, the step could advance with
+  // whatever was just typed never having reached the server. If the save
+  // fails, the mutation's own onError already toasts why — stop here rather
+  // than opening the decide modal on top of a failed save.
+  async function saveThenDecide(status, values) {
+    if (values) {
+      try {
+        await commercialMutation.mutateAsync(values);
+      } catch {
+        return;
+      }
+    }
+    setPendingDecision(status);
+  }
 
   const addMutation = useMutation({
     mutationFn: (uid) => addCoordinator(id, uid),
@@ -266,6 +367,24 @@ export default function MobilisationDetailPage() {
     },
     onError: (error) => toast.error(apiMessage(error)),
   });
+  const sharesMutation = useMutation({
+    mutationFn: (shares) => setCoordinatorShares(id, shares),
+    onSuccess: () => {
+      toast.success(t('staffMobilisations.detail.sharesSavedToast'));
+      setShareEdits({});
+      invalidate();
+    },
+    onError: (error) => toast.error(apiMessage(error)),
+  });
+  const clearSharesMutation = useMutation({
+    mutationFn: () => clearCoordinatorShares(id),
+    onSuccess: () => {
+      toast.success(t('staffMobilisations.detail.sharesResetToast'));
+      setShareEdits({});
+      invalidate();
+    },
+    onError: (error) => toast.error(apiMessage(error)),
+  });
   const submitMutation = useMutation({
     mutationFn: () => submitMobilisation(id),
     onSuccess: () => {
@@ -274,31 +393,25 @@ export default function MobilisationDetailPage() {
     },
     onError: (error) => toast.error(apiMessage(error)),
   });
-  const completeMutation = useMutation({
-    mutationFn: () => completeMobilisation(id),
-    onSuccess: () => {
-      toast.success(t('staffMobilisations.detail.completedToast'));
-      setConfirmingComplete(false);
-      invalidate();
-    },
-    onError: (error) => toast.error(apiMessage(error)),
-  });
-  // TEMPORARY — pre-production cleanup only, see the note above confirmingDelete.
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteMobilisation(id),
-    onSuccess: () => {
-      toast.success(t('staffMobilisations.detail.deletedToast'));
-      queryClient.invalidateQueries({ queryKey: ['mobilisations'] });
-      navigate('/mobilisations');
-    },
+  const exportMutation = useMutation({
+    mutationFn: () => downloadMobilisationExport(id, m.serialNumber),
     onError: (error) => toast.error(apiMessage(error)),
   });
   const decideMutation = useMutation({
     mutationFn: (values) => decideMobilisation(id, values),
     onSuccess: (updated) => {
-      toast.success(updated.status === 'Approved' ? t('staffMobilisations.detail.approvedToast') : t('staffMobilisations.detail.rejectedToast'));
+      // A rejection targeting 'OfficeSecretary' never leaves 'PendingReview'
+      // (see rejectMobilisation) — status alone can't distinguish "sent back
+      // for rework" from an ordinary in-progress record, so what was
+      // actually requested (pendingDecision) picks the toast instead.
+      let toastKey = 'approvedToast';
+      if (pendingDecision === 'Rejected') {
+        toastKey = updated.status === 'PendingReview' ? 'sentBackToast' : 'rejectedToast';
+      }
+      toast.success(t(`staffMobilisations.detail.${toastKey}`));
       setPendingDecision(null);
       setDecideNote('');
+      setRejectionTarget('');
       invalidate();
     },
     onError: (error) => toast.error(apiMessage(error)),
@@ -342,17 +455,39 @@ export default function MobilisationDetailPage() {
   const myEntry = m.coordinators.find((c) => userId(c) === user.id);
   const isPrimary = m.coordinators.some((c) => c.isPrimary && userId(c) === user.id);
   const canManage = (user.role === 'Admin' || isPrimary) && ['Draft', 'Rejected'].includes(m.status);
-  // Milestone 5: releases the worker back to standby (Employee.coordinator
-  // → null) — same primary-coordinator-or-Admin circle as every other
-  // record-level action, Approved only (the one status it can be marked
-  // complete from).
-  const canComplete = (user.role === 'Admin' || isPrimary) && m.status === 'Approved';
   const needsMyConfirmation = myEntry && !myEntry.confirmed && ['Draft', 'Rejected'].includes(m.status);
   const unconfirmed = m.coordinators.filter((c) => !c.confirmed);
-  const canSubmit = canManage && unconfirmed.length === 0;
+  // Iqama/phone are only ever directly typed in for a SupplierEmployee/
+  // Freelancer worker — an Employee-type mobilisation gets both from the
+  // linked Employee's own record instead. Real QA-reported gap
+  // (2026-09-14): both fields were only ever format-validated when present,
+  // never required, so a mobilisation could be submitted with no way to
+  // identify or contact the worker at all — mirrors the server's own
+  // submitMobilisation check exactly.
+  const missingWorkerIdentity = m.workerType !== 'Employee' && (!m.iqamaNumber || !m.phone);
+  const canSubmit = canManage && unconfirmed.length === 0 && !missingWorkerIdentity;
   const canDecide = m.canDecideCurrentStep && m.status === 'PendingReview';
+  // Only the workflow's final step gets a real Reject — see
+  // CommercialDetailsCard's own comment on why an earlier step (Office
+  // Secretary) only ever has "Submit" (the same underlying Approve call).
+  const isFinalStep = (m.steps?.length ?? 1) - 1 <= m.currentStep;
+  // Section 2's fields are editable only by the workflow's first-step
+  // reviewer (Office Secretary today) or Admin, and ONLY during their own
+  // turn (currentStep === 0) — every later step (Marketing Manager, etc.)
+  // can see the data and decide on it, never change it. Mirrors
+  // mobilisation.service.js's saveCommercialDetails check exactly.
+  const canEditDetails = user.role === 'Admin' || (canDecide && m.currentStep === 0);
+  // The Edit page is Section 1 (the coordinator's own data) — normally
+  // Draft/Rejected only, but ALSO open throughout PendingReview to whoever
+  // holds step 0 (Office Secretary today), even after the record has moved
+  // on to a later step — a genuinely different, WIDER right than Section
+  // 2's own (`canEditDetails` above), driven by the server's own
+  // `canEditSection1` flag (see getMobilisation's own doc comment) rather
+  // than recomputed here, since "am I a member of step 0's ApprovalRole" is
+  // a server-only lookup this client has no way to answer itself.
+  const canEditSection1 = canManage || Boolean(m.canEditSection1);
   const hasCommercialFields = 'clientRate' in m;
-  // Section 2 (quotation/PO/OT/timesheet/remark) is simply absent from the
+  // Section 2 (quotation/PO paper trail/remark) is simply absent from the
   // API response for a plain coordinator — the server strips it
   // unconditionally now (see mobilisation.service.js's REVIEW_FIELDS), so
   // its presence at all is the signal this viewer is entitled to see it
@@ -368,172 +503,42 @@ export default function MobilisationDetailPage() {
   const availableCandidates = (candidates ?? []).filter((c) => !m.coordinators.some((mc) => userId(mc) === c._id));
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-[1600px] space-y-6">
       <PageHeader
-        title={`#${m.serialNumber} — ${m.workerName} — ${m.clientName}`}
-        description={m.jobTitle}
+        title={`#${m.serialNumber}`}
+        description={
+          <span>
+            <strong className="text-text">{m.workerName}</strong>
+            <span className="mx-2 opacity-50">·</span>
+            <span>{m.jobTitle}</span>
+            <span className="mx-2 opacity-50">·</span>
+            <strong className="text-text">{m.clientName}</strong>
+          </span>
+        }
         onBack={() => navigate(-1)}
         actions={
           <div className="flex items-center gap-2">
             <Badge variant={MOBILISATION_STATUS_VARIANT[m.status]}>{t(`common.status.${m.status}`, m.status)}</Badge>
-            {canManage && (
+            <Button size="sm" variant="secondary" isLoading={exportMutation.isPending} onClick={() => exportMutation.mutate()}>
+              {t('staffMobilisations.detail.exportExcel')}
+            </Button>
+            {canEditSection1 && (
               <Button size="sm" variant="secondary" onClick={() => navigate(`/mobilisations/${id}/edit`)}>
                 {t('common.edit')}
               </Button>
             )}
-            {canComplete && (
-              <Button size="sm" variant="secondary" onClick={() => setConfirmingComplete(true)}>
-                {t('staffMobilisations.detail.markComplete')}
-              </Button>
-            )}
-            {/* TEMPORARY — pre-production cleanup only, see the note above confirmingDelete. */}
-            {user.role === 'Admin' && (
-              <Button size="sm" variant="danger-ghost" onClick={() => setConfirmingDelete(true)}>
-                {t('common.delete')}
-              </Button>
+            {m.deployment && (
+              <Link to={`/deployments/${m.deployment._id}`}>
+                <Button size="sm" variant="secondary">
+                  {t('staffMobilisations.detail.viewDeployment')}
+                </Button>
+              </Link>
             )}
           </div>
         }
       />
-
-      <Card>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{t('staffMobilisations.detail.detailsTitle')}</h2>
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Field label={t('staffMobilisations.detail.fields.workerType')} value={t(`staffMobilisations.form.workerType.${m.workerType}`, m.workerType)} />
-          <Field label={t('staffMobilisations.detail.fields.iqamaNumber')} value={m.iqamaNumber} />
-          <Field label={t('staffMobilisations.detail.fields.nationality')} value={m.nationality} />
-          <Field label={t('staffMobilisations.detail.fields.phone')} value={m.phone} />
-          <Field label={t('staffMobilisations.detail.fields.mobilisationDate')} value={formatDate(m.mobilisationDate)} />
-          <Field label={t('staffMobilisations.detail.fields.checkoutDate')} value={m.checkoutDate && formatDate(m.checkoutDate)} />
-          {hasCommercialFields && (
-            <>
-              <Field label={t('staffMobilisations.detail.fields.clientRate')} value={formatMoney(m.clientRate)} />
-              <Field label={t('staffMobilisations.detail.fields.clientCommission')} value={formatMoney(m.clientCommission)} />
-              <Field label={t('staffMobilisations.detail.fields.fta')} value={formatMoney(m.fta)} />
-              <Field label={t('staffMobilisations.detail.fields.allowance')} value={formatMoney(m.allowance)} />
-              <Field label={t('staffMobilisations.detail.fields.requiredTimesheetHours')} value={m.requiredTimesheetHours ?? null} />
-              <Field label={t('staffMobilisations.detail.fields.clientTimesheetHours')} value={m.clientTimesheetHours ?? null} />
-              {m.hasSubcontractor && (
-                <>
-                  <Field label={t('staffMobilisations.detail.fields.subcontractor')} value={m.subcontractorName} />
-                  <Field label={t('staffMobilisations.detail.fields.subcontractorRate')} value={formatMoney(m.subcontractorRate)} />
-                  <Field label={t('staffMobilisations.detail.fields.subcontractorCommission')} value={formatMoney(m.subcontractorCommission)} />
-                </>
-              )}
-              <Field label={t('staffMobilisations.detail.fields.profitPerHour')} value={formatMoney(m.profitPerHour)} />
-              <Field
-                label={t('staffMobilisations.detail.fields.profitPerMonth')}
-                value={m.profitPerMonth != null ? formatMoney(m.profitPerMonth) : null}
-                valueClassName={profitClass(m.profitPerMonth)}
-              />
-              <Field label={t('staffMobilisations.detail.fields.otHours')} value={m.otHours ?? null} />
-              <Field label={t('staffMobilisations.detail.fields.otClientRate')} value={m.otClientRate != null ? formatMoney(m.otClientRate) : null} />
-              <Field label={t('staffMobilisations.detail.fields.otClientCommission')} value={m.otClientCommission != null ? formatMoney(m.otClientCommission) : null} />
-              {m.hasSubcontractor && (
-                <>
-                  <Field label={t('staffMobilisations.detail.fields.otSubcontractorRate')} value={m.otSubcontractorRate != null ? formatMoney(m.otSubcontractorRate) : null} />
-                  <Field label={t('staffMobilisations.detail.fields.otSubcontractorCommission')} value={m.otSubcontractorCommission != null ? formatMoney(m.otSubcontractorCommission) : null} />
-                </>
-              )}
-              <Field
-                label={t('staffMobilisations.detail.fields.otProfitTotal')}
-                value={m.otProfitTotal ? formatMoney(m.otProfitTotal) : null}
-                valueClassName={profitClass(m.otProfitTotal)}
-              />
-            </>
-          )}
-        </dl>
-        {m.remark && (
-          <div className="mt-4">
-            <p className="text-xs uppercase tracking-wide text-muted">{t('staffMobilisations.detail.remark')}</p>
-            <p className="text-sm">{m.remark}</p>
-          </div>
-        )}
-      </Card>
-
-      <Card>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{t('staffMobilisations.detail.coordinatorsTitle')}</h2>
-        <ul className="space-y-2">
-          {m.coordinators.map((c) => (
-            <li key={userId(c)} className="flex items-center justify-between gap-3 text-sm">
-              <span>
-                {c.user.name ?? userId(c)} {c.isPrimary && <span className="text-xs text-muted">{t('staffMobilisations.detail.primary')}</span>}
-              </span>
-              <span className="flex items-center gap-2">
-                <Badge variant={c.confirmed ? 'success' : 'warning'}>{c.confirmed ? t('staffMobilisations.detail.confirmed') : t('staffMobilisations.detail.pending')}</Badge>
-                {canManage && !c.isPrimary && !c.confirmed && (
-                  <Button size="sm" variant="danger-ghost" onClick={() => setToRemove(c)}>
-                    {t('staffMobilisations.detail.remove')}
-                  </Button>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {needsMyConfirmation && (
-          <div className="mt-4 rounded-lg bg-warning/10 p-3 text-sm">
-            <p className="mb-2">{t('staffMobilisations.detail.needsConfirmationHint')}</p>
-            <Button size="sm" isLoading={confirmMutation.isPending} onClick={() => confirmMutation.mutate()}>
-              {t('staffMobilisations.detail.confirmButton')}
-            </Button>
-          </div>
-        )}
-
-        {canManage && (
-          <div className="mt-4 flex flex-wrap items-end gap-2">
-            <Select
-              label={t('staffMobilisations.detail.addJointCoordinator')}
-              value={inviteId}
-              onChange={(e) => setInviteId(e.target.value)}
-              className="min-w-[200px]"
-            >
-              <option value="">{t('staffMobilisations.detail.selectCoordinator')}</option>
-              {availableCandidates.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={!inviteId}
-              isLoading={addMutation.isPending}
-              onClick={() => addMutation.mutate(inviteId)}
-            >
-              {t('staffMobilisations.detail.invite')}
-            </Button>
-          </div>
-        )}
-
-        {canManage && (
-          <div className="mt-4 border-t border-border pt-4">
-            {!canSubmit && unconfirmed.length > 0 && (
-              <p className="mb-2 text-xs text-muted">
-                {t('staffMobilisations.detail.waitingOnConfirmation', { names: unconfirmed.map((c) => c.user.name ?? userId(c)).join(', ') })}
-              </p>
-            )}
-            <Button isLoading={submitMutation.isPending} disabled={!canSubmit} onClick={() => submitMutation.mutate()}>
-              {t('staffMobilisations.detail.submitForReview')}
-            </Button>
-          </div>
-        )}
-      </Card>
-
-      <ApprovalTrailView request={m} />
-
-      {(canDecide || hasReviewFields) && (
-        <CommercialDetailsCard
-          m={m}
-          canDecide={canDecide}
-          saving={commercialMutation.isPending}
-          onSave={(values) => commercialMutation.mutate(values)}
-          onApprove={() => setPendingDecision('Approved')}
-          onReject={() => setPendingDecision('Rejected')}
-        />
-      )}
-
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+      <div className="space-y-6">
       <Card>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{t('staffMobilisations.detail.documentsTitle')}</h2>
         {(m.documents ?? []).length === 0 ? (
@@ -546,6 +551,9 @@ export default function MobilisationDetailPage() {
                   {d.originalName} <span className="text-xs text-muted">({t(`staffMobilisations.documentCategoryLabels.${d.category}`, MOBILISATION_DOCUMENT_CATEGORY_LABELS[d.category])})</span>
                 </span>
                 <span className="flex shrink-0 gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setPreviewDoc(d)}>
+                    {t('common.view')}
+                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => downloadMobilisationDocument(id, d._id, d.originalName)}>
                     {t('common.download')}
                   </Button>
@@ -586,6 +594,292 @@ export default function MobilisationDetailPage() {
         )}
       </Card>
 
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+          {t('staffMobilisations.detail.sectionWorkerPlacement')}
+        </h2>
+        <DetailTable
+          rows={[
+            { label: t('staffMobilisations.detail.fields.workerName'), value: m.workerName },
+            {
+              label: t('staffMobilisations.detail.fields.workerType'),
+              value: t(`staffMobilisations.form.workerType.${m.workerType}`, m.workerType),
+            },
+            {
+              label: t('staffMobilisations.detail.fields.iqamaNumber'),
+              value: m.iqamaNumber,
+              // Only ever typed in for a SupplierEmployee/Freelancer worker
+              // (an Employee-type mobilisation gets this from the linked
+              // Employee's own record) — matches submitMobilisation's own
+              // requirement, so it reads as "Missing" here rather than
+              // silently vanishing the same way an unset optional field
+              // does everywhere else on this page.
+              required: m.workerType !== 'Employee',
+            },
+            { label: t('staffMobilisations.detail.fields.nationality'), value: m.nationality },
+            {
+              label: t('staffMobilisations.detail.fields.phone'),
+              value: m.phone,
+              required: m.workerType !== 'Employee',
+            },
+            { label: t('staffMobilisations.detail.fields.jobTitle'), value: m.jobTitle },
+            { label: t('staffMobilisations.detail.fields.client'), value: m.clientName },
+            {
+              // The Requirements card this was started from, if any. A link only for
+              // someone who can open the board at all — otherwise plain text, never a
+              // dead-end "no access" page.
+              label: t('staffMobilisations.detail.fields.fromRequirement'),
+              value: m.requirement ? (
+                user.sectionAccess?.some((key) => key === 'requirementsOwn' || key === 'requirementsTeam') ? (
+                  <Link to={`/requirements?open=${m.requirement._id}`} className="text-primary hover:underline">
+                    {m.requirement.serialNumber} · {m.requirement.clientName}
+                  </Link>
+                ) : (
+                  `${m.requirement.serialNumber} · ${m.requirement.clientName}`
+                )
+              ) : null,
+            },
+            { label: t('staffMobilisations.detail.fields.site'), value: m.site },
+            ...(m.hasSubcontractor
+              ? [{ label: t('staffMobilisations.detail.fields.subcontractor'), value: m.subcontractorName }]
+              : []),
+            { label: t('staffMobilisations.detail.fields.mobilisationDate'), value: formatDate(m.mobilisationDate) },
+            { label: t('staffMobilisations.detail.fields.checkoutDate'), value: m.checkoutDate && formatDate(m.checkoutDate) },
+          ]}
+        />
+        {m.remark && (
+          <div className="mt-4">
+            <p className="text-xs uppercase tracking-wide text-muted">{t('staffMobilisations.detail.remark')}</p>
+            <p className="text-sm">{m.remark}</p>
+          </div>
+        )}
+      </Card>
+
+      {(canDecide || hasReviewFields) && (
+        <CommercialDetailsCard
+          m={m}
+          canEdit={canEditDetails}
+          canDecide={canDecide}
+          isFinalStep={isFinalStep}
+          saving={commercialMutation.isPending}
+          onSave={(values) => commercialMutation.mutate(values)}
+          onApprove={(values) => saveThenDecide('Approved', values)}
+          onReject={(values) => saveThenDecide('Rejected', values)}
+        />
+      )}
+
+      <ApprovalTrailView request={m} />
+
+      </div>
+      <div className="space-y-6">
+
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{t('staffMobilisations.detail.coordinatorsTitle')}</h2>
+        <ul className="space-y-2">
+          {m.coordinators.map((c) => {
+            const effectiveShare = c.sharePercent ?? 100 / m.coordinators.length;
+            return (
+              <li key={userId(c)} className="flex items-center justify-between gap-3 text-sm">
+                <span>
+                  {c.user.name ?? userId(c)} {c.isPrimary && <span className="text-xs text-muted">{t('staffMobilisations.detail.primary')}</span>}
+                </span>
+                <span className="flex items-center gap-2">
+                  {m.coordinators.length > 1 && (
+                    <span className="text-xs text-muted">{t('staffMobilisations.detail.sharePercent', { percent: effectiveShare.toFixed(1) })}</span>
+                  )}
+                  <Badge variant={c.confirmed ? 'success' : 'warning'}>{c.confirmed ? t('staffMobilisations.detail.confirmed') : t('staffMobilisations.detail.pending')}</Badge>
+                  {canManage && !c.isPrimary && !c.confirmed && (
+                    <Button size="sm" variant="danger-ghost" onClick={() => setToRemove(c)}>
+                      {t('staffMobilisations.detail.remove')}
+                    </Button>
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+
+        {canManage && m.coordinators.length > 1 && (
+          <div className="mt-4 space-y-2 rounded-lg border border-border/50 bg-bg p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t('staffMobilisations.detail.editSharesTitle')}</p>
+            <div className="flex flex-wrap items-end gap-3">
+              {m.coordinators.map((c) => {
+                const uid = userId(c);
+                const fallback = c.sharePercent ?? 100 / m.coordinators.length;
+                return (
+                  <Input
+                    key={uid}
+                    label={c.user.name ?? uid}
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    className="w-28"
+                    value={shareEdits[uid] ?? String(Math.round(fallback * 10) / 10)}
+                    onChange={(e) => setShareEdits((prev) => ({ ...prev, [uid]: e.target.value }))}
+                  />
+                );
+              })}
+              <Button
+                size="sm"
+                isLoading={sharesMutation.isPending}
+                onClick={() =>
+                  sharesMutation.mutate(
+                    m.coordinators.map((c) => {
+                      const uid = userId(c);
+                      const fallback = c.sharePercent ?? 100 / m.coordinators.length;
+                      const raw = shareEdits[uid] ?? String(Math.round(fallback * 10) / 10);
+                      return { userId: uid, sharePercent: Number(raw) };
+                    })
+                  )
+                }
+              >
+                {t('staffMobilisations.detail.saveSharesButton')}
+              </Button>
+              <Button size="sm" variant="secondary" isLoading={clearSharesMutation.isPending} onClick={() => clearSharesMutation.mutate()}>
+                {t('staffMobilisations.detail.resetSharesButton')}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {needsMyConfirmation && (
+          <div className="mt-4 rounded-lg bg-warning/10 p-3 text-sm">
+            <p className="mb-2">{t('staffMobilisations.detail.needsConfirmationHint')}</p>
+            <Button size="sm" isLoading={confirmMutation.isPending} onClick={() => confirmMutation.mutate()}>
+              {t('staffMobilisations.detail.confirmButton')}
+            </Button>
+          </div>
+        )}
+
+        {canManage && (
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            <PickerLoadWarning failed={[{ label: 'candidate coordinators', isError: candidatesError }]} />
+            <Select
+              label={t('staffMobilisations.detail.addJointCoordinator')}
+              value={inviteId}
+              onChange={(e) => setInviteId(e.target.value)}
+              className="min-w-[200px]"
+            >
+              <option value="">{t('staffMobilisations.detail.selectCoordinator')}</option>
+              {availableCandidates.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!inviteId}
+              isLoading={addMutation.isPending}
+              onClick={() => addMutation.mutate(inviteId)}
+            >
+              {t('staffMobilisations.detail.invite')}
+            </Button>
+          </div>
+        )}
+
+        {canManage && (
+          <div className="mt-4 border-t border-border pt-4">
+            {!canSubmit && unconfirmed.length > 0 && (
+              <p className="mb-2 text-xs text-muted">
+                {t('staffMobilisations.detail.waitingOnConfirmation', { names: unconfirmed.map((c) => c.user.name ?? userId(c)).join(', ') })}
+              </p>
+            )}
+            {!canSubmit && missingWorkerIdentity && (
+              <p className="mb-2 text-xs text-danger">{t('staffMobilisations.detail.missingWorkerIdentity')}</p>
+            )}
+            <Button
+              isLoading={submitMutation.isPending}
+              disabled={!canSubmit}
+              onClick={() => {
+                // Chosen-but-not-yet-uploaded files (see the file input
+                // above) are only local browser state — real QA-reported
+                // gap (2026-09-14): submitting here never warned that they
+                // silently would never reach the server unless "Upload" was
+                // clicked separately first. Takes priority over the
+                // no-documents check below: these files DO exist, just not
+                // where the reviewer will see them yet.
+                if (files.length > 0) {
+                  setConfirmingUnuploadedFiles(true);
+                } else if ((m.documents ?? []).length === 0) {
+                  // No file ever chosen AND nothing already uploaded — the
+                  // user's own ask (2026-09-16): a reviewer often needs a
+                  // real attachment (contract, ID copy) to actually decide
+                  // this; submitting with none should be a deliberate
+                  // choice, not a silent gap discovered only once it's
+                  // already in someone's review queue.
+                  setConfirmingNoDocuments(true);
+                } else {
+                  submitMutation.mutate();
+                }
+              }}
+            >
+              {t('staffMobilisations.detail.submitForReview')}
+            </Button>
+          </div>
+        )}
+      </Card>
+
+      {hasCommercialFields && (
+        <Card>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+            {t('staffMobilisations.detail.sectionRatesFinancials')}
+          </h2>
+          <DetailTable
+            rows={[
+              { label: t('staffMobilisations.detail.fields.clientRate'), value: formatMoney(m.clientRate) },
+              { label: t('staffMobilisations.detail.fields.clientCommission'), value: formatMoney(m.clientCommission) },
+              { label: t('staffMobilisations.detail.fields.fta'), value: formatMoney(m.fta) },
+              {
+                label: t('staffMobilisations.detail.fields.ftaType'),
+                value: m.ftaType ? t(`staffMobilisations.form.ftaType.${m.ftaType}`) : null,
+              },
+              { label: t('staffMobilisations.detail.fields.allowance'), value: formatMoney(m.allowance) },
+              { label: t('staffMobilisations.detail.fields.allowanceRemark'), value: m.allowanceRemark },
+              { label: t('staffMobilisations.detail.fields.mobilisationCost'), value: m.mobilisationCost ? formatMoney(m.mobilisationCost) : null },
+              { label: t('staffMobilisations.detail.fields.requiredTimesheetHours'), value: m.requiredTimesheetHours ?? null },
+              ...(m.hasSubcontractor
+                ? [
+                    { label: t('staffMobilisations.detail.fields.subcontractorRate'), value: formatMoney(m.subcontractorRate) },
+                    {
+                      label: t('staffMobilisations.detail.fields.subcontractorCommission'),
+                      value: formatMoney(m.subcontractorCommission),
+                    },
+                  ]
+                : []),
+              {
+                label: t('staffMobilisations.detail.fields.profitPerHour'),
+                value: formatMoney(m.profitPerHour),
+                valueClassName: profitClass(m.profitPerHour),
+              },
+              {
+                label: t('staffMobilisations.detail.fields.profitPerMonth'),
+                value: m.profitPerMonth != null ? formatMoney(m.profitPerMonth) : null,
+                valueClassName: profitClass(m.profitPerMonth),
+              },
+              {
+                label: t('staffMobilisations.detail.fields.otClientRate'),
+                value: m.otClientRate != null ? formatMoney(m.otClientRate) : null,
+              },
+              {
+                label: t('staffMobilisations.detail.fields.otEmployeeRate'),
+                value: m.otEmployeeRate != null ? formatMoney(m.otEmployeeRate) : null,
+              },
+              {
+                label: t('staffMobilisations.detail.fields.otProfitPerHour'),
+                value: m.otProfitPerHour != null ? formatMoney(m.otProfitPerHour) : null,
+                valueClassName: profitClass(m.otProfitPerHour),
+              },
+            ]}
+          />
+        </Card>
+      )}
+
+      </div>
+      </div>
+
       <ConfirmDialog
         open={Boolean(toRemove)}
         title={t('staffMobilisations.detail.removeCoordinatorConfirmTitle')}
@@ -596,24 +890,31 @@ export default function MobilisationDetailPage() {
       />
 
       <ConfirmDialog
-        open={confirmingComplete}
-        title={t('staffMobilisations.detail.completeConfirmTitle')}
-        message={t('staffMobilisations.detail.completeConfirmMessage', { name: m.workerName })}
-        confirmLabel={t('staffMobilisations.detail.markComplete')}
+        open={confirmingUnuploadedFiles}
+        title={t('staffMobilisations.detail.unuploadedFilesConfirmTitle')}
+        message={t('staffMobilisations.detail.unuploadedFilesConfirmMessage', { count: files.length })}
+        confirmLabel={t('staffMobilisations.detail.submitAnyway')}
         confirmVariant="primary"
-        loading={completeMutation.isPending}
-        onConfirm={() => completeMutation.mutate()}
-        onCancel={() => setConfirmingComplete(false)}
+        loading={submitMutation.isPending}
+        onConfirm={() => {
+          setConfirmingUnuploadedFiles(false);
+          submitMutation.mutate();
+        }}
+        onCancel={() => setConfirmingUnuploadedFiles(false)}
       />
 
-      {/* TEMPORARY — pre-production cleanup only, see the note above confirmingDelete. */}
       <ConfirmDialog
-        open={confirmingDelete}
-        title={t('staffMobilisations.detail.deleteConfirmTitle')}
-        message={t('staffMobilisations.detail.deleteConfirmMessage', { name: m.workerName })}
-        loading={deleteMutation.isPending}
-        onConfirm={() => deleteMutation.mutate()}
-        onCancel={() => setConfirmingDelete(false)}
+        open={confirmingNoDocuments}
+        title={t('staffMobilisations.detail.noDocumentsConfirmTitle')}
+        message={t('staffMobilisations.detail.noDocumentsConfirmMessage')}
+        confirmLabel={t('staffMobilisations.detail.submitAnyway')}
+        confirmVariant="primary"
+        loading={submitMutation.isPending}
+        onConfirm={() => {
+          setConfirmingNoDocuments(false);
+          submitMutation.mutate();
+        }}
+        onCancel={() => setConfirmingNoDocuments(false)}
       />
 
       <Modal
@@ -622,6 +923,7 @@ export default function MobilisationDetailPage() {
           if (decideMutation.isPending) return;
           setPendingDecision(null);
           setDecideNote('');
+          setRejectionTarget('');
         }}
         title={pendingDecision === 'Approved' ? t('staffMobilisations.detail.approveModalTitle') : t('staffMobilisations.detail.rejectModalTitle')}
       >
@@ -632,13 +934,25 @@ export default function MobilisationDetailPage() {
               : t('staffMobilisations.detail.rejectModalMessage')}
           </p>
           {pendingDecision === 'Rejected' && (
-            <Textarea
-              label={t('staffMobilisations.detail.noteRequired')}
-              value={decideNote}
-              onChange={(e) => setDecideNote(e.target.value)}
-              placeholder={t('staffMobilisations.detail.notePlaceholder')}
-            />
+            <Select
+              label={t('staffMobilisations.detail.rejectionTargetLabel')}
+              value={rejectionTarget}
+              onChange={(e) => setRejectionTarget(e.target.value)}
+            >
+              <option value="">{t('staffMobilisations.detail.rejectionTargetPlaceholder')}</option>
+              <option value="Coordinator">{t('staffMobilisations.detail.rejectionTargetCoordinator')}</option>
+              <option value="OfficeSecretary">{t('staffMobilisations.detail.rejectionTargetOfficeSecretary')}</option>
+              <option value="Both">{t('staffMobilisations.detail.rejectionTargetBoth')}</option>
+            </Select>
           )}
+          {/* A comment is required to reject, but welcome on an approval
+              too — the reviewer may want to leave a note either way. */}
+          <Textarea
+            label={pendingDecision === 'Rejected' ? t('staffMobilisations.detail.noteRequired') : t('staffMobilisations.detail.noteOptional')}
+            value={decideNote}
+            onChange={(e) => setDecideNote(e.target.value)}
+            placeholder={t('staffMobilisations.detail.notePlaceholder')}
+          />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" disabled={decideMutation.isPending} onClick={() => setPendingDecision(null)}>
               {t('common.cancel')}
@@ -647,7 +961,7 @@ export default function MobilisationDetailPage() {
               variant={pendingDecision === 'Rejected' ? 'danger' : 'primary'}
               isLoading={decideMutation.isPending}
               onClick={() => {
-                const values = { status: pendingDecision, decisionNote: decideNote };
+                const values = { status: pendingDecision, decisionNote: decideNote, rejectionTarget: rejectionTarget || undefined };
                 const result = decideMobilisationFormSchema.safeParse(values);
                 if (!result.success) {
                   toast.error(result.error.issues[0]?.message ?? t('staffMobilisations.detail.defaultRejectError'));
@@ -661,6 +975,13 @@ export default function MobilisationDetailPage() {
           </div>
         </div>
       </Modal>
+
+      <MobilisationDocumentPreviewModal
+        mobilisationId={id}
+        doc={previewDoc}
+        open={Boolean(previewDoc)}
+        onClose={() => setPreviewDoc(null)}
+      />
     </div>
   );
 }

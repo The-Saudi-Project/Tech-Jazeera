@@ -19,6 +19,21 @@ import * as companySettingsController from './companySettings.controller.js';
 
 const router = Router();
 
+// Public — no requireAuth, no Section Access check. Needs to reach the
+// pre-login screen and the ESS Worker portal (requireStaff below would
+// otherwise exclude Workers from ever seeing their own company's branding).
+// See the controller/service doc comments for why just these two fields
+// are safe to expose without a permission check. This route's mount order
+// in app.js relative to other modules used to matter — the old combined
+// `leave.routes.js` sat at the bare '/api' prefix with its own unconditional
+// `router.use(requireAuth)`, intercepting (and 401ing) any '/api/*' request
+// that fell through to it, including this one, unless this module was
+// mounted first. Fixed 2026-09-22 (a real QA-audit finding — P2): that
+// router is now split into leaveType.routes.js/leaveRequest.routes.js, each
+// mounted at its own real prefix, so this ordering is no longer load-bearing
+// — left in its current spot regardless, no reason to move it.
+router.get('/branding', asyncHandler(companySettingsController.getBranding));
+
 router.use(requireAuth, requireStaff);
 
 router.get('/', asyncHandler(companySettingsController.get));

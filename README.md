@@ -1,61 +1,67 @@
-# Company ERP — Manpower Supply & Trading
+# Valizent CRM — Al Jazeera
 
-Internal ERP for daily operations: employees, clients, deployments, attendance,
-documents, quotations, and a management dashboard.
+Internal ERP for a manpower supply & trading company: employees, clients,
+deployments/mobilisations, attendance, documents, quotations/invoices,
+payroll, leave, financial requests, and a management dashboard, plus a
+separate self-service (ESS) portal for workers.
 
-**Stack:** React 18 + Vite + Tailwind (client) · Node.js + Express + MongoDB/Mongoose (server) · JWT auth with refresh rotation.
+**Read [`CLAUDE.md`](CLAUDE.md) first** — it's the project's source of truth
+(architecture decisions, hard rules, security requirements, and a full
+feature-by-feature status log). Then `docs/` for the how-and-why behind each
+module.
 
-## Repository layout
+## Repository layout — read this carefully
+
+This folder is a convenience checkout, not itself the authoritative repo for
+either app. There are **three separate git repos** involved:
 
 ```
-company-erp/
-├── client/   # React app (Vite + Tailwind)
-├── server/   # Express API
-└── docs/     # per-milestone developer notes — read these to learn the system
+Al Jazeera CRM/            ← this folder (repo: Tech-Jazeera) — kept as a
+├── client/                  single local checkout for easy cross-app
+│   └── .git/                searching/reading; NOT synced automatically
+├── server/                  with the two repos below, and not connected to
+│   └── .git/                any deployment. New joiners: ask about this.
+├── docs/
+└── CLAUDE.md
 ```
+
+- **`client/`** is its own independent git repo, `Tech-Jazeera-Frontend`,
+  deployed via Cloudflare Pages' own git integration.
+- **`server/`** is its own independent git repo, `Tech-Jazeera-Backend`,
+  deployed via GitHub Actions to a company-owned Oracle VM.
+- **This root folder** is a third, separate repo (`Tech-Jazeera`) with its
+  own full copy of both apps' files (not a submodule link) — genuinely
+  useful as one place to check out both apps together, but its own git
+  history is not the source of truth for either app's code and isn't kept
+  in lockstep automatically. Real work happens inside `client/`'s and
+  `server/`'s own repos, each on its own `development`/`main` branches.
+
+`CLAUDE.md` and `docs/` are kept identical across all three locations
+(this root folder, `server/`, `client/`) — update all three when either
+changes. Each of the three has its **own** `README.md` (this file describes
+the combined checkout; `server/README.md` and `client/README.md` each
+describe just that one app's setup).
 
 ## Prerequisites
 
 - Node.js ≥ 20.6 (built with 22.x)
-- A MongoDB Atlas cluster (free tier is fine)
+- A MongoDB Atlas cluster
 
-## Server setup
+## Quick start
+
+Backend first (see `server/README.md` for the full setup, env vars, and
+first-login steps):
 
 ```bash
 cd server
 npm install
 copy .env.example .env    # macOS/Linux: cp .env.example .env
+# fill in server/.env, then:
+npm run dev
 ```
 
-Open `server/.env` and fill in every variable — the server validates them at
-boot and refuses to start otherwise. See `docs/M1-notes.md` for a step-by-step
-guide to getting a MongoDB Atlas URI.
-
-Run it:
-
-```bash
-npm run dev     # auto-restarts on file changes
-```
-
-Check it's alive: open http://localhost:5000/api/health — you should see
-`{ "success": true, ... "database": "connected" }`.
-
-## First login
-
-Create (or reset) the Admin account, then log in with it:
-
-```bash
-npm run seed:admin -- you@company.com YourStrongPassword "Your Name"
-```
-
-Auth endpoints: `POST /api/auth/login` `{ email, password }` →
-`{ user, accessToken }` + httpOnly refresh cookie; `POST /api/auth/refresh`;
-`POST /api/auth/logout`. Roles: Admin, Manager, HR, Accounts, Coordinator,
-Worker. (Worker is the Phase 2 self-service persona — see
-`docs/P2-M1-notes.md`; the admin modules are staff-only.) See `docs/M2-notes.md`
-for the full token flow.
-
-## Client setup
+Then the frontend (see `client/README.md` for env overrides, build, and the
+Android app):
 
 ```bash
 cd client
@@ -63,48 +69,4 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 and sign in with the seeded admin account. The
-client expects the API at `http://localhost:5000/api`; override with
-`VITE_API_URL` in `client/.env` when deploying. Both servers must run
-together during development (two terminals).
-
-## Modules
-
-- **Employees** (`/employees`) — workforce register: full CRUD, search,
-  status & expiring-document filters, sortable list, pagination, per-employee
-  profile with passport/visa/iqama/medical/licence expiry tracking. Write
-  access: Admin/Manager/HR; delete: Admin/HR. See `docs/M4-notes.md`.
-- **Clients** (`/clients`) — customer register: company/contact/VAT/CR/
-  industry/notes, a dynamic list of sites, and a tabbed profile (Overview +
-  live Assigned-Workers). Delete is guarded against clients with assigned
-  workers. Write: Admin/Manager; delete: Admin/Manager. See
-  `docs/M5-notes.md`.
-- **Deployments** (`/deployments`) — place workers at client sites: assign,
-  transfer, and unassign, with full history. A partial-unique index guarantees
-  a worker is never actively deployed in two places at once, and each
-  operation is transactional. Managed from the register and each worker's
-  profile. Write: Admin/Manager. See `docs/M6-notes.md`.
-- **Attendance** (`/attendance`) — daily marking, a weekly/monthly grid, and
-  per-worker summaries with **Excel/PDF export** (generated server-side via
-  exceljs/pdfkit). One record per worker per day (upsert). Mark: Admin/
-  Manager/HR; read/export: all. See `docs/M7-notes.md`.
-- **Documents** (`/documents`) — upload files against employees and clients
-  with categories, expiry dates, version history, inline preview, download,
-  and search. Files stored on disk at `UPLOAD_DIR`; served authenticated.
-  Upload: Admin/Manager/HR; delete: Admin/Manager/HR. See
-  `docs/M8-notes.md`.
-- **Quotations** (`/quotations`) — labour/trading line items with per-line
-  discount and tax, **server-computed** totals, Draft/Approved/Rejected
-  statuses, duplicate, and PDF generation. Sequential numbers via an atomic
-  counter. Write: Admin/Manager/Accounts; delete: Admin/Manager. See
-  `docs/M9-notes.md`.
-- **Dashboard** (`/`) — a management overview aggregating every module in one
-  endpoint: headline stats, a finance summary, workforce/quotation
-  breakdowns, expiring-document alerts, recent activity from the audit log,
-  and role-aware quick actions. Available to all signed-in users. See
-  `docs/M10-notes.md`.
-
-## Documentation
-
-Each milestone writes `docs/M<N>-notes.md` explaining how that slice works,
-how to modify it, and common mistakes. Start with `docs/M1-notes.md`.
+Open http://localhost:5173.

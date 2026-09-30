@@ -38,13 +38,13 @@ export default function RamadanPeriodsSection() {
   const { user } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
-  // A real pre-existing mismatch found here: this used HOLIDAY_MANAGE_ROLES
-  // (['Admin','HR'], the Holiday calendar's OWN Admin/HR-only circle), which
-  // silently hid these controls from Manager even though the server always
-  // allowed Manager to manage Ramadan periods — a different config than
-  // Holidays. Fixed by using Ramadan's own 'ramadanManage' Section Access
+  // A real pre-existing mismatch found here: this used to check against the
+  // Holiday calendar's OWN (Admin/HR-only) manage circle, which silently hid
+  // these controls from Manager even though the server always allowed
+  // Manager to manage Ramadan periods — a different config than Holidays.
+  // Fixed by using Ramadan's own 'ramadanManage' Section Access
   // grant, matching the real server gate.
-  const canManage = Boolean(user.sectionAccess?.includes('ramadanManage'));
+  const canManage = Boolean(user.sectionAccessWrite?.includes('ramadanManage'));
 
   const [editing, setEditing] = useState(null); // null = closed, {} = new, {...} = edit
   const [toDelete, setToDelete] = useState(null);

@@ -1,18 +1,24 @@
 /**
  * Mobilisation — the commercial+staffing record of placing a worker with a
  * client (optionally routed through a subcontractor), including billing
- * rates/commissions and the profit on the deal. Distinct from Deployment
- * (worker↔client↔site only, no commercial data) — see
- * docs/MOBILISATION-notes.md.
+ * rates/commissions and the profit on the deal. Once this reaches
+ * 'Approved', a Deployment (worker actually at work, monthly client hours/OT,
+ * Release) is created automatically from it — see
+ * deployment.service.js's createDeploymentFromMobilisation, called from this
+ * module's approveMobilisation. See docs/MOBILISATION-notes.md.
  *
  * Section 1 is filled by whoever creates it (a Coordinator, or — from M4 —
  * a BDM/Marketing Manager self-mobilising); Section 2 (client/sub quotation
- * & PO, overtime, actual client timesheet hours) is filled by whoever holds
- * the CURRENT approval step (Office Secretary, then Marketing Manager, once
- * an Admin configures that multi-step workflow) via the commercial-details
- * endpoint — see mobilisation.service.js's saveCommercialDetails, which was
- * already generic over "whoever's turn it is" before Office Secretary
- * existed.
+ * & PO, overtime RATES) is filled by whoever holds the CURRENT approval step
+ * (Office Secretary, then Marketing Manager, once an Admin configures that
+ * multi-step workflow) via the commercial-details endpoint — see
+ * mobilisation.service.js's saveCommercialDetails, which was already
+ * generic over "whoever's turn it is" before Office Secretary existed.
+ * Section 2 no longer includes the client's actual timesheet hours
+ * (2026-09-12 follow-up) — a real worker isn't even placed yet at this
+ * stage, so there's no timesheet to enter; that now lives entirely on the
+ * Deployment this mobilisation produces once Approved, entered month by
+ * month as the client's real timesheets actually arrive.
  *
  * `worker` is a reference, populated ONLY when `workerType === 'Employee'` —
  * a Supplier-Employee or Freelancer worker never gets an Employee HR record
@@ -23,15 +29,27 @@
  * convention as Deployment.clientName — a later Iqama renewal or client
  * rename must not silently rewrite an already-submitted mobilisation.
  *
- * `profitPerHour`/`profitPerMonth`/`otProfitPerHour`/`otProfitTotal` are
- * SERVER-COMPUTED (mobilisation.service.js's computeProfitFields), never
- * accepted from client input and recomputed on every save AND every read —
- * this app's "never trust a stored financial figure, recompute server-side"
- * rule, same posture as Payroll/Invoice totals. Formula (given directly by
- * the business owner, not inferred):
+ * `profitPerHour`/`profitPerMonth`/`otProfitPerHour` are SERVER-COMPUTED
+ * (mobilisation.service.js's computeProfitFields), never accepted from
+ * client input and recomputed on every save AND every read — this app's
+ * "never trust a stored financial figure, recompute server-side" rule, same
+ * posture as Payroll/Invoice totals. Formula (given directly by the
+ * business owner, not inferred):
  *   profitPerHour = SupplierEmployee: (clientRate - clientCommission) - (subcontractorRate + subcontractorCommission)
  *                   Employee/Freelancer: clientRate - clientCommission
- *   profitPerMonth = (profitPerHour * clientTimesheetHours) - fta - allowance + otProfitTotal
+ *   otProfitPerHour = otClientRate - otEmployeeRate — no commission/
+ *             subcontractor-rate split for overtime (2026-09-14, the user's
+ *             own correction: that split "does not exist" for OT in real
+ *             terms — there's only what the client is billed and what's
+ *             actually paid out per OT hour, same for every workerType)
+ *   profitPerMonth = (profitPerHour * requiredTimesheetHours) - fta - allowance
+ * This is a pre-deployment ESTIMATE off the contracted/target hours only —
+ * it deliberately does NOT factor in overtime or the client's real worked
+ * hours. Once this mobilisation is Approved, the resulting Deployment's own
+ * monthly-hours ledger (deployment.model.js/deployment.service.js's
+ * computeMonthlyProfit) is the real, actual-hours-based profit figure for
+ * every month actually worked — see the 2026-09-12 follow-up below for why
+ * `clientTimesheetHours`/`otHours`/`otProfitTotal` were removed from here.
  *
  * `workflow`/`workflowName`/`steps`/`currentStep`/`approvalTrail` are the
  * Configurable Approval Hierarchy fields, identical shape to
@@ -42,11 +60,16 @@
  */
 import mongoose from 'mongoose';
 
-// 'Completed' (Milestone 5) is the terminal "placement has ended" state — the
-// minimum needed to ever clear a worker's Employee.coordinator back to
-// standby. Only reachable from 'Approved'; see mobilisation.service.js's
-// completeMobilisation.
+
+// 'Completed' is the terminal "placement has ended" state — set automatically
+// when the Deployment this mobilisation produced is Released (see
+// deployment.service.js's releaseDeployment), never by a direct action on
+// the Mobilisation itself. Only reachable from 'Approved'.
 export const MOBILISATION_STATUSES = ['Draft', 'PendingReview', 'Approved', 'Rejected', 'Completed'];
+// Who a final-step rejection sends the mobilisation back to — see
+// mobilisation.service.js's rejectMobilisation/submitMobilisation for what
+// each one actually does differently.
+export const REJECTION_TARGETS = ['Coordinator', 'OfficeSecretary', 'Both'];
 export const MOBILISATION_DOCUMENT_CATEGORIES = ['Contract', 'IDCopy', 'Other'];
 
 // 'Employee' is an existing Employee record (unchanged original behavior).
@@ -54,6 +77,14 @@ export const MOBILISATION_DOCUMENT_CATEGORIES = ['Contract', 'IDCopy', 'Other'];
 // identity fields are typed directly onto the mobilisation. Subcontractor
 // rate/commission fields only ever apply to 'SupplierEmployee'.
 export const WORKER_TYPES = ['Employee', 'SupplierEmployee', 'Freelancer'];
+
+// What the `fta` amount actually covers — the user's own ask (2026-09-16):
+// a plain number gave no way to tell Food/Travel/Accommodation apart later.
+// 'FTA' means all three combined; 'FoodOnly'/'TravelOnly'/'AccommodationOnly'
+// (the last one added 2026-09-16, same-day follow-up) are the individual
+// components. Required only once a real `fta` amount is entered — see
+// mobilisation.validation.js's withFtaTypeRefine.
+export const FTA_TYPES = ['FoodOnly', 'TravelOnly', 'AccommodationOnly', 'FTA'];
 
 /** One uploaded file (M5). _id kept (default) — deleted individually by id,
  *  unlike Document.versions' append-only history. */
@@ -77,6 +108,16 @@ const coordinatorSchema = new mongoose.Schema(
     isPrimary: { type: Boolean, default: false },
     confirmed: { type: Boolean, default: false },
     confirmedAt: { type: Date, default: null },
+    // Real revenue share (2026-09-27, the user's own ask): how this joint
+    // mobilisation's REAL received/approved revenue splits between its
+    // coordinators for target-crediting purposes — replaces the old "every
+    // joint coordinator gets 100% credit" rule. Null on every coordinator
+    // (the default, and every pre-existing mobilisation) means "split evenly
+    // across however many coordinators are on this record" — see
+    // effectiveSharePercent in mobilisation.service.js. Either every
+    // coordinator has an explicit share summing to 100, or none do — no
+    // partial-set state (enforced in setCoordinatorShares).
+    sharePercent: { type: Number, default: null, min: 0, max: 100 },
   },
   { _id: false }
 );
@@ -103,12 +144,29 @@ const mobilisationSchema = new mongoose.Schema(
     // --- Section 1: client & billing ---
     client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
     clientName: { type: String, required: true }, // snapshot of Client.companyName
+    // Free-typed, not validated against Client.sites — same "suggestion aid,
+    // not a strict picklist" convention as workerName (see
+    // getFieldSuggestions). Optional: many mobilisations won't name a
+    // specific site, and this shouldn't block an otherwise-complete Draft.
+    // Snapshotted onto the auto-created Deployment once Approved — see
+    // deployment.service.js's createDeploymentFromMobilisation.
+    site: { type: String, trim: true, default: null },
     clientRate: { type: Number, default: 0, min: 0 }, // per hour
     clientCommission: { type: Number, default: 0, min: 0 }, // per hour
     fta: { type: Number, default: 0, min: 0 }, // per month — Food/Travel/Accommodation, company-paid
+    ftaType: { type: String, enum: FTA_TYPES, default: null }, // what the amount above actually covers
     allowance: { type: Number, default: 0, min: 0 }, // per month, company-paid
+    allowanceRemark: { type: String, trim: true, maxlength: 200, default: null }, // free-typed: what this allowance is for
     requiredTimesheetHours: { type: Number, default: null, min: 0 }, // contracted/target hours, set by the Coordinator
-    clientTimesheetHours: { type: Number, default: null, min: 0 }, // actual hours, filled later by the current-step reviewer
+    // One-time cost of mobilising this worker (e.g. flight/agent/visa fees) —
+    // added 2026-09-19 per the user's own ask. Set once here, like every
+    // other Section 1 rate, but never touches this model's own profitPerMonth
+    // ESTIMATE (that stays a pure per-contracted-hour figure, unchanged) —
+    // it's a real one-time actual cost, so it's deducted exactly once from
+    // the resulting Deployment's own real monthly profit instead, on
+    // whichever month is the first one actually Approved (see
+    // deployment.service.js's computeMonthlyProfit).
+    mobilisationCost: { type: Number, default: 0, min: 0 },
 
     // --- Section 1: subcontractor — only when workerType === 'SupplierEmployee' ---
     hasSubcontractor: { type: Boolean, default: false }, // server-derived from workerType — never client-writable
@@ -119,22 +177,42 @@ const mobilisationSchema = new mongoose.Schema(
 
     // --- Section 1: computed economics (server-only — see computeProfitFields) ---
     profitPerHour: { type: Number, default: null },
-    profitPerMonth: { type: Number, default: null }, // null until clientTimesheetHours is set
+    profitPerMonth: { type: Number, default: null }, // null until requiredTimesheetHours is set
 
     mobilisationDate: { type: Date, required: true },
     checkoutDate: { type: Date, default: null },
 
-    // --- Section 2: overtime — filled by the current-step reviewer, mirrors the regular-hours split ---
-    otHours: { type: Number, default: null, min: 0 },
+    // --- Section 2: overtime RATES — filled by the current-step reviewer.
+    // No `otHours`/`otProfitTotal` here (removed 2026-09-12) — actual OT
+    // hours are now tracked entirely on the Deployment's monthly-hours
+    // ledger, which already reads these rate fields straight off this
+    // document (see deployment.service.js's computeMonthlyProfit).
+    // `otProfitPerHour` stays: a pure rate-derived margin preview that needs
+    // no hours figure at all. Unlike the regular-hours rate split above,
+    // there is deliberately NO client-commission or subcontractor-rate/
+    // commission breakdown for OT (2026-09-14, the user's own correction —
+    // that split doesn't reflect how OT is actually billed/paid in
+    // practice): just what the client is charged (`otClientRate`) and what
+    // is actually paid out per OT hour to the worker, whoever they are
+    // (`otEmployeeRate`) — the same for Employee, SupplierEmployee, and
+    // Freelancer alike.
     otClientRate: { type: Number, default: null, min: 0 },
-    otClientCommission: { type: Number, default: null, min: 0 },
-    otSubcontractorRate: { type: Number, default: null, min: 0 }, // SupplierEmployee only
-    otSubcontractorCommission: { type: Number, default: null, min: 0 }, // SupplierEmployee only
+    otEmployeeRate: { type: Number, default: null, min: 0 },
     otProfitPerHour: { type: Number, default: null }, // computed
-    otProfitTotal: { type: Number, default: null }, // computed = otProfitPerHour * otHours
 
     // --- stale-mobilisation warning support ---
     currentStepEnteredAt: { type: Date, default: null },
+
+    // --- the Requirements card this was started from (2026-09-20, milestone 3
+    // of the Coordinator Workflow) — set ONLY at creation, when a coordinator
+    // clicks "Start mobilisation" on a candidate; never editable afterwards.
+    // `requirementCandidate` is that candidate's id inside
+    // Requirement.candidates. On final approval requirement.service.js's
+    // onMobilisationApproved uses the pair to mark the candidate Mobilised (and
+    // advance the card once every requested worker is). Both stay null for a
+    // mobilisation that didn't start from a card, which is most of them.
+    requirement: { type: mongoose.Schema.Types.ObjectId, ref: 'Requirement', default: null },
+    requirementCandidate: { type: mongoose.Schema.Types.ObjectId, default: null },
 
     // --- Section 1: coordinators / documents / remark ---
     coordinators: {
@@ -163,6 +241,30 @@ const mobilisationSchema = new mongoose.Schema(
     decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     decidedAt: { type: Date, default: null },
     decisionNote: { type: String, trim: true, maxlength: 500 },
+    // Set only by a final-step rejection targeting 'Coordinator' or 'Both'
+    // (status becomes 'Rejected' either way) — read by submitMobilisation to
+    // decide whether resubmitting restarts the whole workflow or skips
+    // straight back to the step it was rejected from. A rejection targeting
+    // 'OfficeSecretary' never sets this: it never leaves 'PendingReview' in
+    // the first place (see mobilisation.service.js's rejectMobilisation).
+    // Always cleared back to null on a successful resubmit.
+    rejectionTarget: { type: String, enum: REJECTION_TARGETS, default: null },
+    // Worker-data archive (2026-09-17, the user's own ask — a real way to
+    // remove a Freelancer/SupplierEmployee worker's data once they're no
+    // longer relevant, since they have no Employee record of their own to
+    // exit/deactivate). Deliberately a soft flag, not a delete: PDPL-style
+    // recoverability, and this record may carry real approved financial
+    // history (profit, client billing) that shouldn't just vanish. Set by
+    // mobilisation.service.js's archiveWorkerData/unarchiveWorkerData,
+    // ALWAYS together with every other Mobilisation (and any resulting
+    // Deployment) sharing the same iqamaNumber — never set on a single
+    // record in isolation. Every shared list/lookup query (findVisible
+    // Mobilisations, listPreviousWorkers, lookupWorkerByIqama) excludes
+    // `archived: true` by default; a single-record GET by id is unaffected
+    // — archived data stays reachable directly, just hidden from lists.
+    archived: { type: Boolean, default: false },
+    archivedAt: { type: Date, default: null },
+    archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     workflow: { type: mongoose.Schema.Types.ObjectId, ref: 'ApprovalWorkflow', default: null },
     workflowName: { type: String, default: null },
     steps: {

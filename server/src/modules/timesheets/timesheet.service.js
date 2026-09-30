@@ -5,19 +5,21 @@
  *
  * KNOWN LIMITATION (documented, not silently glossed over): approving a
  * timesheet does not yet lock its underlying Attendance days against
- * further edits. There is no Payroll consumer yet to protect against a
- * post-approval change — see docs/P2-M3b-notes.md for the reasoning and
- * what adding the lock would touch.
+ * further edits. Payroll's approvedHoursForMonth (payroll.service.js) does
+ * now read Approved Timesheets for its overtime figure (P3-E), so a
+ * post-approval Attendance edit CAN silently drift from what was already
+ * paid — see docs/P2-M3b-notes.md for the reasoning and what adding the
+ * lock would touch.
  */
 import AttendanceModel from '../attendance/attendance.model.js';
 import Employee from '../employees/employee.model.js';
 import Timesheet from './timesheet.model.js';
 import { resolveWeeklyCap } from '../ramadan/ramadanPeriod.service.js';
-import { notifyEmployeeUser } from '../notifications/notification.service.js';
 import ApiError from '../../utils/ApiError.js';
 import { logAudit } from '../audit/audit.service.js';
 import { resolveApprovalWorkflow } from '../approvals/approvals.service.js';
 import { decideApprovalStep, annotateCanDecide, notifySubmission } from '../approvals/approvalEngine.service.js';
+import { canAccessSection } from '../sectionAccess/sectionAccess.service.js';
 
 const money = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -172,10 +174,30 @@ export async function listOwnTimesheets(employeeId, { page, limit }) {
   return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }
 
+/** Fixed 2026-09-29 (a real audit finding): every sibling review queue
+ *  (Leave's listLeaveRequests, Attendance, Documents, Assets) scopes a
+ *  Coordinator actor to their own team — this one never did, so once an
+ *  Admin grants a Coordinator `timesheetRequests` access (already required
+ *  for a Coordinator to self-submit their own timesheet), that Coordinator
+ *  could pull every employee's timesheet company-wide. Same pattern as
+ *  leave.service.js's listLeaveRequests: the Coordinator's own
+ *  self-submitted timesheet is included too, since they have no ESS screen
+ *  of their own to see it on otherwise. */
 export async function listTimesheets({ page, limit, status, employee }, actor) {
   const filter = {};
   if (status) filter.status = status;
   if (employee) filter.employee = employee;
+
+  if (actor?.role === 'Coordinator') {
+    const teamIds = await Employee.find({ coordinator: actor.userId }).distinct('_id');
+    const visibleIds = actor.employee ? [...teamIds, actor.employee] : teamIds;
+    const visibleIdStrings = visibleIds.map((id) => id.toString());
+    if (employee && !visibleIdStrings.includes(employee)) {
+      throw new ApiError(403, 'You do not have access to this employee.');
+    }
+    filter.employee = employee ?? { $in: visibleIds };
+  }
+
   const [rawItems, total] = await Promise.all([
     Timesheet.find(filter)
       .sort({ periodStart: -1 })
@@ -188,9 +210,16 @@ export async function listTimesheets({ page, limit, status, employee }, actor) {
       .lean(),
     Timesheet.countDocuments(filter),
   ]);
-  const items = actor
-    ? await annotateCanDecide(rawItems, actor, { pendingStatus: 'Submitted', legacyAllowedRoles: LEGACY_DECIDE_ROLES })
-    : rawItems;
+  let items = rawItems;
+  if (actor) {
+    const annotated = await annotateCanDecide(rawItems, actor, { pendingStatus: 'Submitted', legacyAllowedRoles: LEGACY_DECIDE_ROLES });
+    // Fixed 2026-09-15, the same class of gap the 2026-09-14 audit found
+    // and fixed for financialRequests only (advance.service.js's
+    // listAdvances) — never carried over here. See leave.service.js's
+    // listLeaveRequests for the full reasoning; same fix, same root cause.
+    const hasSectionWrite = await canAccessSection('timesheetRequests', actor, 'write');
+    items = annotated.map((item) => ({ ...item, canDecideCurrentStep: item.canDecideCurrentStep && hasSectionWrite }));
+  }
   return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }
 
@@ -245,7 +274,6 @@ export async function bulkApproveTimesheets(ids, actor) {
       continue;
     }
     try {
-      // eslint-disable-next-line no-await-in-loop
       await decideApprovalStep({
         Model: Timesheet,
         id,

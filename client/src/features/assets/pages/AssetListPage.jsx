@@ -18,7 +18,7 @@ import {
   assignAsset,
   returnAsset,
 } from '../assets.api.js';
-import { listEmployees } from '../../employees/employees.api.js';
+import { useEmployeePicker } from '../../../lib/useEmployeePicker.js';
 import {
   assetFormSchema,
   emptyAssetForm,
@@ -42,13 +42,14 @@ import Select from '../../../components/ui/Select.jsx';
 import Textarea from '../../../components/ui/Textarea.jsx';
 import Modal from '../../../components/ui/Modal.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
+import PickerLoadWarning from '../../../components/shared/PickerLoadWarning.jsx';
 
 export default function AssetListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const canWrite = Boolean(user.sectionAccess?.includes('assetsManage'));
+  const canWrite = Boolean(user.sectionAccessWrite?.includes('assetsManage'));
   const canDelete = ASSET_DELETE_ROLES.includes(user.role);
 
   const [category, setCategory] = useState('');
@@ -64,11 +65,7 @@ export default function AssetListPage() {
     queryFn: () => listAssets({ limit: 100, ...(category && { category }), ...(status && { status }) }),
   });
 
-  const { data: employeeData } = useQuery({
-    queryKey: ['employees', { forAssets: true }],
-    queryFn: () => listEmployees({ limit: 100, sortBy: 'fullName', sortOrder: 'asc' }),
-    enabled: canWrite,
-  });
+  const { data: employeeData, isError: employeesError } = useEmployeePicker({ enabled: canWrite });
 
   const { data: history, isPending: historyLoading } = useQuery({
     queryKey: ['assets', 'history', viewingHistory],
@@ -220,7 +217,7 @@ export default function AssetListPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-[1600px]">
       <PageHeader
         title="Assets"
         description="Vehicles, laptops, phones, and tools — who has what."
@@ -294,6 +291,7 @@ export default function AssetListPage() {
 
       <Modal open={!!assigning} onClose={() => setAssigning(null)} title={`Assign ${assigning?.assetTag ?? ''}`}>
         <form onSubmit={assignForm.handleSubmit((values) => assignMutation.mutate(values))} noValidate className="space-y-4">
+          <PickerLoadWarning failed={[{ label: 'employees', isError: employeesError }]} />
           <Select label="Employee *" error={assignForm.formState.errors.employee?.message} {...assignForm.register('employee')}>
             <option value="">Select an employee…</option>
             {employees.map((e) => (

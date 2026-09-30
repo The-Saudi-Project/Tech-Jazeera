@@ -27,9 +27,13 @@ export const ACTION_LABELS = {
   'client.approved': 'approved a client',
   'client.rejected': 'rejected a client',
 
-  'deployment.assign': 'deployed a worker',
-  'deployment.transfer': 'transferred a worker',
-  'deployment.end': 'ended a deployment',
+  'deployment.create': 'created a deployment',
+  'deployment.release': 'demobilised a deployment',
+  'deployment.delete': 'deleted a deployment',
+  'deployment.monthlyHours.add': 'entered monthly hours',
+  'deployment.monthlyHours.update': 'corrected monthly hours',
+  'deployment.monthlyHours.correctApproved': 'corrected approved monthly hours',
+  'deployment.monthlyHours.decide': 'decided a monthly hours entry',
 
   'attendance.mark': 'marked attendance',
   'attendance.checkin': 'signed in',
@@ -79,6 +83,29 @@ export const ACTION_LABELS = {
   'nfc.card.delete': 'deleted an NFC card',
 
   'timesheet.export': 'exported a timesheet',
+
+  'dailyUpdate.log.create': 'added a daily log entry',
+  'dailyUpdate.log.update': 'edited a daily log entry',
+  'dailyUpdate.log.delete': 'deleted a daily log entry',
+  'dailyUpdate.task.create': 'added a daily task',
+  'dailyUpdate.task.update': 'edited a daily task',
+  'dailyUpdate.task.status': 'changed a daily task status',
+  'dailyUpdate.task.delete': 'deleted a daily task',
+
+  'requirement.create': 'added a requirement',
+  'requirement.update': 'edited a requirement',
+  'requirement.stage.move': 'moved a requirement to another stage',
+  'requirement.delete': 'deleted a requirement',
+  'requirement.candidate.add': 'added a candidate to a requirement',
+  'requirement.candidate.update': 'updated a requirement candidate',
+  'requirement.candidate.remove': 'removed a candidate from a requirement',
+  'requirement.candidate.mobilisation': 'started a mobilisation for a requirement candidate',
+  'requirement.candidate.mobilised': 'had a requirement candidate mobilised on approval',
+  'requirementStage.create': 'added a requirement board stage',
+  'requirementStage.update': 'edited a requirement board stage',
+  'requirementStage.reorder': 'reordered the requirement board stages',
+  'requirementStage.delete': 'deleted a requirement board stage',
+  'requirementStage.defaults': 'set up the suggested requirement board stages',
 
   'admin.fresh_start_cleanup': 'ran a bulk data cleanup',
 };

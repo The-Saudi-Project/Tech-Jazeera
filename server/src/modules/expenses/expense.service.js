@@ -59,10 +59,13 @@ export async function createExpense(data, file, actor) {
   return expense.toObject();
 }
 
-export async function listExpenses({ page, limit, category, client, from, to, search }) {
+export async function listExpenses({ page, limit, category, client, deployment, from, to, search }) {
   const conditions = [];
   if (category) conditions.push({ category });
   if (client) conditions.push({ client });
+  // Added 2026-09-24 for the new per-Deployment expenses section on
+  // DeploymentDetailPage.jsx — browsing one deployment's own expense history.
+  if (deployment) conditions.push({ deployment });
   if (from || to) {
     const range = {};
     if (from) range.$gte = from;
@@ -100,6 +103,7 @@ export async function updateExpense(id, data, actor) {
   // Each link is resolved independently and only if the caller actually sent
   // it — an update that only changes, say, the amount shouldn't require
   // re-sending client. Sending an empty value clears that link.
+  let deploymentDoc;
   if ('client' in data) {
     if (data.client) {
       const clientDoc = await Client.findById(data.client).lean();
@@ -113,15 +117,25 @@ export async function updateExpense(id, data, actor) {
   }
   if ('deployment' in data) {
     if (data.deployment) {
-      const deploymentDoc = await Deployment.findById(data.deployment).lean();
+      deploymentDoc = await Deployment.findById(data.deployment).lean();
       if (!deploymentDoc) throw new ApiError(404, 'Deployment not found.');
-      const targetClient = 'client' in data ? data.client : expense.client?.toString();
-      if (targetClient && deploymentDoc.client.toString() !== targetClient) {
-        throw new ApiError(400, 'That deployment does not belong to the selected client.');
-      }
       expense.deployment = data.deployment;
     } else {
       expense.deployment = null;
+    }
+  }
+  // Fixed 2026-09-29, a real audit finding: the cross-check used to run
+  // ONLY inside the `'deployment' in data` branch above, so sending just a
+  // new `client` (with no `deployment` key at all) left the PRE-EXISTING
+  // `expense.deployment` — which may belong to a different client entirely
+  // — completely unvalidated against it. This now re-checks the FINAL state
+  // after both possible edits are applied, whichever one (or both, or
+  // neither) the caller actually sent; `deploymentDoc` is only re-fetched
+  // here if `deployment` itself wasn't already in the request.
+  if (expense.client && expense.deployment) {
+    deploymentDoc ??= await Deployment.findById(expense.deployment).lean();
+    if (deploymentDoc && deploymentDoc.client.toString() !== expense.client.toString()) {
+      throw new ApiError(400, 'That deployment does not belong to the selected client.');
     }
   }
 
@@ -143,6 +157,9 @@ export async function updateExpense(id, data, actor) {
 export async function deleteExpense(id, actor) {
   const expense = await Expense.findById(id).lean();
   if (!expense) throw new ApiError(404, 'Expense not found.');
+  if (expense.sourceReimbursement) {
+    throw new ApiError(400, 'This expense was auto-created from a paid reimbursement claim and cannot be deleted here.');
+  }
 
   if (expense.receipt) {
     await destroyDocumentFile(expense.receipt.fileName, expense.receipt.resourceType).catch(() => {});

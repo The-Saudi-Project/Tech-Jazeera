@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../../auth/AuthContext.jsx';
 import { getCompanySettings, updateCompanySettings } from '../companySettings.api.js';
 import { companySettingsFormSchema, companySettingsToForm } from '../companySettings.schema.js';
 import { apiMessage } from '../../../lib/utils.js';
@@ -33,6 +34,8 @@ export default function CompanySettingsPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canWrite = Boolean(user.sectionAccessWrite?.includes('companySettings'));
 
   const { data: settings, isPending, isError, error } = useQuery({
     queryKey: ['company-settings'],
@@ -55,6 +58,11 @@ export default function CompanySettingsPage() {
     onSuccess: () => {
       toast.success('Company settings saved.');
       queryClient.invalidateQueries({ queryKey: ['company-settings'] });
+      // BrandLogo's header/login-screen branding is a separate, public query
+      // (different endpoint, deliberately no Section Access gate — see
+      // companySettings.routes.js) — invalidate it too so a name change
+      // shows up immediately instead of waiting out its 5-minute staleTime.
+      queryClient.invalidateQueries({ queryKey: ['company-branding'] });
     },
     onError: (error) => toast.error(apiMessage(error)),
   });
@@ -89,52 +97,76 @@ export default function CompanySettingsPage() {
         onBack={() => navigate(-1)}
       />
 
-      <CompanyLogoCard />
+      <CompanyLogoCard canWrite={canWrite} />
+
+      {!canWrite && (
+        <p className="rounded-lg bg-muted/10 px-3 py-2 text-xs text-muted">
+          You can view company settings but don&apos;t have permission to change them.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit((values) => saveMutation.mutate(values))} noValidate className="space-y-6">
-        <Card>
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Legal identity</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field name="companyName" label="Company name (English)" register={register} errors={errors} />
-            <Field name="companyNameAr" label="Company name (Arabic)" register={register} errors={errors} />
-            <Field name="crNumber" label="CR number" register={register} errors={errors} />
-            <Field name="vatNumber" label="VAT registration number" register={register} errors={errors} />
-          </div>
-        </Card>
+        <fieldset disabled={!canWrite} className="space-y-6 disabled:opacity-60">
+          <Card>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Legal identity</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field name="companyName" label="Company name (English)" register={register} errors={errors} />
+              <Field name="companyNameAr" label="Company name (Arabic)" register={register} errors={errors} />
+              <Field name="crNumber" label="CR number" register={register} errors={errors} />
+              <Field name="vatNumber" label="VAT registration number" register={register} errors={errors} />
+            </div>
+            {/* ZATCA e-invoicing Phase 1 needs a QR code on every invoice PDF,
+                which needs this VAT number — see invoice.pdf.js/zatcaQr.js.
+                Reflects the currently SAVED value, not an unsaved edit —
+                this describes what today's invoices actually do right now. */}
+            {settings.vatNumber ? (
+              <p className="mt-3 flex items-center gap-1.5 text-xs text-success">
+                <span aria-hidden="true">✓</span> ZATCA QR code is active on your invoice PDFs.
+              </p>
+            ) : (
+              <p className="mt-3 flex items-center gap-1.5 text-xs text-warning">
+                <span aria-hidden="true">⚠</span> No VAT registration number on file — invoices are being issued without the required ZATCA QR
+                code. Add it above to enable it.
+              </p>
+            )}
+          </Card>
 
-        <Card>
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Contact & address</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field name="address" label="Address" register={register} errors={errors} />
-            <Field name="phone" label="Phone" register={register} errors={errors} />
-            <Field name="email" label="Email" type="email" register={register} errors={errors} />
-            <Field name="website" label="Website" register={register} errors={errors} />
-          </div>
-        </Card>
+          <Card>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">Contact & address</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field name="address" label="Address" register={register} errors={errors} />
+              <Field name="phone" label="Phone" register={register} errors={errors} />
+              <Field name="email" label="Email" type="email" register={register} errors={errors} />
+              <Field name="website" label="Website" register={register} errors={errors} />
+            </div>
+          </Card>
 
-        <Card>
-          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted">Bank details</h2>
-          <p className="mb-4 text-xs text-muted">Shown as payment instructions on an unpaid invoice.</p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field name="bankName" label="Bank name" register={register} errors={errors} />
-            <Field name="bankIban" label="IBAN" register={register} errors={errors} />
-          </div>
-        </Card>
+          <Card>
+            <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted">Bank details</h2>
+            <p className="mb-4 text-xs text-muted">Shown as payment instructions on an unpaid invoice.</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field name="bankName" label="Bank name" register={register} errors={errors} />
+              <Field name="bankIban" label="IBAN" register={register} errors={errors} />
+            </div>
+          </Card>
 
-        <Card>
-          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted">Authorized signatory</h2>
-          <p className="mb-4 text-xs text-muted">Printed on certificates and official letters.</p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field name="signatoryName" label="Name" register={register} errors={errors} />
-            <Field name="signatoryTitle" label="Title" register={register} errors={errors} />
-          </div>
-        </Card>
+          <Card>
+            <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted">Authorized signatory</h2>
+            <p className="mb-4 text-xs text-muted">Printed on certificates and official letters.</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field name="signatoryName" label="Name" register={register} errors={errors} />
+              <Field name="signatoryTitle" label="Title" register={register} errors={errors} />
+            </div>
+          </Card>
+        </fieldset>
 
-        <div className="flex justify-end">
-          <Button type="submit" isLoading={saveMutation.isPending}>
-            Save changes
-          </Button>
-        </div>
+        {canWrite && (
+          <div className="flex justify-end">
+            <Button type="submit" isLoading={saveMutation.isPending}>
+              Save changes
+            </Button>
+          </div>
+        )}
       </form>
     </div>
   );

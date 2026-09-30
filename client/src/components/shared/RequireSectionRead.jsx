@@ -1,0 +1,65 @@
+/**
+ * RequireSectionRead — router-level guard for a page whose module is now
+ * Section-Access read-gated (see sectionAccess.model.js's Read/Write
+ * split). Renders the wrapped page only if the user can at least read the
+ * given section; otherwise a clear "you don't have access" EmptyState
+ * with a way back, instead of the page trying and failing every request.
+ * Admin always passes (server-side canAccessSection does too, but this
+ * check runs first so an ungranted Admin edge case never appears mid-page).
+ *
+ * One component, reused across the route table, rather than a duplicated
+ * guard in every page file.
+ *
+ * `officeSecretaryBypass` (added 2026-09-13, before Office Secretary moved
+ * into STAFF_ROLES the same day — see rbac.js's own doc comment): a couple
+ * of modules give her a narrow, hardcoded server-side exception outside the
+ * Section Access system entirely (deployment.routes.js's `canReadDeployments`
+ * — "she needs to find the deployment she's about to enter hours against"),
+ * independent of whatever her real Section Access grant for that key is.
+ * Without this prop the server would happily serve her the page, but this
+ * guard, only knowing about the generic Section Access array, would block
+ * her from ever reaching it by direct navigation unless she'd also been
+ * separately granted that key for real — found via a real user report. Pass
+ * this true only at a route that has that exact same server-side hardcoded
+ * bypass; it does not grant her anything this guard wouldn't otherwise —
+ * it just stops the client from pre-emptively hiding a page the server
+ * already lets her open regardless of her actual grant. */
+import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../features/auth/AuthContext.jsx';
+import EmptyState from '../ui/EmptyState.jsx';
+import Button from '../ui/Button.jsx';
+
+export default function RequireSectionRead({ sectionKey, officeSecretaryBypass, children }) {
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  // sectionKey also accepts an array (added 2026-09-13, for a page whose
+  // internal tabs are each independently gated, e.g. Attendance's Records/
+  // Sign In-Out/Office Location): the route opens if the user can read ANY
+  // one of the listed keys, not all of them — a tab hides itself if its own
+  // key isn't granted, so the page as a whole shouldn't be unreachable just
+  // because one specific tab's key is missing.
+  const keys = Array.isArray(sectionKey) ? sectionKey : [sectionKey];
+  const allowed =
+    user.role === 'Admin' ||
+    (officeSecretaryBypass && user.role === 'Office Secretary') ||
+    keys.some((key) => user.sectionAccess?.includes(key));
+
+  if (!allowed) {
+    return (
+      <div className="mx-auto max-w-lg py-12">
+        <EmptyState
+          title={t('common.noSectionAccessTitle')}
+          description={t('common.noSectionAccessDescription')}
+          action={
+            <Link to="/">
+              <Button variant="secondary">{t('common.backToDashboard')}</Button>
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
+
+  return children;
+}

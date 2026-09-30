@@ -4,21 +4,25 @@
  * client-side preview of the money figure — the leave-balance half of the
  * total needs a real server query, so a "close but not authoritative"
  * estimate would risk being read as the real number; see docs/P3-A-notes.md).
- * Accepts `?employee=<id>` to preset from an Employee profile.
+ * Accepts `?employee=<id>` to preset from an Employee profile, and
+ * additionally `?exitDate=&exitReason=` when arriving from Deployment's
+ * demobilise Exit-outcome follow-up prompt (see DeploymentDetailPage.jsx) —
+ * both optional and independent of `employee`.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createSettlement } from '../eosb.api.js';
 import { settlementFormSchema, emptySettlementForm } from '../eosb.schema.js';
-import { listEmployees } from '../../employees/employees.api.js';
+import { useEmployeePicker } from '../../../lib/useEmployeePicker.js';
 import { apiMessage } from '../../../lib/utils.js';
 import { EXIT_REASONS, EXIT_REASON_LABELS } from '../../../lib/constants.js';
 import { useToast } from '../../../components/ui/Toast.jsx';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
+import PickerLoadWarning from '../../../components/shared/PickerLoadWarning.jsx';
 import Card from '../../../components/ui/Card.jsx';
 import Select from '../../../components/ui/Select.jsx';
 import Input from '../../../components/ui/Input.jsx';
@@ -31,23 +35,41 @@ export default function SettlementNewPage() {
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const presetEmployee = searchParams.get('employee') ?? '';
+  const presetExitDate = searchParams.get('exitDate') ?? '';
+  const presetExitReason = searchParams.get('exitReason') ?? '';
 
-  const { data: employeeData } = useQuery({
-    queryKey: ['employees', { forEosb: true }],
-    queryFn: () => listEmployees({ limit: 100, sortBy: 'fullName', sortOrder: 'asc' }),
-  });
+  const { data: employeeData, isError: employeesError } = useEmployeePicker();
   const employees = employeeData?.items ?? [];
 
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(settlementFormSchema),
-    defaultValues: useMemo(() => ({ ...emptySettlementForm, employee: presetEmployee }), [presetEmployee]),
+    defaultValues: useMemo(
+      () => ({ ...emptySettlementForm, employee: presetEmployee, exitDate: presetExitDate, exitReason: presetExitReason }),
+      [presetEmployee, presetExitDate, presetExitReason]
+    ),
   });
   const exitReason = watch('exitReason');
+
+  // Found during this feature's verification: a `?employee=` preset (this
+  // page's original mechanism, from the Employee profile's "Calculate EOSB"
+  // button) silently failed to select anything whenever the employee list
+  // hadn't finished loading yet at mount — react-hook-form sets a native
+  // <select>'s value via an uncontrolled ref, so it's a no-op if the
+  // matching <option> doesn't exist in the DOM yet, and nothing re-applies
+  // it once the list arrives. Same bug class, same fix, as
+  // MobilisationForm.jsx's job-title auto-select.
+  useEffect(() => {
+    if (presetEmployee && employees.some((e) => e._id === presetEmployee)) {
+      setValue('employee', presetEmployee, { shouldValidate: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees, presetEmployee]);
 
   const mutation = useMutation({
     mutationFn: createSettlement,
@@ -67,6 +89,7 @@ export default function SettlementNewPage() {
       />
       <Card>
         <form onSubmit={handleSubmit((values) => mutation.mutate(values))} noValidate className="space-y-4">
+          <PickerLoadWarning failed={[{ label: 'employees', isError: employeesError }]} />
           <Select label={t('staffEosb.new.employee')} error={errors.employee?.message} {...register('employee')}>
             <option value="">{t('staffEosb.new.selectEmployee')}</option>
             {employees.map((e) => (

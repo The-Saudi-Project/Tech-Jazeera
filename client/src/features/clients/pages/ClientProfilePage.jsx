@@ -6,9 +6,10 @@
  *   - Workers    — employees currently assigned here (live query on the
  *                  employee endpoint filtered by client).
  *   - Documents  — this client's files (M8).
- *   - Quotations — priced offers to this client (M9).
- *   - Invoices   — billed amounts and payments, created from an approved
- *                  quotation (P2-M6).
+ *
+ * Quotations/Invoices tabs (M9/P2-M6) were removed 2026-09-27 alongside
+ * those modules — real accounting/billing is ERPNext's job; see
+ * docs/CHANGELOG.md.
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,20 +32,10 @@ import Button from '../../../components/ui/Button.jsx';
 import Table from '../../../components/ui/Table.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
+import ProfileField from '../../../components/ui/ProfileField.jsx';
 import DocumentsPanel from '../../documents/components/DocumentsPanel.jsx';
-import QuotationsPanel from '../../quotations/components/QuotationsPanel.jsx';
-import InvoicesPanel from '../../invoices/components/InvoicesPanel.jsx';
 
 const STATUS_VARIANT = { Active: 'success', Inactive: 'default' };
-
-function Field({ label, children }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-0.5 text-sm">{children || '—'}</dd>
-    </div>
-  );
-}
 
 /** Overview tab — the client record. */
 function OverviewTab({ client }) {
@@ -79,14 +70,14 @@ function OverviewTab({ client }) {
       <Card>
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">{t('staffClients.profile.companyDetails')}</h2>
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label={t('staffClients.profile.fields.contactPerson')}>{client.contactPerson}</Field>
-          <Field label={t('staffClients.profile.fields.phone')}>{client.phone}</Field>
-          <Field label={t('staffClients.profile.fields.email')}>{client.email}</Field>
-          <Field label={t('staffClients.profile.fields.industry')}>{client.industry}</Field>
-          <Field label={t('staffClients.profile.fields.vatNumber')}>{client.vatNumber}</Field>
-          <Field label={t('staffClients.profile.fields.crNumber')}>{client.crNumber}</Field>
-          <Field label={t('staffClients.profile.fields.address')}>{client.address}</Field>
-          <Field label={t('staffClients.profile.fields.addedBy')}>
+          <ProfileField label={t('staffClients.profile.fields.contactPerson')}>{client.contactPerson}</ProfileField>
+          <ProfileField label={t('staffClients.profile.fields.phone')}>{client.phone}</ProfileField>
+          <ProfileField label={t('staffClients.profile.fields.email')}>{client.email}</ProfileField>
+          <ProfileField label={t('staffClients.profile.fields.industry')}>{client.industry}</ProfileField>
+          <ProfileField label={t('staffClients.profile.fields.vatNumber')}>{client.vatNumber}</ProfileField>
+          <ProfileField label={t('staffClients.profile.fields.crNumber')}>{client.crNumber}</ProfileField>
+          <ProfileField label={t('staffClients.profile.fields.address')}>{client.address}</ProfileField>
+          <ProfileField label={t('staffClients.profile.fields.addedBy')}>
             {client.createdBy?.name && (
               <>
                 {client.createdBy.name}
@@ -97,7 +88,7 @@ function OverviewTab({ client }) {
                 )}
               </>
             )}
-          </Field>
+          </ProfileField>
         </dl>
       </Card>
 
@@ -229,8 +220,6 @@ export default function ClientProfilePage() {
     { key: 'overview', label: t('staffClients.profile.tabs.overview') },
     { key: 'workers', label: t('staffClients.profile.tabs.workers') },
     { key: 'documents', label: t('staffClients.profile.tabs.documents') },
-    { key: 'quotations', label: t('staffClients.profile.tabs.quotations') },
-    { key: 'invoices', label: t('staffClients.profile.tabs.invoices') },
   ];
 
   return (
@@ -286,8 +275,6 @@ export default function ClientProfilePage() {
       {tab === 'documents' && (
         <DocumentsPanel ownerType="Client" ownerId={id} ownerName={client.companyName} />
       )}
-      {tab === 'quotations' && <QuotationsPanel clientId={id} />}
-      {tab === 'invoices' && <InvoicesPanel clientId={id} />}
 
       <ConfirmDialog
         open={confirmingDelete}

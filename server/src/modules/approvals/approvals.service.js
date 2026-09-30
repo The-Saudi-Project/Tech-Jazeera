@@ -11,14 +11,18 @@ import User from '../auth/user.model.js';
 import LeaveRequest from '../leave/leaveRequest.model.js';
 import ExitReentryRequest from '../exitDocuments/exitReentry.model.js';
 import CertificateRequest from '../exitDocuments/certificate.model.js';
+import Timesheet from '../timesheets/timesheet.model.js';
+import SalaryAdvance from '../financialRequests/advance.model.js';
+import ReimbursementClaim from '../financialRequests/reimbursement.model.js';
 import ApiError from '../../utils/ApiError.js';
 import { logAudit } from '../audit/audit.service.js';
 
-// Not STAFF_ROLES (rbac.js) — that constant also excludes Executive and
-// Office Secretary, but both are legitimate ApprovalRole members (in fact
-// it's their ONLY route into deciding anything, since both are deny-by-
-// default at the router level). Only the two purely self-service personas,
-// Worker and Staff, can never sit in an approval chain.
+// Not STAFF_ROLES (rbac.js) — that constant also excludes Executive, who is
+// still a legitimate ApprovalRole member (in fact it's their ONLY route into
+// deciding anything, since Executive is deny-by-default at the router
+// level; Office Secretary used to be the same but moved into STAFF_ROLES
+// 2026-09-13). Only the two purely self-service personas, Worker and Staff,
+// can never sit in an approval chain.
 const SELF_SERVICE_ROLES = ['Worker', 'Staff'];
 
 // ---------------------------------------------------------------------------
@@ -169,25 +173,49 @@ export async function resolveApprovalWorkflow(employee, requestType) {
 // step, for whoever sits in the hierarchy (not just Admin) to see "who
 // approved what."
 //
-// NOTE: SalaryAdvance/Reimbursement/Timesheet/Mobilisation all support a
-// workflow too (see their own service files) but were never added here —
-// found while wiring ExitReentry/Certificate onto the engine, flagged as a
-// separate follow-up rather than fixed in the same pass (Mobilisation in
-// particular has a different shape — its `coordinators` are Users directly,
-// not an Employee — worth verifying on its own before reusing this exact
-// query shape for it).
+// Fixed 2026-09-15, a real QA-audit-found gap — D3: this section used to
+// carry an older NOTE claiming Timesheet/SalaryAdvance/Reimbursement/
+// Mobilisation were "never added here" as a still-open follow-up —
+// contradicted by the LOG_SOURCES mapping right below it, which already
+// includes three of those four (see the 2026-09-14 fix noted just below).
+// Removed rather than left standing next to code that disproves it.
 // ---------------------------------------------------------------------------
 
+// Timesheet/SalaryAdvance/Reimbursement added 2026-09-14 (a real QA-audit-
+// found gap, D1) — all three have supported real ApprovalWorkflows for a
+// while (see CLAUDE.md's own Status history), but were never added here, so
+// a workflow-decided one of these never showed up in the cross-type log.
+// Mobilisation deliberately stays OUT — its `coordinators` are Users
+// directly, not an `employee` ref, so the shared `filter.employee = ...`
+// line below doesn't apply to it the same way; folding it in needs its own
+// pass, not a blind copy-paste (flagged when Timesheet/etc. were originally
+// deferred too — still true, not a new gap).
+// `pendingStatus` (added 2026-09-15, a real QA-audit-found gap — F9): each
+// source model's own literal "awaiting decision" status value — they are
+// NOT all the same string (Leave's is 'PendingReview', Timesheet's is
+// 'Submitted', every other source's is 'Pending'). listApprovalLog
+// translates the client's normalized `status=Pending` into whichever of
+// these applies per source type it's currently querying; 'Approved'/
+// 'Rejected' need no such table, every source uses those exact literals.
 const LOG_SOURCES = {
-  Leave: { Model: LeaveRequest, typeNameField: 'leaveTypeName' },
-  ExitReentry: { Model: ExitReentryRequest, typeNameField: 'visaType' },
-  Certificate: { Model: CertificateRequest, typeNameField: 'type' },
+  Leave: { Model: LeaveRequest, typeNameField: 'leaveTypeName', pendingStatus: 'PendingReview' },
+  ExitReentry: { Model: ExitReentryRequest, typeNameField: 'visaType', pendingStatus: 'Pending' },
+  Certificate: { Model: CertificateRequest, typeNameField: 'type', pendingStatus: 'Pending' },
+  // No natural short "sub-type" label exists on these two — typeName
+  // resolves to undefined for them (item[null] is a safe no-op, not a
+  // crash), same as if the field were simply absent from a document.
+  Timesheet: { Model: Timesheet, typeNameField: null, pendingStatus: 'Submitted' },
+  SalaryAdvance: { Model: SalaryAdvance, typeNameField: null, pendingStatus: 'Pending' },
+  Reimbursement: { Model: ReimbursementClaim, typeNameField: 'category', pendingStatus: 'Pending' },
 };
 
 /** Is this user a member of ANY approval role — the dynamic "sits somewhere
- *  in the hierarchy" check that (alongside Admin) unlocks the Approval Log. */
+ *  in the hierarchy" check that (alongside Admin) unlocks the Approval Log.
+ *  `isActive: true` (added 2026-09-14, a real QA-audit-found gap): deactivating
+ *  a role must actually revoke what it granted, not just hide it from new
+ *  assignment — membership in a disabled role no longer counts. */
 export async function isApprovalRoleMember(userId) {
-  const role = await ApprovalRole.findOne({ members: userId }).select('_id').lean();
+  const role = await ApprovalRole.findOne({ members: userId, isActive: true }).select('_id').lean();
   return Boolean(role);
 }
 
@@ -199,11 +227,13 @@ export async function isApprovalRoleMember(userId) {
  * service.js's canAccessSection), including mobilisations/mobilisation.
  * service.js's read-only viewer circle ('mobilisationsViewer') — one query
  * shape, reused everywhere, rather than inventing a per-feature membership
- * check.
+ * check. `isActive: true` (2026-09-14 QA-audit fix, same reasoning as
+ * isApprovalRoleMember above) — a Section Access grant naming a since-
+ * deactivated role no longer authorizes its members.
  */
 export async function isMemberOfAnyRole(userId, roleIds) {
   if (!roleIds?.length) return false;
-  const role = await ApprovalRole.findOne({ _id: { $in: roleIds }, members: userId }).select('_id').lean();
+  const role = await ApprovalRole.findOne({ _id: { $in: roleIds }, members: userId, isActive: true }).select('_id').lean();
   return Boolean(role);
 }
 
@@ -226,7 +256,7 @@ export async function listApprovalLog({ type, status, employee, from, to, page, 
     // this log is about the configurable hierarchy, not the legacy
     // single-decision flow (which every review screen already shows).
     const filter = { workflow: { $ne: null } };
-    if (status) filter.status = status;
+    if (status) filter.status = status === 'Pending' ? source.pendingStatus : status;
     if (employee) filter.employee = employee;
     if (from || to) {
       filter.createdAt = {};

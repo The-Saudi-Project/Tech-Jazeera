@@ -1,40 +1,46 @@
 /**
  * Dashboard — the management overview. One query to /dashboard feeds headline
- * stats, a finance summary, workforce/quotation breakdowns, expiring-document
+ * stats, a finance summary, a workforce breakdown, expiring-document
  * alerts, recent activity, and role-aware quick actions. Replaces the M3
  * placeholder.
+ *
+ * Widget visibility (added 2026-09-13): every field below is `null` from the
+ * server when the viewer lacks read access to that field's own underlying
+ * Section Access key (see dashboard.service.js's own doc comment) — this
+ * page never re-checks a role itself for whether to SHOW something, it just
+ * renders each widget only when its data is actually present. The one
+ * remaining role check (`isCoordinator`) is for SCOPING/labeling only — e.g.
+ * "Your Clients" vs. "Active Clients" — not for deciding whether a widget
+ * exists at all.
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboard } from '../dashboard.api.js';
+import { getMyTarget, getMySemiAnnual } from '../../mobilisationTargets/mobilisationTargets.api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { formatMoney } from '../../../lib/utils.js';
 import { EXPIRY_WARNING_DAYS } from '../../../lib/constants.js';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
-import Card from '../../../components/ui/Card.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 import Button from '../../../components/ui/Button.jsx';
-import StatCard from '../components/StatCard.jsx';
 import StatusBreakdown from '../components/StatusBreakdown.jsx';
 import ExpiringDocuments from '../components/ExpiringDocuments.jsx';
-import RecentActivity from '../components/RecentActivity.jsx';
-import QuickActions from '../components/QuickActions.jsx';
-import ProfitCard from '../components/ProfitCard.jsx';
 import MyPendingActions from '../components/MyPendingActions.jsx';
-
-/** A labelled money figure for the finance card. */
-function FinanceItem({ label, value, hint, accent }) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold tabular-nums ${accent ?? 'text-text'}`}>{formatMoney(value)}</p>
-      {hint && <p className="mt-0.5 text-xs text-muted">{hint}</p>}
-    </div>
-  );
-}
+import MobilisationTargetCard from '../components/MobilisationTargetCard.jsx';
+import SemiAnnualTargetCard from '../components/SemiAnnualTargetCard.jsx';
+import ManageTargetsModal from '../components/ManageTargetsModal.jsx';
+import StandbyAnalysisWidget from '../components/StandbyAnalysisWidget.jsx';
+import DailyAttendanceSummary from '../components/DailyAttendanceSummary.jsx';
+import DirectoryStatsWidget from '../components/DirectoryStatsWidget.jsx';
+import HrComplianceWidget from '../components/HrComplianceWidget.jsx';
+import MyRequirementsWidget from '../components/MyRequirementsWidget.jsx';
+import SystemLogsWidget from '../components/SystemLogsWidget.jsx';
+import ActiveRevenueWidget from '../components/ActiveRevenueWidget.jsx';
+import ActualPerformanceWidget from '../components/ActualPerformanceWidget.jsx';
+import CoordinatorLeaderboardWidget from '../components/CoordinatorLeaderboardWidget.jsx';
+import { useCloseOnOutsideClick } from '../../../lib/useCloseOnOutsideClick.js';
 
 const THRESHOLD_STORAGE_KEY = 'aj-erp:dashboard-alert-threshold';
 
@@ -51,27 +57,65 @@ export default function DashboardPage() {
     localStorage.setItem(THRESHOLD_STORAGE_KEY, String(days));
   }
 
-  // P2-M8: which month the Profit section shows. Not persisted like the
-  // threshold above — always opens on the current month, so nobody mistakes
-  // an old month's figures for today's by forgetting they changed it last visit.
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [targetsOpen, setTargetsOpen] = useState(false);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const quickActionsRef = useCloseOnOutsideClick(quickActionsOpen, setQuickActionsOpen);
+
+  const QUICK_ACTIONS = [
+    { label: t('staffDashboard.quickActions.addClient', 'Add Client'), to: '/clients/new', sectionKey: 'clientsManage' },
+    { label: t('staffDashboard.quickActions.addSupplier'), to: '/subcontractors', sectionKey: 'subcontractorsManage' },
+    { label: t('staffDashboard.quickActions.newMobilisation', 'New Mobilisation'), to: '/mobilisations/new', sectionKey: 'mobilisationsSelfMobilise' },
+    { label: t('staffDashboard.quickActions.attendance', 'Attendance'), to: '/attendance', sectionKey: ['attendanceRecords', 'attendanceSignInOut'] },
+  ];
+  const availableActions = QUICK_ACTIONS.filter((a) => {
+    const keys = Array.isArray(a.sectionKey) ? a.sectionKey : [a.sectionKey];
+    return keys.some((key) => user.sectionAccessWrite?.includes(key));
+  });
 
   const { data, isPending, isError, refetch } = useQuery({
-    queryKey: ['dashboard', thresholdDays, month],
-    queryFn: () => getDashboard(thresholdDays, month),
+    queryKey: ['dashboard', thresholdDays],
+    queryFn: () => getDashboard(thresholdDays),
   });
 
   const firstName = user.name.split(' ')[0];
   const isCoordinator = user.role === 'Coordinator';
-  // A Manager (the generic login a BDM-titled person holds) — company-wide
-  // money figures (Pipeline, Profit, Recent Activity) are Admin/Executive
-  // territory; see dashboard.service.js's hideFinance for the full reasoning.
-  const isManager = user.role === 'Manager';
-  const hideFinance = isCoordinator || isManager;
+  const canManageTargets =
+    user.role === 'Admin' ||
+    user.role === 'Manager' ||
+    (user.sectionAccessWrite || []).includes('mobilisationTargets');
+  // StandbyAnalysisWidget is its own separately-fetched endpoint, not part of the main
+  // /dashboard payload, so it needs its own visibility signal here — reusing the same
+  // `payroll` read grant the server now gates it on (2026-09-22 fix; this used to be a
+  // hardcoded Manager/Admin check, and — separately — was wired to `attendanceSummary`'s
+  // own null-check as an unrelated proxy gate that happened to produce a similar result).
+  const canSeeStandbyAnalysis = Boolean(user.sectionAccess?.includes('payroll'));
+
+  // Coordinator's own monthly target — always fetched for coordinator logins,
+  // never for others (null guard in MobilisationTargetCard hides the widget).
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const { data: myTarget } = useQuery({
+    queryKey: ['mob-target-my', currentMonth],
+    queryFn: () => getMyTarget(currentMonth),
+    enabled: isCoordinator,
+  });
+  const { data: mySemiAnnual } = useQuery({
+    queryKey: ['mob-target-semi-annual-my', currentMonth],
+    queryFn: () => getMySemiAnnual(currentMonth),
+    enabled: isCoordinator,
+  });
+
+  // Management: coordinator list for the ManageTargetsModal selector.
+  // Reuse the mobilisations coordinator endpoint (same list, no extra cost).
+  const { data: coordinatorList = [] } = useQuery({
+    queryKey: ['coordinator-candidates'],
+    queryFn: () => import('../../mobilisations/mobilisations.api.js').then((m) => m.listCoordinatorCandidates()),
+    enabled: targetsOpen,
+    staleTime: 60_000,
+  });
 
   if (isPending) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="mx-auto max-w-[1600px] space-y-6">
         <Skeleton className="h-9 w-64" />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }, (_, i) => (
@@ -85,7 +129,7 @@ export default function DashboardPage() {
 
   if (isError) {
     return (
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1600px]">
         <PageHeader title={t('staffDashboard.welcomeBack', { name: firstName })} />
         <EmptyState
           title={t('staffDashboard.couldNotLoad')}
@@ -96,14 +140,46 @@ export default function DashboardPage() {
     );
   }
 
-  const { stats, finance, workforceByStatus, quotationsByStatus, expiringDocuments, recentActivity, myPendingActions } =
+  const { stats, finance, expiringDocuments, recentActivity, myPendingActions, mobilisationsByStatus, activeSubcontractors, attendanceSummary, pendingLeave, pendingExit, myRequirementsSummary } =
     data;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-[1600px] space-y-6">
       <PageHeader
         title={t('staffDashboard.welcomeBack', { name: firstName })}
         description={isCoordinator ? t('staffDashboard.subtitleTeam') : t('staffDashboard.subtitleCompany')}
+        actions={
+          <div className="flex items-center gap-2">
+            {canManageTargets && (
+              <Button variant="secondary" onClick={() => setTargetsOpen(true)}>
+                {t('staffDashboard.targets.manageButton')}
+              </Button>
+            )}
+            {availableActions.length > 0 && (
+              <div className="relative" ref={quickActionsRef}>
+                <Button onClick={() => setQuickActionsOpen(!quickActionsOpen)}>
+                  {t('staffDashboard.quickActions.title')}
+                  <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </Button>
+                {quickActionsOpen && (
+                  <div className="absolute left-0 sm:left-auto sm:right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border bg-surface py-1 shadow-lg animate-rise-in">
+                    {availableActions.map((a) => (
+                      <Link
+                        key={a.to}
+                        to={a.to}
+                        className="block w-full px-4 py-2 text-left text-sm text-text transition-colors hover:bg-border/40"
+                      >
+                        {a.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        }
       />
 
       {/* Only ever non-zero for Admin/Manager/HR — a Coordinator's own
@@ -121,93 +197,127 @@ export default function DashboardPage() {
         </Link>
       )}
 
-      {/* Headline stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard label={t('staffDashboard.stats.deployedNow')} value={stats.deployedActive} accent="primary" hint={t('staffDashboard.stats.activePlacements')} to="/deployments" />
-        <StatCard
-          label={t('staffDashboard.stats.activeWorkers')}
-          value={stats.activeWorkers}
-          accent="success"
-          hint={t('staffDashboard.stats.workersHint', { total: stats.totalWorkers, onLeave: stats.onLeave })}
-          to="/employees"
-        />
-        <StatCard label={isCoordinator ? t('staffDashboard.stats.yourClients') : t('staffDashboard.stats.activeClients')} value={stats.activeClients} to="/clients" />
-        {isCoordinator ? (
-          <StatCard label={t('staffDashboard.stats.expiringSoon')} value={stats.expiringSoon} accent="warning" hint={t('staffDashboard.stats.documentsNeedingAttention')} />
-        ) : (
-          <StatCard
-            label={t('staffDashboard.stats.pendingQuotations')}
-            value={stats.pendingQuotations}
-            accent="warning"
-            hint={isManager ? t('staffDashboard.stats.yourDraftsAwaiting') : t('staffDashboard.stats.draftAwaiting')}
-            to="/quotations"
-          />
-        )}
-        <StatCard
-          label={t('staffDashboard.stats.markedToday')}
-          value={stats.markedToday}
-          hint={t('staffDashboard.stats.ofActiveWorkers', { count: stats.activeWorkers })}
-          to="/attendance/summary"
-        />
-      </div>
-
       <MyPendingActions items={myPendingActions} />
 
-      {/* Finance summary — Admin/Executive/HR/Accounts only. Neither a
-          Coordinator nor a Manager (BDM) sees salary or revenue figures — see
-          dashboard.service.js's hideFinance. */}
-      {!hideFinance && (
-        <>
-          <Card>
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">{t('staffDashboard.pipeline.title')}</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <FinanceItem label={t('staffDashboard.pipeline.approvedRevenue')} value={finance.approvedRevenue} accent="text-success" hint={t('staffDashboard.pipeline.approvedQuotations')} />
-              <FinanceItem label={t('staffDashboard.pipeline.pipeline')} value={finance.pendingRevenue} hint={t('staffDashboard.pipeline.draftQuotations')} />
-              <FinanceItem label={t('staffDashboard.pipeline.monthlyPayroll')} value={finance.monthlyPayroll} hint={t('staffDashboard.pipeline.workforceSalariesRunRate')} />
-            </div>
-          </Card>
+      {/* Full-width, swapped with HrComplianceWidget 2026-09-24 (the user's own ask) —
+          Active Mobilisation Revenue now leads the page instead of sitting in a half-width
+          slot near the bottom; HrComplianceWidget took its old paired-grid spot below. */}
+      {finance.activeMobilisationRevenue != null && (
+        <ActiveRevenueWidget revenue={finance.activeMobilisationRevenue} trend={finance.activeMobilisationRevenueTrend} />
+      )}
 
-          {/* P2-M8: real profit for a selected month — Revenue − Payroll −
-              Expenses, from Invoices/finalized Payroll/Expenses. */}
-          <ProfitCard profit={finance.profit} month={month} onMonthChange={setMonth} />
+      {/* Real, closed-book companion to the estimate above (2026-09-24, a real user
+          ask) — see ActualPerformanceWidget's own doc comment. */}
+      {finance.actualPerformance != null && <ActualPerformanceWidget performance={finance.actualPerformance} />}
+
+      {/* Row pairing is role-aware (2026-09-24, a real user report): every row below used
+          to pair one Coordinator-visible widget with one Admin/Manager-only widget
+          (DailyAttendanceSummary needs attendanceRecords, StandbyAnalysisWidget needs
+          payroll, the Leaderboard/Global Pipeline need mobilisationsViewer — a Coordinator
+          has none of these by default), so for every Coordinator login the "other half" of
+          nearly every row was silently empty — not a CSS bug, a content-pairing one. A
+          Coordinator now gets rows built entirely from widgets that are actually theirs;
+          everyone else keeps the original pairing untouched. Any of these grants CAN be
+          extended to a Coordinator via Section Access, so the plain fallbacks below still
+          render full-width in that case instead of dropping the data. */}
+      {isCoordinator ? (
+        <>
+          {(activeSubcontractors != null || myTarget) && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {activeSubcontractors != null && (
+                <DirectoryStatsWidget activeClients={stats.activeClients} activeSubcontractors={activeSubcontractors} />
+              )}
+              {myTarget && <MobilisationTargetCard target={myTarget} />}
+            </div>
+          )}
+          {mySemiAnnual && (
+            <div className="mt-6">
+              <SemiAnnualTargetCard data={mySemiAnnual} />
+            </div>
+          )}
+          {(pendingLeave != null || pendingExit != null || myRequirementsSummary != null) && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {(pendingLeave != null || pendingExit != null) && (
+                <HrComplianceWidget pendingLeave={pendingLeave} pendingExit={pendingExit} />
+              )}
+              {myRequirementsSummary != null && <MyRequirementsWidget summary={myRequirementsSummary} />}
+            </div>
+          )}
+          {attendanceSummary != null && <DailyAttendanceSummary summary={attendanceSummary} />}
+          {canSeeStandbyAnalysis && <StandbyAnalysisWidget />}
+        </>
+      ) : (
+        <>
+          {(attendanceSummary != null || activeSubcontractors != null) && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {attendanceSummary != null && (
+                <DailyAttendanceSummary summary={attendanceSummary} />
+              )}
+              {activeSubcontractors != null && (
+                <DirectoryStatsWidget activeClients={stats.activeClients} activeSubcontractors={activeSubcontractors} />
+              )}
+            </div>
+          )}
+          {(canSeeStandbyAnalysis || pendingLeave != null || pendingExit != null) && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {canSeeStandbyAnalysis && <StandbyAnalysisWidget />}
+              {(pendingLeave != null || pendingExit != null) && (
+                <HrComplianceWidget pendingLeave={pendingLeave} pendingExit={pendingExit} />
+              )}
+            </div>
+          )}
+          {/* Mobilisation Leaderboard + Global Pipeline — mobilisationsViewer-gated,
+              never rendered for a Coordinator (their own pipeline is the
+              isCoordinator-only StatusBreakdown further down). */}
+          {mobilisationsByStatus != null && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <CoordinatorLeaderboardWidget />
+              <StatusBreakdown
+                title={t('staffDashboard.globalPipelineTitle')}
+                data={mobilisationsByStatus}
+                colors={{ Draft: 'default', Submitted: 'warning', Approved: 'primary', Deployed: 'success', Rejected: 'danger' }}
+              />
+            </div>
+          )}
         </>
       )}
 
-      {/* Breakdowns */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* The coordinator's own pipeline breakdown — full width, no 2-col grid
+          to pair it with (removed 2026-09-24 alongside Workforce by status,
+          which used to be the thing on the other side of this grid). */}
+      {isCoordinator && mobilisationsByStatus != null && (
         <StatusBreakdown
-          title={isCoordinator ? t('staffDashboard.yourTeamByStatus') : t('staffDashboard.workforceByStatus')}
-          data={workforceByStatus}
-          colors={{ Active: 'success', 'On Leave': 'warning', Exited: 'default' }}
+          title={t('staffDashboard.myPipelineTitle')}
+          data={mobilisationsByStatus}
+          colors={{ Draft: 'default', Submitted: 'warning', Approved: 'primary', Deployed: 'success', Rejected: 'danger' }}
         />
-        {!isCoordinator && (
-          <StatusBreakdown
-            title={t('staffDashboard.quotationsByStatus')}
-            data={quotationsByStatus}
-            colors={{ Draft: 'default', Approved: 'success', Rejected: 'danger' }}
-          />
-        )}
-      </div>
-
-      {/* Alerts + activity — Recent Activity is Admin/Executive/HR/Accounts
-          only, same visibility line as Finance above (see dashboard.service.js). */}
-      {isCoordinator ? (
-        <ExpiringDocuments
-          items={expiringDocuments}
-          thresholdDays={thresholdDays}
-          onThresholdChange={changeThreshold}
-          scopedToTeam
-        />
-      ) : isManager ? (
-        <ExpiringDocuments items={expiringDocuments} thresholdDays={thresholdDays} onThresholdChange={changeThreshold} />
-      ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <ExpiringDocuments items={expiringDocuments} thresholdDays={thresholdDays} onThresholdChange={changeThreshold} />
-          <RecentActivity items={recentActivity} />
-        </div>
       )}
 
-      <QuickActions />
+      {/* Alerts + activity — ExpiringDocuments always renders (it's a list
+          built from independently-gated sources, naturally empty rather
+          than absent when neither is readable, and shows its own empty
+          state); RecentActivity only when the server actually sent it.
+          Side-by-side only when both show. FIX (2026-09-22): this used to also
+          require `user.role === 'Admin'`, hardcoded on top of the server's own
+          `auditLog` Section Access grant — so granting auditLog read to anyone
+          else still never showed them this widget, contradicting this file's
+          own rule above it. `recentActivity != null` alone already reflects
+          the real grant; no separate role check belongs here. */}
+      {recentActivity != null ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ExpiringDocuments items={expiringDocuments} thresholdDays={thresholdDays} onThresholdChange={changeThreshold} scopedToTeam={isCoordinator} />
+          <SystemLogsWidget recentActivity={recentActivity} />
+        </div>
+      ) : (
+        <ExpiringDocuments items={expiringDocuments} thresholdDays={thresholdDays} onThresholdChange={changeThreshold} scopedToTeam={isCoordinator} />
+      )}
+
+      {/* Manage Targets modal — management only */}
+      <ManageTargetsModal
+        open={targetsOpen}
+        onClose={() => setTargetsOpen(false)}
+        coordinators={coordinatorList}
+      />
     </div>
   );
 }

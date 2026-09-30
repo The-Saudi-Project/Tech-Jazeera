@@ -21,9 +21,6 @@ export const EMPLOYEE_TYPE_LABELS = {
   Outsourced: 'Outsourced — supplied workforce',
   Subcontracted: 'Subcontracted — sourced from a subcontractor',
 };
-/** The "not internal staff" set — mirrors employee.model.js's WORKFORCE_TYPES. */
-export const WORKFORCE_TYPES = ['Outsourced', 'Subcontracted'];
-
 /** Mirror of the server's route guards — used only to hide UI the API would
  *  reject anyway. The server is the real enforcement. */
 export const EMPLOYEE_WRITE_ROLES = ['Admin', 'Manager', 'HR'];
@@ -41,15 +38,10 @@ export const ACCOUNT_PROVISION_ROLES = ['Admin', 'HR'];
  *  this file isn't shared with the server. */
 export const EMPLOYEE_LOGIN_ROLES = ['Manager', 'HR', 'Accounts', 'Coordinator', 'Executive', 'Office Secretary', 'Staff', 'Worker'];
 
-/** P2-M2: roles this app assigns to a Coordinator's team-scoped queries. */
-export const COORDINATOR_ROLE = 'Coordinator';
 /** Mirror of user.routes.js — editing a staff login stays hardcoded
  *  Admin-only. Viewing the list is the admin-configurable SectionAccess
  *  ('team') mechanism now — see navConfig.js. */
 export const STAFF_USER_MANAGE_ROLES = ['Admin'];
-/** Every role a staff login can be assigned (Worker is provisioned the same
- *  way, from an employee's profile, but isn't "staff" — see rbac.js). */
-export const STAFF_ASSIGNABLE_ROLES = ['Admin', 'Manager', 'HR', 'Accounts', 'Coordinator'];
 /** Roles eligible to be an Employee's manager (mirrors MANAGER_ELIGIBLE_ROLES
  *  on the server) — used by both the Coordinator-manager and Employee-manager
  *  pickers. */
@@ -92,17 +84,13 @@ export const LEAVE_STATUS_VARIANT = {
 export const LEAVE_TYPE_MANAGE_ROLES = ['Admin', 'HR'];
 export const LEAVE_DECIDE_ROLES = ['Admin', 'Manager', 'HR', 'Coordinator'];
 
-/** Mirror of holiday.routes.js guards — read-open to everyone authenticated.
- *  Admin/HR only (moved off Manager — company calendar policy, not a
- *  day-to-day operational manager's job). */
-export const HOLIDAY_MANAGE_ROLES = ['Admin', 'HR'];
-
 /** Mirror of settlement.model.js. */
-export const EXIT_REASONS = ['Resignation', 'TerminationByEmployer', 'EndOfContract'];
+export const EXIT_REASONS = ['Resignation', 'TerminationByEmployer', 'EndOfContract', 'SponsorshipTransfer'];
 export const EXIT_REASON_LABELS = {
   Resignation: 'Resignation',
   TerminationByEmployer: 'Termination by employer',
   EndOfContract: 'End of contract',
+  SponsorshipTransfer: 'Sponsorship transfer (Tanazel)',
 };
 // EOSB access (view/compute/delete, one unified circle) is the
 // admin-configurable SectionAccess ('eosb') mechanism now — reaching the
@@ -170,41 +158,25 @@ export const ASSET_STATUS_VARIANT = { Available: 'success', Assigned: 'primary',
  *  own hardcoded, stricter circle (mirrors asset.routes.js). */
 export const ASSET_DELETE_ROLES = ['Admin', 'HR'];
 
-/** Mirrors timesheet.model.js. Same write circle as Attendance. */
-export const TIMESHEET_STATUSES = ['Submitted', 'Approved', 'Rejected'];
+/** Mirrors timesheet.model.js — still used by the Worker ESS portal's own
+ *  submit/status display (MyAttendancePage.jsx); the staff-side review queue
+ *  that used to read these too was replaced by the Monthly Report list/view
+ *  2026-09-13 — see docs/TIMESHEETS-MONTHLY-REPORT-notes.md. */
 export const TIMESHEET_STATUS_VARIANT = { Submitted: 'warning', Approved: 'success', Rejected: 'danger' };
-/** Same roles as ATTENDANCE_WRITE_ROLES (defined below) — deciding a
- *  timesheet is the same supervisory circle as correcting an attendance day. */
-export const TIMESHEET_DECIDE_ROLES = ['Admin', 'Manager', 'HR'];
 
 /** Mirrors payrollRun.model.js. Access itself is no longer a static role
  *  list — see SectionAccess ('payroll') — Admin plus whoever is granted
  *  gets full read/write/finalize/delete, no separate tiers. */
-export const PAYROLL_STATUSES = ['Draft', 'Finalized'];
 export const PAYROLL_STATUS_VARIANT = { Draft: 'warning', Finalized: 'success' };
 export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-/** Mirrors invoice.model.js. View/create/payments is the admin-configurable
- *  SectionAccess ('invoices') mechanism now — reaching the page at all
- *  already implies full access there. Delete stays its own hardcoded,
- *  stricter circle. */
-export const INVOICE_STATUSES = ['Unpaid', 'Partially Paid', 'Paid'];
-export const INVOICE_STATUS_VARIANT = { Unpaid: 'danger', 'Partially Paid': 'warning', Paid: 'success' };
-export const INVOICE_DELETE_ROLES = ['Admin', 'Manager'];
-
 /** Mirrors expense.model.js. Internal cost data — access is the same
  *  SectionAccess ('expenses') mechanism as Payroll, not a static role list. */
-export const EXPENSE_CATEGORIES = ['Rent', 'Fuel', 'Salaries-external', 'Purchases', 'Utilities', 'Other'];
+export const EXPENSE_CATEGORIES = ['Rent', 'Fuel', 'Salaries-external', 'Purchases', 'Utilities', 'Staff Reimbursement', 'Other'];
 
-/** Mirrors sectionAccess.model.js's GRANTABLE_ROLES — every User.role except
- *  the ESS self-service personas (Worker/Staff) and Office Secretary, none
- *  of which Section Access can ever grant into a staff module regardless of
- *  admin configuration (Office Secretary reaches things only via
- *  ApprovalRole membership on a workflow step, never a blanket grant). */
-export const SECTION_ACCESS_GRANTABLE_ROLES = ['Admin', 'Manager', 'HR', 'Accounts', 'Coordinator', 'Executive'];
 /** Mirrors subcontractor.model.js's status enum. Create/edit/delete (one
  *  circle) is the admin-configurable SectionAccess ('subcontractorsManage')
  *  mechanism now, not a static role list. */
@@ -273,12 +245,33 @@ export const APPROVAL_REQUEST_TYPE_LABELS = {
 // so ApprovalsPage.jsx gates its own Add/Save controls internally rather
 // than a page-level role redirect.
 
-/** Mirrors the Deployment model enums. */
-export const DEPLOYMENT_SHIFTS = ['Day', 'Night', 'Rotating'];
+/** Mirrors the Deployment model enum. A Deployment is born automatically
+ *  from an Approved Mobilisation — no create/assign form, so no shift enum
+ *  to mirror here anymore either. */
 export const DEPLOYMENT_STATUSES = ['Active', 'Ended'];
 
-// Assign/transfer/end is the admin-configurable SectionAccess
-// ('deploymentsManage') mechanism now, not a static role list.
+// Monthly hours entry and Demobilise are the admin-configurable
+// SectionAccess ('deploymentsHours' / 'deploymentsRelease') mechanism now,
+// not a static role list.
+
+/** Mirror of deployment.model.js's DEMOBILISATION_REASONS/OUTCOME — see that
+ *  file's doc comment for the full reasoning. The 3 Employee-only reasons
+ *  are filtered out of the picker for a non-Employee deployment client-side
+ *  (the server enforces the same restriction independently). */
+export const DEMOBILISATION_REASONS = [
+  'ClientAssignmentEnded',
+  'TerminatedByCompany',
+  'Resigned',
+  'TransferredToAnotherCompany',
+  'Other',
+];
+export const EMPLOYEE_ONLY_DEMOBILISATION_REASONS = ['TerminatedByCompany', 'Resigned', 'TransferredToAnotherCompany'];
+export const DEMOBILISATION_OUTCOME = {
+  ClientAssignmentEnded: 'Standby',
+  TerminatedByCompany: 'Exit',
+  Resigned: 'Exit',
+  TransferredToAnotherCompany: 'Exit',
+};
 
 /** Mirrors the Attendance model enum, with display metadata used by the
  *  marking grid and summary. `letter` labels grid cells; `variant` is the
@@ -302,16 +295,15 @@ export const HOLIDAY_DISPLAY_META = { letter: 'H' };
 /** Mirrors Employee.weeklyOffDay's 0=Sun..6=Sat convention (Date#getUTCDay()). */
 export const WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-/** Mirror of staffAttendance.routes.js's GET /all oversight guard (server
- *  enforces) — who sees the merged staff-attendance rows. Marking/adjusting
- *  Employee-based attendance is the separate, admin-configurable
- *  'attendanceManage' Section Access key now (default the same set, but the
- *  two can drift once an Admin customizes the grant — this one stays a
- *  hardcoded mirror since its own server route is untouched). */
-export const ATTENDANCE_WRITE_ROLES = ['Admin', 'Manager', 'HR'];
-/** Who clocks their own attendance in/out (mirrors staffAttendance.routes.js).
- *  Admin is exempt by design; Workers have their own equivalent via the ESS
- *  portal. Manager is included so a BDM-titled login can self-mark too. */
+/** Which login-role TYPES normally clock their own attendance in/out — a
+ *  display-roster convenience only (which rows get a "not signed in today"
+ *  placeholder in RecordsGrid's Coordinators & Staff group), NOT an access
+ *  gate. Real self-mark eligibility (who can actually punch, and who sees
+ *  the merged oversight log) is the admin-configurable Section Access key
+ *  'attendanceSignInOut' now (split off the old hardcoded
+ *  ATTENDANCE_WRITE_ROLES/this list 2026-09-13 — see
+ *  staffAttendance.routes.js). Admin is exempt from self-marking by design;
+ *  Workers have their own equivalent via the ESS portal. */
 export const STAFF_SELF_ATTENDANCE_ROLES = ['Coordinator', 'HR', 'Accounts', 'Manager'];
 
 /** Mirrors the Document model enums. */
@@ -342,14 +334,3 @@ export const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx
 export const AVATAR_MAX_MB = 2;
 export const AVATAR_ACCEPT = '.jpg,.jpeg,.png,.webp';
 
-/** Mirrors the Quotation model enums. */
-export const QUOTATION_STATUSES = ['Draft', 'Approved', 'Rejected'];
-export const QUOTATION_LINE_TYPES = ['Labour', 'Trading'];
-
-/** Create/edit/duplicate is the admin-configurable SectionAccess
- *  ('quotationsManage') mechanism now. Delete stays its own hardcoded,
- *  stricter circle (mirrors quotation.routes.js). */
-export const QUOTATION_DELETE_ROLES = ['Admin', 'Manager'];
-
-/** Default KSA VAT rate for new line items. */
-export const DEFAULT_TAX_RATE = 15;

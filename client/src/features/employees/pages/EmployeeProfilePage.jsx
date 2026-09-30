@@ -16,7 +16,7 @@ import {
   EMPLOYEE_DELETE_ROLES,
   ACCOUNT_PROVISION_ROLES,
 } from '../../../lib/constants.js';
-import { apiMessage, formatDate } from '../../../lib/utils.js';
+import { apiMessage, formatDate, formatMoney } from '../../../lib/utils.js';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
 import BackButton from '../../../components/shared/BackButton.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
@@ -26,6 +26,7 @@ import Badge from '../../../components/ui/Badge.jsx';
 import Button from '../../../components/ui/Button.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
+import ProfileField from '../../../components/ui/ProfileField.jsx';
 import WorkerDeploymentPanel from '../../deployments/components/WorkerDeploymentPanel.jsx';
 import DocumentsPanel from '../../documents/components/DocumentsPanel.jsx';
 import EmployeeLoginPanel from '../components/EmployeeLoginPanel.jsx';
@@ -39,16 +40,6 @@ const DOCUMENTS = [
   ['medical', 'Medical'],
   ['drivingLicense', 'Driving License'],
 ];
-
-/** One label/value line in a detail card. */
-function Field({ label, children }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-0.5 text-sm">{children || '—'}</dd>
-    </div>
-  );
-}
 
 /** Read-only summary of assigned assets — full assign/return actions live
  *  on the dedicated Assets page (P3-D); this is a discoverability panel. */
@@ -99,7 +90,7 @@ export default function EmployeeProfilePage() {
   const canWrite = EMPLOYEE_WRITE_ROLES.includes(user.role);
   const canDelete = EMPLOYEE_DELETE_ROLES.includes(user.role);
   const canProvisionAccount = ACCOUNT_PROVISION_ROLES.includes(user.role);
-  const canComputeEosb = Boolean(user.sectionAccess?.includes('eosb'));
+  const canComputeEosb = Boolean(user.sectionAccessWrite?.includes('eosb'));
 
   const { data: employee, isPending, isError } = useQuery({
     queryKey: ['employee', id],
@@ -172,16 +163,16 @@ export default function EmployeeProfilePage() {
         <Card>
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">{t('staffEmployees.profile.overview')}</h2>
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label={t('staffEmployees.profile.fields.nationality')}>{employee.nationality}</Field>
-            <Field label={t('staffEmployees.profile.fields.mobile')}>{employee.mobile}</Field>
-            <Field label={t('staffEmployees.profile.fields.email')}>{employee.email}</Field>
-            <Field label={t('staffEmployees.profile.fields.joiningDate')}>{formatDate(employee.joiningDate)}</Field>
-            <Field label={t('staffEmployees.profile.fields.department')}>{employee.department}</Field>
-            <Field label={t('staffEmployees.profile.fields.salary')}>{employee.salary != null ? `SAR ${employee.salary.toLocaleString()}` : null}</Field>
-            <Field label={t('staffEmployees.profile.fields.accommodation')}>{employee.accommodation}</Field>
-            <Field label={t('staffEmployees.profile.fields.coordinator')}>{employee.coordinator?.name}</Field>
-            <Field label={t('staffEmployees.profile.fields.manager')}>{employee.manager?.name}</Field>
-            <Field label={t('staffEmployees.profile.fields.addedBy')}>
+            <ProfileField label={t('staffEmployees.profile.fields.nationality')}>{employee.nationality}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.mobile')}>{employee.mobile}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.email')}>{employee.email}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.joiningDate')}>{formatDate(employee.joiningDate)}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.department')}>{employee.department}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.salary')}>{employee.salary != null ? formatMoney(employee.salary) : null}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.accommodation')}>{employee.accommodation}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.coordinator')}>{employee.coordinator?.name}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.manager')}>{employee.manager?.name}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.addedBy')}>
               {employee.createdBy?.name && (
                 <>
                   {employee.createdBy.name}
@@ -192,7 +183,7 @@ export default function EmployeeProfilePage() {
                   )}
                 </>
               )}
-            </Field>
+            </ProfileField>
           </dl>
         </Card>
 
@@ -244,9 +235,9 @@ export default function EmployeeProfilePage() {
             {t('staffEmployees.profile.emergencyContact')}
           </h2>
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label={t('staffEmployees.profile.fields.name')}>{employee.emergencyContact?.name}</Field>
-            <Field label={t('staffEmployees.profile.fields.phone')}>{employee.emergencyContact?.phone}</Field>
-            <Field label={t('staffEmployees.profile.fields.relation')}>{employee.emergencyContact?.relation}</Field>
+            <ProfileField label={t('staffEmployees.profile.fields.name')}>{employee.emergencyContact?.name}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.phone')}>{employee.emergencyContact?.phone}</ProfileField>
+            <ProfileField label={t('staffEmployees.profile.fields.relation')}>{employee.emergencyContact?.relation}</ProfileField>
           </dl>
         </Card>
 

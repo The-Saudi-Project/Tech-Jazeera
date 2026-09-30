@@ -9,11 +9,14 @@
  * The server therefore never runs in a half-configured state.
  */
 import env from './config/env.js'; // side effect: validates env, may exit
+import { captureError } from './config/sentry.js'; // side effect: initializes Sentry, if configured
 import logger from './config/logger.js';
 import { connectDb } from './config/db.js';
+import { startPeriodicMonitoring } from './config/monitoring.js';
 import app from './app.js';
 import { runExpiryAlertCheck } from './modules/notifications/expiryAlert.job.js';
 import { runMobilisationStaleCheck } from './modules/notifications/mobilisationStale.job.js';
+import { runDeploymentBillingCheck } from './modules/notifications/deploymentBilling.job.js';
 
 // Without these, a stray unhandled promise rejection or thrown error outside
 // Express's own request handling (e.g. inside a setInterval job's own bug,
@@ -22,10 +25,12 @@ import { runMobilisationStaleCheck } from './modules/notifications/mobilisationS
 // before connectDb() so a boot-time failure is caught too.
 process.on('unhandledRejection', (reason) => {
   logger.error(`Unhandled promise rejection: ${reason instanceof Error ? reason.stack : reason}`);
+  captureError(reason instanceof Error ? reason : new Error(String(reason)));
 });
 
 process.on('uncaughtException', (error) => {
   logger.error(`Uncaught exception: ${error.stack || error}`);
+  captureError(error);
   process.exit(1);
 });
 
@@ -42,6 +47,11 @@ try {
 const server = app.listen(env.port, () => {
   logger.info(`API listening on http://localhost:${env.port} (${env.nodeEnv})`);
 });
+
+// 2026-09-22, a real QA-audit finding — the "monitoring baseline"
+// recommendation: event-loop delay + an aggregate Mongo operation count,
+// logged every minute. See monitoring.js's own doc comment.
+const monitoringInterval = startPeriodicMonitoring();
 
 // P3-F: the expiry-alert notification job — once shortly after boot (so a
 // server that's been down doesn't wait a full day for the first check),
@@ -61,6 +71,13 @@ const mobilisationStaleInterval = setInterval(
   ONE_DAY_MS
 );
 
+// Same pattern again, offset by 25s.
+setTimeout(() => runDeploymentBillingCheck().catch((err) => logger.error(`[deploymentBillingJob] failed: ${err.message}`)), 25_000);
+const deploymentBillingInterval = setInterval(
+  () => runDeploymentBillingCheck().catch((err) => logger.error(`[deploymentBillingJob] failed: ${err.message}`)),
+  ONE_DAY_MS
+);
+
 /**
  * Graceful shutdown: stop accepting new connections, let in-flight requests
  * finish, then close the DB connection. Without this, a deploy/restart can
@@ -70,6 +87,8 @@ async function shutdown(signal) {
   logger.info(`${signal} received — shutting down gracefully...`);
   clearInterval(expiryAlertInterval);
   clearInterval(mobilisationStaleInterval);
+  clearInterval(deploymentBillingInterval);
+  clearInterval(monitoringInterval);
   server.close(async () => {
     const { default: mongoose } = await import('mongoose');
     await mongoose.connection.close();

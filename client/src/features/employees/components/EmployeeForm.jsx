@@ -6,7 +6,7 @@
  */
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -23,11 +23,15 @@ import {
   MANAGER_ELIGIBLE_ROLES,
 } from '../../../lib/constants.js';
 import { COUNTRIES } from '../../../lib/countries.js';
+import { collectFormErrorMessages } from '../../../lib/utils.js';
+import { useToast } from '../../../components/ui/Toast.jsx';
 import Input from '../../../components/ui/Input.jsx';
+import SuggestInput from '../../../components/ui/SuggestInput.jsx';
 import Select from '../../../components/ui/Select.jsx';
 import Textarea from '../../../components/ui/Textarea.jsx';
 import Button from '../../../components/ui/Button.jsx';
 import Card from '../../../components/ui/Card.jsx';
+import PickerLoadWarning from '../../../components/shared/PickerLoadWarning.jsx';
 
 /** The five identity documents, rendered uniformly from this config —
  *  `key` doubles as the i18n key under staffEmployees.form.documents.*. */
@@ -46,6 +50,7 @@ function Section({ title, children }) {
 export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, submitting }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const toast = useToast();
   const { user } = useAuth();
   // Drives which employee types a Coordinator may pick (below) — unrelated
   // to coordinator ASSIGNMENT itself, which this form no longer sets at all
@@ -63,6 +68,7 @@ export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, sub
   const selectableTypes = isCoordinator ? EMPLOYEE_TYPES.filter((t) => t !== 'Own') : EMPLOYEE_TYPES;
   const {
     register,
+    control,
     handleSubmit,
     watch,
     setValue,
@@ -78,7 +84,7 @@ export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, sub
   const isWorkforce = type !== 'Own';
 
   // Only fetched/shown once 'Subcontracted' is picked — who supplied this worker.
-  const { data: subcontractorData } = useQuery({
+  const { data: subcontractorData, isError: subcontractorsError } = useQuery({
     queryKey: ['subcontractors', { active: true }],
     queryFn: () => listSubcontractors({ status: 'Active', limit: 100 }),
     enabled: type === 'Subcontracted',
@@ -89,7 +95,7 @@ export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, sub
   // too, alongside or instead of a coordinator — so this stays fetched regardless
   // of type. MANAGER_ELIGIBLE_ROLES (Admin or Manager) filtered client-side,
   // since listStaffUsers only takes one exact role per call.
-  const { data: staffUsers } = useQuery({
+  const { data: staffUsers, isError: managersError } = useQuery({
     queryKey: ['users', {}],
     queryFn: () => listStaffUsers({}),
   });
@@ -100,7 +106,7 @@ export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, sub
   // type(s). Only active workflows are offered — an inactive one can't be
   // newly assigned, though an employee already pointed at one keeps showing
   // it (see the reapply effect below) rather than silently blanking the field.
-  const { data: workflows } = useQuery({ queryKey: ['approval-workflows'], queryFn: listApprovalWorkflows });
+  const { data: workflows, isError: workflowsError } = useQuery({ queryKey: ['approval-workflows'], queryFn: listApprovalWorkflows });
   const activeWorkflows = (workflows ?? []).filter((w) => w.isActive || w._id === defaultValues.approvalWorkflow);
 
   // The <select>s mount (via register's ref) before these async lists
@@ -120,18 +126,20 @@ export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, sub
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflows]);
 
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
-      {/* Backs the Nationality field's autocomplete — type "I" and the browser
-          filters to India, Indonesia, Iran, Iraq, Ireland, etc. Native
-          <datalist>, not a custom dropdown: free typing still works for a
-          nationality that isn't on the list. */}
-      <datalist id="country-list">
-        {COUNTRIES.map((country) => (
-          <option key={country} value={country} />
-        ))}
-      </datalist>
+  const onInvalid = (formErrors) => {
+    console.error('[employees] employee form invalid', formErrors);
+    toast.error(collectFormErrorMessages(formErrors).join(' ') || t('staffEmployees.form.invalid'));
+  };
 
+  return (
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="space-y-6">
+      <PickerLoadWarning
+        failed={[
+          { label: 'subcontractors', isError: subcontractorsError },
+          { label: 'managers', isError: managersError },
+          { label: 'approval workflows', isError: workflowsError },
+        ]}
+      />
       <Section title={t('staffEmployees.form.sections.employeeType')}>
         <div className="sm:col-span-2">
           <Select label={`${t('staffEmployees.form.type')} *`} error={errors.type?.message} {...register('type')}>
@@ -165,12 +173,19 @@ export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, sub
       <Section title={t('staffEmployees.form.sections.personalDetails')}>
         <Input label={`${t('staffEmployees.form.employeeId')} *`} placeholder="AJ-001" error={errors.employeeId?.message} {...register('employeeId')} />
         <Input label={`${t('staffEmployees.form.fullName')} *`} error={errors.fullName?.message} {...register('fullName')} />
-        <Input
-          label={`${t('staffEmployees.form.nationality')}${isWorkforce ? ' *' : ''}`}
-          list="country-list"
-          autoComplete="off"
-          error={errors.nationality?.message}
-          {...register('nationality')}
+        <Controller
+          name="nationality"
+          control={control}
+          render={({ field }) => (
+            <SuggestInput
+              label={`${t('staffEmployees.form.nationality')}${isWorkforce ? ' *' : ''}`}
+              error={errors.nationality?.message}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              options={COUNTRIES}
+            />
+          )}
         />
         <Input
           label={`${t('staffEmployees.form.mobile')}${isWorkforce ? ' *' : ''}`}

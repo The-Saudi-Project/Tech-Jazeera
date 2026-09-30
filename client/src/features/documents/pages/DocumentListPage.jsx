@@ -24,7 +24,7 @@ export default function DocumentListPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAuth();
-  const canWrite = Boolean(user.sectionAccess?.includes('documentsManage'));
+  const canWrite = Boolean(user.sectionAccessWrite?.includes('documentsManage'));
   const [uploading, setUploading] = useState(false);
 
   const [search, setSearch] = useState('');
@@ -62,7 +62,7 @@ export default function DocumentListPage() {
   const noFilters = !params.search && !params.ownerType && !params.category && !params.expiring;
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-[1600px]">
       <PageHeader
         title={t('staffDocuments.list.pageTitle')}
         description={t('staffDocuments.list.pageDescription')}

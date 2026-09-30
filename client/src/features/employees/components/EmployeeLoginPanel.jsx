@@ -14,6 +14,7 @@ import { createEmployeeLogin, resetEmployeeLoginPassword, updateEmployeeLoginRol
 import { EMPLOYEE_LOGIN_ROLES } from '../../../lib/constants.js';
 import { apiMessage } from '../../../lib/utils.js';
 import { useToast } from '../../../components/ui/Toast.jsx';
+import { useCopyToClipboard } from '../../../lib/useCopyToClipboard.js';
 import Card from '../../../components/ui/Card.jsx';
 import Badge from '../../../components/ui/Badge.jsx';
 import Button from '../../../components/ui/Button.jsx';
@@ -23,6 +24,7 @@ import Modal from '../../../components/ui/Modal.jsx';
 
 export default function EmployeeLoginPanel({ employee }) {
   const toast = useToast();
+  const copyToClipboard = useCopyToClipboard();
   const queryClient = useQueryClient();
   // Holds the just-created credentials for the one-time reveal modal.
   const [created, setCreated] = useState(null);
@@ -62,14 +64,7 @@ export default function EmployeeLoginPanel({ employee }) {
     onError: (error) => toast.error(apiMessage(error)),
   });
 
-  async function copyPassword() {
-    try {
-      await navigator.clipboard.writeText(created.tempPassword);
-      toast.success('Temporary password copied.');
-    } catch {
-      toast.error('Could not copy — select and copy it manually.');
-    }
-  }
+  const copyPassword = () => copyToClipboard(created.tempPassword, { successMessage: 'Temporary password copied.' });
 
   const login = employee.login;
 
@@ -148,7 +143,7 @@ export default function EmployeeLoginPanel({ employee }) {
               {created.reset ? (
                 <>
                   Their old password no longer works. Hand this new one to{' '}
-                  <span className="font-medium text-text">{employee.fullName}</span> — it's shown{' '}
+                  <span className="font-medium text-text">{employee.fullName}</span> — it&apos;s shown{' '}
                   <span className="font-medium text-text">once</span>, copy it now.
                 </>
               ) : (
@@ -183,8 +178,8 @@ export default function EmployeeLoginPanel({ employee }) {
         {login && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted">
-              Changing <span className="font-medium text-text">{employee.fullName}</span>'s role signs them
-              out everywhere — they'll need to log in again for the new role to take effect.
+              Changing <span className="font-medium text-text">{employee.fullName}</span>&apos;s role signs them
+              out everywhere — they&apos;ll need to log in again for the new role to take effect.
             </p>
             <Select label="Role" value={editingRole ?? ''} onChange={(e) => setEditingRole(e.target.value)}>
               {EMPLOYEE_LOGIN_ROLES.map((r) => (

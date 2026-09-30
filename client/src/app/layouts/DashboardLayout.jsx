@@ -13,7 +13,7 @@
  * which had no scroll of its own (items past the fold were unreachable, not
  * just visually cluttered — a real bug, independent of the regrouping).
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext.jsx';
@@ -23,36 +23,31 @@ import MyDetailsModal from '../../features/profile/components/MyDetailsModal.jsx
 import ThemeToggle from '../../components/shared/ThemeToggle.jsx';
 import NotificationBell from '../../components/shared/NotificationBell.jsx';
 import LanguageSwitcher from '../../components/shared/LanguageSwitcher.jsx';
+import BrandLogo, { useBranding } from '../../components/shared/BrandLogo.jsx';
+import ErrorBoundary from '../../components/shared/ErrorBoundary.jsx';
+import RouteFallback from '../../components/shared/RouteFallback.jsx';
+import Icon from '../../components/ui/Icon.jsx';
 import { cn } from '../../lib/utils.js';
-import { DASHBOARD_ITEM, NAV_GROUPS, EXECUTIVE_NAV_ITEMS, OFFICE_SECRETARY_NAV_ITEMS } from '../navConfig.js';
-
-function NavIcon({ d }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5">
-      <path strokeLinecap="round" strokeLinejoin="round" d={d} />
-    </svg>
-  );
-}
+import { useCloseOnOutsideClick } from '../../lib/useCloseOnOutsideClick.js';
+import { DASHBOARD_ITEM, NAV_GROUPS, EXECUTIVE_NAV_ITEMS } from '../navConfig.js';
 
 function Sidebar({ onNavigate }) {
   const { user } = useAuth();
   const { t } = useTranslation();
-  // Executive and Office Secretary each get their own short, explicit nav —
-  // see EXECUTIVE_NAV_ITEMS's doc comment for why this can't just be
-  // another `roles`-filtered slice of the grouped nav below (every
-  // unguarded group item, which is most of them, would otherwise show up
-  // for free).
+  const { name: brandName } = useBranding();
+  // Executive still gets its own short, explicit nav — see
+  // EXECUTIVE_NAV_ITEMS's doc comment for why this can't just be another
+  // `roles`-filtered slice of the grouped nav below (every unguarded group
+  // item, which is most of them, would otherwise show up for free). Office
+  // Secretary used to get the same treatment; she moved into STAFF_ROLES
+  // 2026-09-13 and now falls through to the normal grouped nav below, same
+  // as Coordinator/HR/Manager/Accounts.
   let items;
   if (user.role === 'Executive') {
     items = [
       DASHBOARD_ITEM,
       ...EXECUTIVE_NAV_ITEMS.filter((item) => !item.sectionKey || user.sectionAccess?.includes(item.sectionKey)),
     ];
-  } else if (user.role === 'Office Secretary') {
-    // No DASHBOARD_ITEM here — router.jsx's RoleRouter redirects this role
-    // away from `/` entirely (it 403s on GET /api/dashboard), so a link to
-    // it would just bounce.
-    items = OFFICE_SECRETARY_NAV_ITEMS;
   } else {
     // A group is shown if the user can reach at least one item inside it —
     // otherwise it'd be a link to an empty hub page. Individual role-gating
@@ -69,10 +64,12 @@ function Sidebar({ onNavigate }) {
   }
 
   return (
-    <div className="flex h-full flex-col border-r border-border/50 bg-surface/60 backdrop-blur-2xl">
-      <div className="flex h-16 items-center gap-2.5 border-b border-border/50 bg-transparent px-5">
-        <img src="/logo.png" alt="Al Jazeera" className="h-9 w-9 rounded-xl shadow-glow" />
-        <span className="font-semibold tracking-tight">{t('common.appName')}</span>
+    <div className="flex h-full flex-col border-r border-slate-800/50 bg-slate-900 text-slate-300">
+      <div className="flex h-16 items-center gap-2.5 border-b border-slate-800/50 bg-transparent px-5">
+        <BrandLogo className="h-9 w-9 shrink-0" />
+        <span className="min-w-0 flex-1 truncate font-semibold tracking-tight text-white" title={brandName}>
+          {brandName}
+        </span>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {items.map((item) => (
@@ -85,18 +82,18 @@ function Sidebar({ onNavigate }) {
               cn(
                 'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ease-out-expo',
                 isActive
-                  ? 'bg-primary/10 font-semibold text-primary shadow-xs ring-1 ring-inset ring-primary/10'
-                  : 'font-medium text-muted hover:bg-border/40 hover:text-text'
+                  ? 'bg-primary/20 font-semibold text-white shadow-xs ring-1 ring-inset ring-primary/30'
+                  : 'font-medium text-slate-400 hover:bg-slate-800/50 hover:text-white'
               )
             }
           >
-            <NavIcon d={item.icon} />
+            <Icon d={item.icon} />
             {item.labelKey ? t(item.labelKey, item.label) : item.label}
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-border p-4">
-        <p className="text-[11px] leading-relaxed text-muted/70">
+      <div className="border-t border-slate-800/50 p-4">
+        <p className="text-[11px] leading-relaxed text-slate-500">
           Manpower supply &amp; trading
           <br />
           Operating system
@@ -118,18 +115,7 @@ export default function DashboardLayout() {
   // does (see server/src/modules/me/profile.routes.js).
   const canUpdateDetails = user.role !== 'Admin';
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-  const avatarMenuRef = useRef(null);
-
-  useEffect(() => {
-    if (!avatarMenuOpen) return undefined;
-    function onClickOutside(e) {
-      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target)) {
-        setAvatarMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, [avatarMenuOpen]);
+  const avatarMenuRef = useCloseOnOutsideClick(avatarMenuOpen, setAvatarMenuOpen);
 
   async function handleLogout() {
     await logout();
@@ -158,7 +144,7 @@ export default function DashboardLayout() {
       )}
 
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/50 bg-surface/60 px-4 backdrop-blur-2xl sm:px-6">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/40 bg-surface/70 px-4 backdrop-blur-xl sm:px-6 shadow-xs">
           <button
             onClick={() => setDrawerOpen(true)}
             aria-label={t('header.openMenu')}
@@ -245,7 +231,11 @@ export default function DashboardLayout() {
         </header>
 
         <main className="p-4 sm:p-6">
-          <Outlet />
+          <ErrorBoundary>
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
 

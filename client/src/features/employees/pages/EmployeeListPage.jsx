@@ -18,7 +18,7 @@ import {
   EMPLOYEE_DELETE_ROLES,
   EXPIRY_WARNING_DAYS,
 } from '../../../lib/constants.js';
-import { apiMessage, daysUntil, formatDate } from '../../../lib/utils.js';
+import { apiMessage, daysUntil, formatDate, createSortToggle } from '../../../lib/utils.js';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
 import ConfirmDialog from '../../../components/shared/ConfirmDialog.jsx';
 import Table from '../../../components/ui/Table.jsx';
@@ -61,7 +61,7 @@ export default function EmployeeListPage() {
   const canDelete = EMPLOYEE_DELETE_ROLES.includes(user.role);
   // Who may create is admin-configurable (Section Access, 'employeeCreate')
   // rather than a static role list — Admin only by default.
-  const canCreate = Boolean(user.sectionAccess?.includes('employeeCreate'));
+  const canCreate = Boolean(user.sectionAccessWrite?.includes('employeeCreate'));
 
   // `search` is what the user types; `params.search` is what we query with —
   // debounced 300ms so we don't fire a request per keystroke.
@@ -113,14 +113,7 @@ export default function EmployeeListPage() {
     onError: (error) => toast.error(apiMessage(error)),
   });
 
-  function toggleSort(key) {
-    setParams((p) => ({
-      ...p,
-      sortBy: key,
-      sortOrder: p.sortBy === key && p.sortOrder === 'asc' ? 'desc' : 'asc',
-      page: 1,
-    }));
-  }
+  const toggleSort = createSortToggle(setParams);
 
   const columns = [
     {
@@ -128,11 +121,20 @@ export default function EmployeeListPage() {
       header: t('staffEmployees.list.columns.employee'),
       sortable: true,
       render: (e) => (
-        <Link to={`/employees/${e._id}`} className="font-medium text-text hover:text-primary">
-          {e.fullName}
-          <span className="block text-xs font-normal text-muted">
-            {e.employeeId} · {e.nationality}
-          </span>
+        <Link to={`/employees/${e._id}`} className="flex items-center gap-3 font-medium text-text hover:text-primary group">
+          {e.photoUrl ? (
+            <img src={e.photoUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover shadow-sm ring-1 ring-border/50 transition-transform group-hover:scale-105" />
+          ) : (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold shadow-sm ring-1 ring-primary/20 transition-transform group-hover:scale-105">
+              {e.fullName.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div>
+            {e.fullName}
+            <span className="block text-xs font-normal text-muted transition-colors group-hover:text-primary/70">
+              {e.employeeId} · {e.nationality}
+            </span>
+          </div>
         </Link>
       ),
     },
@@ -205,7 +207,7 @@ export default function EmployeeListPage() {
   const noFilters = !params.search && !params.status && !params.type && !params.alerts && !params.team;
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-[1600px]">
       <PageHeader
         title={t('staffEmployees.list.title')}
         description={t('staffEmployees.list.description')}

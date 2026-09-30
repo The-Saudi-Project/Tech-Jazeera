@@ -13,11 +13,27 @@
  */
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { setAccessToken, subscribeUnauthorized } from '../../lib/axios.js';
+import { setAccessToken, subscribeUnauthorized, subscribeSessionRefreshed } from '../../lib/axios.js';
 import { loginRequest, refreshRequest, logoutRequest } from './auth.api.js';
 import { useToast } from '../../components/ui/Toast.jsx';
 
 const AuthContext = createContext(null);
+
+/** The server now sends `sectionAccess` as `{ read: [...], write: [...] }`
+ *  (see sectionAccess.service.js's getMySectionAccess) — flatten it into two
+ *  top-level arrays so every existing `user.sectionAccess?.includes(key)`
+ *  check (nav visibility, all over the app) keeps working unchanged and now
+ *  correctly means "can read"; `user.sectionAccessWrite` is the new one for
+ *  gating a create/edit/delete button. */
+function normalizeUser(rawUser) {
+  if (!rawUser) return rawUser;
+  const { sectionAccess, ...rest } = rawUser;
+  return {
+    ...rest,
+    sectionAccess: sectionAccess?.read ?? [],
+    sectionAccessWrite: sectionAccess?.write ?? [],
+  };
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -33,7 +49,7 @@ export function AuthProvider({ children }) {
     refreshRequest()
       .then(({ user: restoredUser, accessToken }) => {
         setAccessToken(accessToken);
-        setUser(restoredUser);
+        setUser(normalizeUser(restoredUser));
         setStatus('authed');
       })
       .catch(() => setStatus('guest'));
@@ -42,12 +58,26 @@ export function AuthProvider({ children }) {
     // re-refresh failed). This only ever fires for a previously-authed user
     // — cold visitors' bootstrap failures don't go through this path — so
     // the toast can't greet a first-time visitor with "session expired".
-    return subscribeUnauthorized(() => {
+    const unsubUnauthorized = subscribeUnauthorized(() => {
       toast.error('Your session has expired. Please sign in again.');
       queryClient.clear();
       setUser(null);
       setStatus('guest');
     });
+
+    // Axios also tells us whenever a transparent mid-session refresh
+    // succeeds (fixed 2026-09-29) — re-sync the full user object (role,
+    // sectionAccess/sectionAccessWrite) so an Admin's grant or role change
+    // takes effect on this user's very next token rotation, not just on
+    // their next login/hard-reload.
+    const unsubRefreshed = subscribeSessionRefreshed((freshUser) => {
+      setUser(normalizeUser(freshUser));
+    });
+
+    return () => {
+      unsubUnauthorized();
+      unsubRefreshed();
+    };
   }, [toast, queryClient]);
 
   // Auto-logout after 12 minutes of inactivity
@@ -87,7 +117,7 @@ export function AuthProvider({ children }) {
     // one — clear before the new session's own queries start populating it.
     queryClient.clear();
     setAccessToken(accessToken);
-    setUser(loggedInUser);
+    setUser(normalizeUser(loggedInUser));
     setStatus('authed');
   }, [queryClient]);
 

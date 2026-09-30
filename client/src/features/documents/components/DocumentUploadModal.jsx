@@ -14,11 +14,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { uploadDocument } from '../documents.api.js';
 import { documentFormSchema, emptyDocumentForm } from '../documents.schema.js';
-import { listEmployees } from '../../employees/employees.api.js';
-import { listClients } from '../../clients/clients.api.js';
+import { useEmployeePicker } from '../../../lib/useEmployeePicker.js';
+import { useClientPicker } from '../../../lib/useClientPicker.js';
 import {
   DOCUMENT_CATEGORIES,
   DOCUMENT_OWNER_TYPES,
@@ -28,6 +28,7 @@ import {
 import { apiMessage } from '../../../lib/utils.js';
 import { useToast } from '../../../components/ui/Toast.jsx';
 import Modal from '../../../components/ui/Modal.jsx';
+import PickerLoadWarning from '../../../components/shared/PickerLoadWarning.jsx';
 import Input from '../../../components/ui/Input.jsx';
 import Select from '../../../components/ui/Select.jsx';
 import Button from '../../../components/ui/Button.jsx';
@@ -49,15 +50,16 @@ export default function DocumentUploadModal({ open, onClose, fixedOwner, onUploa
     formState: { errors },
   } = useForm({ resolver: zodResolver(documentFormSchema), defaultValues: emptyDocumentForm });
 
-  // Owner options for the global picker.
-  const { data: ownerOptions } = useQuery({
-    queryKey: ['ownerPicker', ownerType],
-    queryFn: () =>
-      ownerType === 'Employee'
-        ? listEmployees({ limit: 100, sortBy: 'fullName', sortOrder: 'asc' })
-        : listClients({ limit: 100, sortBy: 'companyName', sortOrder: 'asc' }),
-    enabled: open && !fixedOwner,
-  });
+  // Owner options for the global picker — reuses the SAME shared
+  // employee/client picker hooks every other module's picker uses (2026-09-22,
+  // a real QA-audit finding — P9: this used to fetch under its own
+  // ['ownerPicker', ownerType] key, duplicating an identical request another
+  // open picker had already cached). Only the active ownerType's picker is
+  // enabled, so switching the type never fetches both.
+  const employeePicker = useEmployeePicker({ enabled: open && !fixedOwner && ownerType === 'Employee' });
+  const clientPicker = useClientPicker({ enabled: open && !fixedOwner && ownerType === 'Client' });
+  const { data: ownerOptions, isError: ownerOptionsError } =
+    ownerType === 'Employee' ? employeePicker : clientPicker;
 
   const closeAndReset = () => {
     reset(emptyDocumentForm);
@@ -110,6 +112,7 @@ export default function DocumentUploadModal({ open, onClose, fixedOwner, onUploa
   return (
     <Modal open={open} onClose={closeAndReset} title={t('staffDocuments.upload.title')}>
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+        <PickerLoadWarning failed={[{ label: 'owner options', isError: !fixedOwner && ownerOptionsError }]} />
         {fixedOwner ? (
           <p className="rounded-lg bg-bg p-2.5 text-sm text-muted">
             {t('staffDocuments.upload.for')} <span className="font-medium text-text">{fixedOwner.name}</span>

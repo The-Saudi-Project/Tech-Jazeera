@@ -56,26 +56,30 @@ export default function Table({
   return (
     <>
       {/* Desktop */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-border bg-surface shadow-sm md:block">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border bg-bg/40 text-left">
+      <div className="hidden overflow-x-auto px-1 pb-4 md:block">
+        <table className="w-full border-separate border-spacing-y-[6px] text-sm">
+          <thead className="text-left">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted"
+                  className="whitespace-nowrap px-4 py-3 text-[14px] font-black uppercase tracking-wider text-text bg-border/40 border-b-[3px] border-border shadow-sm first:rounded-tl-2xl last:rounded-tr-2xl"
                 >
                   <SortableHeader column={col} sortBy={sortBy} sortOrder={sortOrder} onSort={onSort} />
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="">
             {loading
               ? Array.from({ length: skeletonRows }, (_, i) => (
-                  <tr key={i}>
-                    {columns.map((col) => (
-                      <td key={col.key} className="px-4 py-3.5">
+                  <tr key={i} className="group drop-shadow-sm">
+                    {columns.map((col, idx) => (
+                      <td key={col.key} className={cn(
+                        "px-4 py-2.5 bg-surface border-y border-border/50", 
+                        idx === 0 && "rounded-l-xl border-l", 
+                        idx === columns.length - 1 && "rounded-r-xl border-r"
+                      )}>
                         <Skeleton className="h-4 w-3/4" />
                       </td>
                     ))}
@@ -86,12 +90,18 @@ export default function Table({
                     key={rowKey(row)}
                     onClick={rowClickHandler(onRowClick, row)}
                     className={cn(
-                      'transition-colors hover:bg-primary/[0.035]',
-                      onRowClick && 'cursor-pointer'
+                      'group transition-all duration-200 drop-shadow-sm hover:-translate-y-px',
+                      onRowClick && 'cursor-pointer hover:drop-shadow-md'
                     )}
                   >
-                    {columns.map((col) => (
-                      <td key={col.key} className={cn('px-4 py-3', col.className)}>
+                    {columns.map((col, idx) => (
+                      <td key={col.key} className={cn(
+                        'px-4 py-2.5 align-middle bg-surface border-y border-border/40 transition-colors',
+                        onRowClick && 'group-hover:border-primary/40',
+                        idx === 0 && 'rounded-l-xl border-l',
+                        idx === columns.length - 1 && 'rounded-r-xl border-r',
+                        col.className
+                      )}>
                         {col.render(row)}
                       </td>
                     ))}

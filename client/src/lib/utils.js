@@ -27,6 +27,28 @@ export function apiMessage(error, fallback = 'Something went wrong. Please try a
   return data.message ?? fallback;
 }
 
+/**
+ * Flatten a react-hook-form `formState.errors` object into its `.message`
+ * strings, recursing into `useFieldArray` entries (an array-field error nests
+ * a level deeper than a form's own flat fields ever do, e.g.
+ * `errors.sites[2].address`) and plain nested-object fields alike. Used by
+ * every form's `onInvalid` handler to build one toast out of whatever
+ * actually failed, instead of a generic "check the form" message.
+ */
+export function collectFormErrorMessages(errors) {
+  const messages = [];
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (typeof node.message === 'string' && node.message) messages.push(node.message);
+    for (const key of Object.keys(node)) {
+      if (key === 'message' || key === 'type' || key === 'ref') continue;
+      walk(node[key]);
+    }
+  };
+  walk(errors);
+  return messages;
+}
+
 /** Display format: "23 Jul 2026". Em-dash for missing values. */
 export function formatDate(value) {
   if (!value) return '—';
@@ -72,12 +94,59 @@ export function daysUntil(value) {
   return Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
 }
 
-/** Format a number as SAR currency: 1234.5 → "SAR 1,234.50". */
+// The Saudi Riyal symbol (U+20C1) — used everywhere money is shown ON
+// SCREEN (2026-09-22, real user request). Deliberately NOT used in
+// server-generated PDFs (server/src/utils/pdfFormat.js keeps "SAR" as
+// text): confirmed by direct test that pdfkit's standard Helvetica font
+// can't encode this glyph at all — it renders as a broken replacement
+// character. Embedding a font that supports it is real, separate work, not
+// done in this pass.
+const RIYAL_SYMBOL = '⃁';
+
+/** Format a number as Riyal currency: 1234.5 → "⃁ 1,234.50". */
 export function formatMoney(value) {
-  return `SAR ${Number(value || 0).toLocaleString('en-US', {
+  return `${RIYAL_SYMBOL} ${Number(value || 0).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+/** Amount one line item (quotation/invoice) contributes to the grand total
+ *  (net + its tax) — display-only; the authoritative stored total is always
+ *  server-computed (see server/src/utils/moneyMath.js's own lineAmount,
+ *  the same formula, kept separately since client/server can't share a
+ *  file across repos). */
+export function lineAmount(li) {
+  const gross = li.quantity * li.unitPrice;
+  const net = gross - gross * ((li.discount ?? 0) / 100);
+  return net + net * ((li.taxRate ?? 0) / 100);
+}
+
+/** Bytes → "1.2 MB" / "340 KB". */
+export function formatFileSize(bytes) {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+/** Green when profit, red when loss — zero stays neutral (not a loss). */
+export function profitClass(amount) {
+  if (amount > 0) return 'text-success';
+  if (amount < 0) return 'text-danger';
+  return undefined;
+}
+
+/** Column-header sort toggle: clicking the same key again flips asc/desc,
+ *  a new key starts ascending, and either way resets to page 1. Pass the
+ *  list page's own `setParams` (any shape with sortBy/sortOrder/page) and
+ *  call the result from a column header's onClick. */
+export function createSortToggle(setParams) {
+  return (key) =>
+    setParams((p) => ({
+      ...p,
+      sortBy: key,
+      sortOrder: p.sortBy === key && p.sortOrder === 'asc' ? 'desc' : 'asc',
+      page: 1,
+    }));
 }
 
 /** Compact relative time: "just now", "5m ago", "3h ago", "2d ago", else a date. */
