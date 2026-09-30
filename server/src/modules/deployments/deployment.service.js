@@ -743,8 +743,8 @@ export async function getInvoiceFile(deploymentId, entryId, actor) {
  */
 async function gatherClientInvoicedItems(clientId) {
   const deployments = await Deployment.find({ client: clientId, archived: { $ne: true } })
-    .select('workerName subcontractorName monthlyHours mobilisation')
-    .populate('mobilisation', PROFIT_RATE_FIELDS)
+    .select('workerName subcontractorName monthlyHours mobilisation workerType')
+    .populate('mobilisation', 'coordinators clientRate clientCommission subcontractorRate subcontractorCommission fta allowance mobilisationCost otClientRate otEmployeeRate workerType')
     .lean();
 
   const items = [];
@@ -758,6 +758,7 @@ async function gatherClientInvoicedItems(clientId) {
         deploymentId: dep._id,
         entryId: entry._id,
         workerName: dep.workerName,
+        workerType: dep.workerType,
         subcontractorName: dep.subcontractorName,
         month: entry.month,
         invoiceNumber: entry.invoiceNumber,
@@ -765,11 +766,26 @@ async function gatherClientInvoicedItems(clientId) {
         invoiceSentAt: entry.invoiceSentAt,
         invoiceDueAt: entry.invoiceDueAt,
         revenue: result.revenue,
+        expenses: result.expenses,
+        profit: result.profit,
+        breakdown: result.breakdown,
+        // Rate fields from mobilisation (for display on Paid Invoices)
+        clientRate: dep.mobilisation.clientRate ?? null,
+        clientCommission: dep.mobilisation.clientCommission ?? null,
+        subcontractorRate: dep.mobilisation.subcontractorRate ?? null,
+        subcontractorCommission: dep.mobilisation.subcontractorCommission ?? null,
+        fta: dep.mobilisation.fta ?? null,
+        allowance: dep.mobilisation.allowance ?? null,
+        mobilisationCost: dep.mobilisation.mobilisationCost ?? null,
+        actualHours: entry.actualHours,
+        otHours: entry.otHours,
+        deductionAmount: entry.deductionAmount ?? 0,
       });
     }
   }
   return items;
 }
+
 
 /** Gather + allocate in one call — every real caller below wants both.
  *  Exported for mobilisationTarget.service.js's own real-revenue crediting
@@ -837,8 +853,14 @@ export async function getClientsPaymentSummary(actor) {
 }
 
 /**
- * Returns a flat list of all fully-paid invoices across all clients the viewer
- * is entitled to see. Uses the same visibility rules as getClientsPaymentSummary.
+ * Returns a flat list of every invoice that has received at least one
+ * payment — fully paid or still partial — across all clients the viewer is
+ * entitled to see, each carrying its real `revenue` (invoice amount),
+ * `amountAllocated` (paid so far) and `balanceDue`, so a client paying in
+ * installments shows real progress here instead of only appearing once
+ * settled in full. An invoice with zero allocation yet stays out of this
+ * list — that's Payments Due's job. Uses the same visibility rules as
+ * getClientsPaymentSummary.
  */
 export async function getPaidInvoices(actor) {
   const canViewAll = await canAccessSection('mobilisationsViewer', actor, 'read');
@@ -863,7 +885,7 @@ export async function getPaidInvoices(actor) {
   const paidInvoices = [];
   for (const [, info] of byClient) {
     const { perEntry } = await getClientAllocation(info.clientId);
-    const paid = perEntry.filter((e) => e.fullyPaid);
+    const paid = perEntry.filter((e) => e.amountAllocated > 0);
     for (const p of paid) {
       paidInvoices.push({
         clientName: info.clientName,
@@ -954,23 +976,41 @@ export async function getReadyToInvoice(actor) {
     archived: { $ne: true },
     monthlyHours: { $elemMatch: { status: 'Approved', invoiceSentAt: null } },
   })
-    .select('workerName clientName mobilisation monthlyHours')
-    .populate('mobilisation', 'serialNumber')
+    .select('workerName clientName mobilisation monthlyHours workerType')
+    .populate('mobilisation', 'serialNumber clientRate clientCommission subcontractorRate subcontractorCommission fta allowance mobilisationCost otClientRate otEmployeeRate workerType')
     .lean();
 
   const rows = [];
   for (const dep of deployments) {
     for (const entry of dep.monthlyHours) {
       if (entry.status !== 'Approved' || entry.invoiceSentAt) continue;
+      
+      const revExp = computeMonthlyRevenueAndExpenses(entry, dep.mobilisation, dep.monthlyHours);
+      
       rows.push({
         deploymentId: dep._id,
         entryId: entry._id,
         mobilisationSerial: dep.mobilisation?.serialNumber,
         workerName: dep.workerName,
+        workerType: dep.workerType,
         clientName: dep.clientName,
         month: entry.month,
         actualHours: entry.actualHours,
+        otHours: entry.otHours,
         hoursApprovedAt: entry.decidedAt,
+        revenue: revExp ? revExp.revenue : null,
+        expenses: revExp ? revExp.expenses : null,
+        profit: revExp ? revExp.profit : null,
+        breakdown: revExp ? revExp.breakdown : null,
+        // Rate fields
+        clientRate: dep.mobilisation?.clientRate ?? null,
+        clientCommission: dep.mobilisation?.clientCommission ?? null,
+        subcontractorRate: dep.mobilisation?.subcontractorRate ?? null,
+        subcontractorCommission: dep.mobilisation?.subcontractorCommission ?? null,
+        fta: dep.mobilisation?.fta ?? null,
+        allowance: dep.mobilisation?.allowance ?? null,
+        mobilisationCost: dep.mobilisation?.mobilisationCost ?? null,
+        deductionAmount: entry.deductionAmount ?? 0,
       });
     }
   }
@@ -1384,9 +1424,10 @@ export function computeMonthlyRevenueAndExpenses(entry, mobilisation, allEntries
 
   const revenue = clientInvoiceAmount;
 
-  // The regular hours billed by the subcontractor is their timesheet minus the worker's OT hours
-  // (Since OT is handled separately at otEmployeeRate).
-  const regularSupplierHours = isSupplier ? Math.max(0, (entry.supplierHours ?? 0) - entry.otHours) : 0;
+  // The regular hours billed by the subcontractor is simply their timesheet.
+  // For SupplierEmployee, OT is the difference between client timesheet and supplier timesheet,
+  // so the supplier timesheet hours themselves are entirely regular hours.
+  const regularSupplierHours = isSupplier ? (entry.supplierHours ?? 0) : 0;
   const subSide = isSupplier ? (mobilisation.subcontractorRate ?? 0) + (mobilisation.subcontractorCommission ?? 0) : 0;
   
   const subContractorInvoiceAmount = isSupplier ? money(subSide * regularSupplierHours) : 0;
