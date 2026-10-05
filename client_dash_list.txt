@@ -1,0 +1,325 @@
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\app\layouts\DashboardLayout.jsx:144:{/* Static sidebar — desktop only */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\app\layouts\DashboardLayout.jsx:149:{/* Drawer sidebar — mobile only */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\app\navConfig.js:86:{ to: '/expenses', sectionKey: 'expenses', label: 'Expenses', icon: ICON.expense, description: 'Company spending — if you\'ve been granted access.', labelKey: 'staffNav.executive.expenses.label', descriptionKey: 'staffNav.executive.expenses.description' },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\app\navConfig.js:159:{ to: '/financial/paid-invoices', label: 'Received invoices', icon: ICON.check, description: 'Invoice payment history — full and partial.', labelKey: 'staffNav.financial.paidInvoices.label', descriptionKey: 'staffNav.financial.paidInvoices.description' },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\app\navConfig.js:162:{ to: '/financial/paid-sub-invoices', label: 'Paid Sub Invoices', icon: ICON.check, description: 'Subcontractor payment history — full and partial.', labelKey: 'staffNav.financial.paidSubInvoices.label', descriptionKey: 'staffNav.financial.paidSubInvoices.description' },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\app\navConfig.js:181:{ to: '/company-settings', label: 'Company Settings', icon: ICON.building, description: 'Legal identity, contact, bank and signatory details — printed on every generated document.', labelKey: 'staffNav.admin.companySettings.label', descriptionKey: 'staffNav.admin.companySettings.description' },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\app\navConfig.js:192:{ to: '/mobilisation-settings', label: 'Mobilisation Settings', icon: ICON.cog, roles: MOBILISATION_SETTINGS_MANAGE_ROLES, description: 'The stale mobilisation warning threshold — viewer/self-mobilise access is on Section Access now.', labelKey: 'staffNav.admin.mobilisationSettings.label', descriptionKey: 'staffNav.admin.mobilisationSettings.description' },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\app\pages\ErrorPage.jsx:42:: "An unexpected error occurred. Reloading usually fixes it — if it keeps happening, let your Admin know."}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\components\shared\PickerLoadWarning.jsx:22:Couldn&apos;t load {names.join(', ')} — you may be missing read access to it. Ask an admin to check Section
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\components\shared\SectionHubPage.jsx:55:FinancialHubPage's overdue-invoice count) — this
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\components\ui\Button.jsx:20:md: 'h-10 px-4 text-sm', // 40px tall — comfortably touch-friendly
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\components\ui\Select.jsx:39:{/* Custom chevron — positioned closer to text than the native arrow */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\approvals\pages\ApprovalLogPage.jsx:107:description="Every request decided through a configured approval workflow, in order — for anyone in the hierarchy to see."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\approvals\pages\ApprovalsPage.jsx:99:Named roles in your hierarchy (GM, COO, HR, BDM…) — each holds one or more staff accounts.
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\approvals\pages\ApprovalsPage.jsx:136:{/* Read (opening this modal at all) is open to any staff member — see
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\approvals\pages\ApprovalsPage.jsx:337:Ordered chains built from your approval roles — any one member of a step&apos;s role(s) can decide it.
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\approvals\pages\ApprovalsPage.jsx:386:{/* Read (opening this modal at all) is open to any staff member — see
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\approvals\pages\ApprovalsPage.jsx:437:Only one active workflow may default to a given request type — an individual employee&apos;s profile can
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\assets\pages\AssetListPage.jsx:223:description="Vehicles, laptops, phones, and tools — who has what."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\attendance\pages\AttendancePage.jsx:51:{/* overflow-y-hidden is load-bearing, not decorative — see Tabs.jsx's
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\audit\pages\AuditLogPage.jsx:114:description="Complete, unfiltered record of authentication and CRUD activity across the company — never edited or deleted."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\companySettings\components\CompanyLogoCard.jsx:83:Shown on every generated document — invoices, quotations, settlements, certificates, payslips, and
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\companySettings\components\CompanyLogoCard.jsx:99:<span className="text-sm text-muted">No logo set — exports skip the logo band.</span>
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\companySettings\components\CompanyLogoCard.jsx:140:app — removing the logo affects every future generated PDF/export
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\companySettings\pages\CompanySettingsPage.jsx:96:description="Your company's own identity — printed as the letterhead on every generated document."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\companySettings\pages\CompanySettingsPage.jsx:119:which needs this VAT number — see invoice.pdf.js/zatcaQr.js.
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\companySettings\pages\CompanySettingsPage.jsx:128:<span aria-hidden="true">⚠</span> No VAT registration number on file — invoices are being issued without the required ZATCA QR
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\components\ActiveRevenueWidget.jsx:182:left/right offset — `right-4` would sit in the same physical corner
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\components\CoordinatorDrillDownModal.jsx:81:{/* A Log entry is one plain `text` field, not an array of sub-entries — matches
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\components\CoordinatorLeaderboardWidget.jsx:111:{/* Same header-link convention as RecentActivity's "View full log" — a plain
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\components\MobilisationTargetCard.jsx:181:{/* Centre text — compact form (see compactMoney's own doc
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\components\RecentActivity.jsx:30:{/* FIX (2026-09-22): this used to be `user.role === 'Admin'` — the widget's own
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\components\StandbyAnalysisWidget.jsx:108:{/* null for a Supplier/Freelancer worker — this company owes them
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\pages\DashboardPage.jsx:185:{/* Only ever non-zero for Admin/Manager/HR — a Coordinator's own
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\pages\DashboardPage.jsx:210:ask) — see ActualPerformanceWidget's own doc comment. */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\pages\DashboardPage.jsx:216:payroll, the Leaderboard/Global Pipeline need mobilisationsViewer — a Coordinator
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\pages\DashboardPage.jsx:218:nearly every row was silently empty — not a CSS bug, a content-pairing one. A
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\pages\DashboardPage.jsx:274:{/* Mobilisation Leaderboard + Global Pipeline — mobilisationsViewer-gated,
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\pages\DashboardPage.jsx:292:{/* Alerts + activity — ExpiringDocuments always renders (it's a list
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\pages\DashboardPage.jsx:298:`auditLog` Section Access grant — so granting auditLog read to anyone
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\dashboard\pages\DashboardPage.jsx:311:{/* Manage Targets modal — management only */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\components\DeploymentExpensesSection.jsx:40:label: `${deployment.workerName} — ${deployment.clientName}${deployment.site ? ` (${deployment.site})` : ''}`,
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\components\MonthlyEntryBreakdown.jsx:27:{/* `text-text` only as a fallback, never alongside valueClass — Tailwind
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\components\MonthlyEntryBreakdown.jsx:66:{/* Only Paid Invoices' rows carry amountAllocated — Ready to
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\components\MonthlyEntryBreakdown.jsx:84:(2026-10-01) — a plain "Not entered yet" here, same spirit as
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\components\MonthlyEntryBreakdown.jsx:107:{/* Expenses — every component of row.expenses, itemized */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\components\MonthlyEntryBreakdown.jsx:115:{(b.otCalculations ?? 0) > 0 && <DetailRow label="Worker OT Pay" value={formatMoney(b.otCalculations)} hint={isSupplier ? "Paid directly to the worker — not part of the supplier invoice" : "OT premium paid to the worker, on top of fixed salary/rate"} valueClass="text-danger" />}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\deployments.schema.js:62:.refine((v) => Number(v) <= 1000, 'That looks too high for one month — check the figure.');
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\deployments.schema.js:74:.refine((v) => !v || Number(v) <= 1000, 'That looks too high for one month — check the figure.');
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\deployments.schema.js:85:.refine((v) => !v || Number(v) <= 1_000_000, 'That looks too high — check the figure.');
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:240:`That's more hours than physically possible for this period — max ${maxPossibleHours}h at 18h/day for this deployment's real placement days in ${watchedMonth || 'that month'}.`
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:250:{/* Row 1: Month | Client timesheet | Supplier timesheet | Client deduction — all 4 in one line */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:297:{/* Row 1b: Supplier deduction (amount + optional reason) — only for a
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:351:`That's more hours than physically possible for this period — max ${maxPossibleHours}h at 18h/day for this deployment's real placement days in ${watchedMonth || 'that month'}.`
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:366:{/* Summary stats bar — live computed preview, at the very bottom */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:785:without deploymentsHoursDecide access — deployment.totalProfit
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:813:{/* OT amount is commercial data — stripped server-side for
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:819:{/* Deduction is NOT commercial (unlike OT amount) — the
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:923:user's own ask) — subcontractor hours are no
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:1035:{/* "Enter subcontractor hours" — a single-field quick action (2026-10-01),
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentDetailPage.jsx:1088:(2026-09-27, the user's own ask) — only a read-only Billing status
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\DeploymentListPage.jsx:412:{/* Reset button — only shown when something is non-default */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\PaidInvoicesPage.jsx:72:{/* Amount Paid — this ONE payment's own amount, not the invoice's
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\PaidInvoicesPage.jsx:161:description={t('staffDeployments.paidInvoices.subtitle', 'Every payment received toward an invoice, across all clients — an invoice paid in installments appears as one row per payment. Click a row to expand financial details.')}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\PaidSubcontractorInvoicesPage.jsx:72:{/* Amount Paid — this ONE payment's own amount, not the invoice's
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\deployments\pages\PaidSubcontractorInvoicesPage.jsx:161:description={t('staffDeployments.paidSubInvoices.subtitle', 'Every payment received toward an invoice, across all subcontractors — an invoice paid in installments appears as one row per payment. Click a row to expand financial details.')}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\documents\components\DocumentPreviewModal.jsx:53:{/* Preview — the star of the dialog */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\employees\components\EmployeeLoginPanel.jsx:124:placeholder="No email on file — required"
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\employees\components\EmployeeLoginPanel.jsx:146:<span className="font-medium text-text">{employee.fullName}</span> — it&apos;s shown{' '}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\employees\components\EmployeeLoginPanel.jsx:175:{/* Change role — the role picked at provisioning time (e.g. Worker vs
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\employees\components\EmployeeLoginPanel.jsx:182:out everywhere — they&apos;ll need to log in again for the new role to take effect.
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\employees\components\OutsourcedEmployeeFormModal.jsx:98:toast.success(`Found ${foundWorker.workerName} in past mobilisations — filled in their known details.`);
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\employees\pages\EmployeeProfilePage.jsx:202:{/* Login (any role) — Admin/HR only. Create/inspect this
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\employees\pages\EmployeeProfilePage.jsx:210:Workforce types only (Outsourced or Subcontracted) — an internal
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\employees\pages\EmployeeProfilePage.jsx:217:{/* Identity metadata (numbers + expiry) — distinct from uploaded
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\exitDocuments\pages\ExitDocumentsPage.jsx:129:<Textarea label="Purpose" placeholder="Optional — what it's for (bank account, visa, new employer…)" error={errors.purpose?.message} {...register('purpose')} />
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\expenses\components\ExpenseFormModal.jsx:182:{d.site} — {d.worker?.fullName} ({d.status})
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\expenses\components\ExpenseFormModal.jsx:193:<p className="text-sm text-muted">Receipt: {editing.receipt.originalName} — attached at entry, cannot be changed here.</p>
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\expenses\components\ExpenseFormModal.jsx:205:<p className="mt-1 text-xs text-muted">PDF, JPG, PNG, or WEBP — up to {RECEIPT_MAX_MB} MB.</p>
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\expenses\pages\ExpenseListPage.jsx:304:description="Company costs — rent, fuel, purchases, utilities — the other half of profit alongside invoices."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\financialRequests\components\AdvanceReviewPanel.jsx:138:advance.status === 'Closed' ? 'Repayment recorded — advance fully repaid.' : 'Repayment recorded.'
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\financialRequests\components\AdvanceReviewPanel.jsx:195:Repaid {formatMoney(a.amountRepaid)} of {formatMoney(a.amount)} — outstanding{' '}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\financialRequests\components\AdvanceReviewPanel.jsx:202:one ('Pending' — see advance.model.js), so the current
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\financialRequests\components\AdvanceReviewPanel.jsx:237:{repaying.employee?.fullName} — outstanding <span className="font-semibold text-text">{formatMoney(repaying.outstandingBalance)}</span>
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\financialRequests\components\ReimbursementReviewPanel.jsx:69:toast.error(`File is too large — max ${RECEIPT_MAX_MB}MB.`);
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\financialRequests\components\ReimbursementReviewPanel.jsx:256:real one ('Pending' — see reimbursement.model.js), so the
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\financialRequests\components\ReimbursementReviewPanel.jsx:263:ownership check exists there — see financialRequests.routes.js) */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\holidays\pages\HolidayListPage.jsx:208:page — see RamadanPeriodsSection's own doc comment for why this
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\components\MobilisationForm.jsx:160:{w.workerName} — {w.iqamaNumber}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\components\MobilisationForm.jsx:328:{/* Office Secretary only — creating this on behalf of a Coordinator
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\components\MobilisationForm.jsx:403:directly, or already picked from this very list) — 2026-09-19,
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\components\MobilisationForm.jsx:406:no worker identified yet — the actual discovery step. */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\mobilisations.schema.js:26:.refine((v) => !v || Number(v) <= 100_000, 'That looks too high — check the figure.');
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\mobilisations.schema.js:33:.refine((v) => !v || Number(v) <= 1_000_000, 'That looks too high — check the figure.');
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\mobilisations.schema.js:40:.refine((v) => Number(v) <= 100_000, 'That looks too high — check the figure.');
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\pages\MobilisationDetailPage.jsx:209:{/* Called with no arguments (not the raw click event) — this
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\pages\MobilisationDetailPage.jsx:247:to get one from (2026-09-30, the user's own ask) — same
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\pages\MobilisationDetailPage.jsx:267:entirely — DecideButtons' buttons are type="button", so clicking
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\pages\MobilisationDetailPage.jsx:273:through handleSubmit — the same validator "Save details" uses —
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisations\pages\MobilisationDetailPage.jsx:959:too — the reviewer may want to leave a note either way. */}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\mobilisationSettings\pages\MobilisationSettingsPage.jsx:63:notified — a nudge for one that&apos;s been waiting on a client&apos;s paperwork too long.
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\nfc\components\AssignCardModal.jsx:58:? "Couldn't load available cards — you may be missing read access, or this is a network issue. Try again."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\nfc\components\NfcAnalyticsBits.jsx:43:return code; // not a valid region code — show it raw rather than crash
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\nfc\components\NfcAnalyticsBits.jsx:129:title={`${d.date} — ${d.views} tap${d.views === 1 ? '' : 's'}, ${d.saves} saved, ${d.clicks} link tap${d.clicks === 1 ? '' : 's'}`}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\nfc\components\NfcEmployeeFormModal.jsx:134:<Input label="Alternate email" type="email" placeholder="Optional — e.g. a work address" error={errors.altEmail?.message} {...register('altEmail')} />
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\requirements\pages\RequirementsBoardPage.jsx:61:const [client, setClient] = useState(''); // a company name — a requirement can come from a company that isn't a Client record
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\requirements\requirements.schema.js:77:.refine((v) => v === '' || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 365), 'Whole days, between 1 and 365 — or leave empty.'),
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\requirements\requirements.schema.js:112:iqamaNumber: z.string().trim().regex(/^(\d{10})?$/, 'An Iqama number is exactly 10 digits — or leave it empty.'),
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\requirements\requirements.schema.js:114:phone: z.string().trim().regex(/^(\+?[0-9][0-9 -]{5,18})?$/, 'Enter a valid phone number — or leave it empty.'),
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\sectionAccess\pages\SectionAccessPage.jsx:86:? "Couldn't load approval roles — try refreshing the page."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\sectionAccess\pages\SectionAccessPage.jsx:87:: 'No approval roles configured yet — add one on the Approval Hierarchy page first.'
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\sectionAccess\pages\SectionAccessPage.jsx:266:`${results.length - failures.length} saved, ${failures.length} failed (${names}) — ${apiMessage(failures[0].reason)}`
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\sectionAccess\pages\SectionAccessPage.jsx:311:? 'Choose a module below to control who can read or write its data — click one to see its Read/Write editor.'
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\sectionAccess\sectionAccessModules.js:90:label: `${DASHBOARD_ITEM.label} — profit`,
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\timesheetProcessor\pages\TimesheetProcessorPage.jsx:152:Couldn&apos;t load the employee list — you may be missing read access to &quot;Employees&quot;. Ask an
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\users\pages\UserListPage.jsx:151:<span className="font-medium text-text">{created.user.name}</span> — it&apos;s shown{' '}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\features\users\pages\UserListPage.jsx:173:message={`${toDelete?.name} (${toDelete?.email}) will be permanently removed — this cannot be undone. To just remove access while keeping the account, use Deactivate instead.`}
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\index.js:96:interpolation: { escapeValue: false }, // React already escapes — double-escaping would show literal "&amp;" etc.
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:152:"fileHint": "PNG أو JPG أو WEBP — بحد أقصى {{maxMb}} ميجابايت. الصور المربعة تبدو أفضل.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:223:"description": "سجّل حضورك عند الوصول وسجّل انصرافك عند المغادرة — يمكنك تسجيل الانصراف والعودة عدة مرات حسب الحاجة خلال اليوم.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:225:"setByOfficeNotice": "تم تحديده من قبل مكتبك — تواصل مع الموارد البشرية لتغييره.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:233:"locationNotice": "سيُطلب منك تحديد موقعك — يجب أن تكون في المكتب (أو متصلًا بشبكة المكتب) حتى يعمل هذا. سجّل الانصراف والعودة عدة مرات حسب الحاجة خلال اليوم؛ كل جلسة تُضاف إلى ساعات اليوم.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:240:"signedOutWithHours": "تم تسجيل الانصراف — {{hours}} ساعة اليوم.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:248:"message": "أنت مسجّل حضورك منذ حوالي {{hoursSoFar}} ساعة — ودوامك المتوقع {{expected}} ساعة. هل تريد تسجيل الانصراف على أي حال؟",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:256:"submitted": "تم إرسال سجل الدوام — {{hours}} ساعة{{overtime}}.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:274:"fileHint": "PDF أو JPG أو PNG أو WEBP — حتى {{maxMb}} ميجابايت.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:328:"fileHint": "PDF أو JPG أو PNG أو WEBP — بحد أقصى {{maxMb}} ميجابايت.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:436:"payroll": { "label": "الرواتب", "description": "دورات الرواتب وقسائمها — إن مُنحت صلاحية الوصول." },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:437:"expenses": { "label": "المصروفات", "description": "مصروفات الشركة — إن مُنحت صلاحية الوصول." }
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:472:"companySettings": { "label": "إعدادات الشركة", "description": "الهوية القانونية وبيانات التواصل والبنك والمخوّل بالتوقيع — تُطبع على كل مستند يُنشأ." },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:478:"mobilisationSettings": { "label": "إعدادات التعبئة والتنسيب", "description": "الحد الزمني للتنبيه عند تأخر عملية التنسيب — أما صلاحية العرض أو التنسيب الذاتي فتُدار الآن من صفحة صلاحيات الأقسام." },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:552:"hint": "الربح المجمّع لكل ساعة من التعبئات النشطة حاليًا — تقدير مبني على أسعار العقد، وليس دفعة مالية حقيقية مستلمة (انظر «الأداء الفعلي» أدناه لذلك).",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:558:"hint": "أرقام حقيقية وموثّقة فقط — المبلغ المستلم وصافي الربح مبنيان على دفعات العميل التي تحقق منها الحسابات فعليًا، وليسا تقديرًا.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:653:"notHitSome": "تم إنجاز {{achieved}} من {{target}} — واصل التقدم!",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:713:"typeHintOutsourced": "من القوى العاملة الخاصة بالشركة، المُقدَّمة للعملاء — يشمل تتبع التأشيرة/الإقامة والرواتب.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:714:"typeHintSubcontracted": "مُستقدَم من مقاول باطن خارجي، ومُنسَّب لدى عميل — يشمل تتبع التأشيرة/الإقامة، لكن دون رواتب: مقاول الباطن هو من يدفع راتبه، وليست الشركة.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:727:"wpsBreakdownHint": "تفصيل الراتب حسب حماية الأجور (اختياري — اتركه فارغًا لإظهار الراتب كاملًا كأساسي في قسائم الرواتب)",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:736:"weeklyOffDayHint": "يظهر كيوم \"عطلة\" مستنتج في شبكة سجلات الحضور عند عدم تسجيل أي شيء — أي تسجيل فعلي لذلك اليوم يلغي هذا الاستنتاج دائمًا.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:740:"managerHintOther": "اختياري — إلى جانب المنسّق أو بدلاً منه، إذا كان يرفع تقاريره مباشرة لمدير.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:743:"approvalWorkflowHint": "سلسلة الاعتماد التي تمر بها طلبات هذا الموظف (الإجازة/السلفة/المصاريف المستردة/سجل الدوام). اتركه على الافتراضي إلا إذا احتاج هذا الشخص سلسلة مختلفة — يمكن إعداد الأدوار والمسارات من الإدارة والأدوات ← التسلسل الاعتماد.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:744:"documentsHint": "اتركه فارغًا إن لم يكن صادرًا بعد — تواريخ الانتهاء هي التي تُفعّل تنبيهات التجديد.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:823:"holidayTitle": "عطلة — {{name}} (غير مسجلة)",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:824:"offTitle": "عطلة — يوم الإجازة الأسبوعية (غير مسجل)",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:831:"editorTitle": "{{name}} — {{date}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:835:"timesHint": "يحدَّد عدد ساعات العمل تلقائيًا من الوقتين. اترك أيًا منهما فارغًا لمسح الساعات لهذا اليوم — تبقى الحالة أعلاه محفوظة بشكل مستقل.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:853:"punchHint": "سيُطلب منك تحديد موقعك — يجب أن تكون في المكتب (أو على شبكة المكتب) لينجح هذا الإجراء. يمكنك تسجيل الخروج والدخول عدة مرات خلال اليوم؛ كل جلسة تُضاف إلى ساعات اليوم.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:855:"signedOut": "تم تسجيل الخروج — {{hours}} ساعة اليوم.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:879:"notConfigured": " لم يُعدّ بعد — التسجيل الذاتي معطّل حتى يتم الإعداد.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:880:"readOnlyHint": "يمكنك عرض هذا الإعداد ولكن لا يمكنك تعديله — اطلب من المسؤول منحك صلاحية الكتابة إذا احتجت إلى تغييره.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:888:"ipsHint": "عناوين IP محددة فقط — وليس نطاق شبكة فرعية (CIDR). يمكنك معرفة عنوان IP العام لمكتبك بزيارة whatismyip.com من جهاز في المكتب.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:891:"locationFilledSuccess": "تم تعبئة الموقع — تأكد من وجودك في المكتب قبل النقر على هذا."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:941:"sectionDescription": "فترة ساعات العمل المخفّضة والحد الأسبوعي المستخدم لحساب الوقت الإضافي — تأكد من التواريخ كل عام.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:962:"hint": "تحدد المادة 98 من نظام العمل الافتراضي بـ 6 ساعات/يوم و36 ساعة/أسبوع — عدّل فقط إذا اختلفت سياسة الشركة.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1025:"tierHint": "تُدفع الأيام التالية N من الإجازة المرضية المأخوذة كل سنة إجازة بالنسبة المحددة، بالترتيب. الافتراضي وفق المادة 117 هو 30 يومًا @ 100%، و60 يومًا @ 75%، و30 يومًا @ 0% (120 يومًا/سنة إجمالًا) — عدّل إذا كانت سياسة شركتك أكثر سخاءً.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1035:"activeHint": "نشط — يظهر عند تقديم الموظفين/العمال لطلب"
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1051:"fileHint": "PDF أو JPG أو PNG أو WEBP — حتى {{maxMb}} ميجابايت.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1080:"description": "جداول زمنية شهرية مبنية على الحضور الفعلي للموظفين الداخليين — اختر شخصًا لعرض شهره."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1083:"description": "الموظفون الداخليون فقط — العامل الميداني المُنتدب لدى عميل له جدوله الزمني الخاص في سجل الانتداب.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1176:"Resignation": "الموظف يغادر بمحض إرادته — تُطبَّق شرائح المادة 85 حسب مدة الخدمة.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1177:"TerminationByEmployer": "الشركة تنهي العقد — المكافأة كاملة دون خصم.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1178:"EndOfContract": "انتهت مدة العقد ولم يُجدَّد — المكافأة كاملة دون خصم.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1179:"SponsorshipTransfer": "كفالة الموظف تنتقل إلى صاحب عمل آخر — المكافأة كاملة دون خصم. يُفضَّل تأكيد هذه المعاملة مع المستشار القانوني/الموارد البشرية إن لم تكن متأكدًا."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1197:"reductionNoteOther": "ليست استقالة — المكافأة كاملة دون خصم.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1341:"pendingHint": "غير قابل للاستخدام في عمليات النشر بعد — بانتظار المراجعة.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1444:"pageDescription": "كل عامل يعمل فعليًا لدى عميل — تُنشأ تلقائيًا فور اعتماد التعبئة.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1467:"truncated": "يتم عرض أول {{limit}} من أصل {{total}} عملية نشر فقط — ضيّق النطاق باستخدام عوامل التصفية (التصدير إلى Excel يخضع لنفس حد {{limit}} صف).",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1523:"subcontractedDescription": "عمال انتهى آخر تعيين لهم دون تعيين أحدث منذ ذلك — مُستنتج من سجل التعبئات، لأن هؤلاء العمال ليس لديهم سجل مستمر خاص بهم بين التعيينات.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1529:"pageDescription": "كل عميل لديه فاتورة مستحقة واحدة على الأقل، الأقرب استحقاقًا أولًا. يدفع العميل دفعة واحدة مجمّعة عن كل من تم تعيينهم لديه — انظر التفاصيل خلف كل رصيد.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1548:"creditBalance": "لدى هذا العميل رصيد دائن قدره {{amount}} — سيُطبَّق تلقائيًا على فاتورته التالية.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1558:"recordPaymentModalTitle": "تسجيل دفعة — {{client}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1561:"paymentRecordedToast": "تم تسجيل الدفعة — بانتظار الموافقة."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1660:"editDeploymentModalTitle": "تعديل — {{name}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1669:"exitWarning": "سيؤدي هذا إلى تصنيف {{name}} كمنتهي الخدمة — لن يظهر بعد الآن كموظف نشط أو في كشف الرواتب، ولن يكون مؤهلاً لتعبئة جديدة حتى تتم إعادة تفعيله.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1677:"monthlyHoursHint": "أدخل جدول ساعات العميل لشهر بعد انتهائه بالكامل — أو، بمجرد انتهاء هذا النشر نفسه، لأي شهر شمله فعليًا، على الفور.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1679:"noEligibleMonth": "لا يوجد شهر جاهز للإدخال بعد — يمكن إضافة الساعات بعد مرور شهر تقويمي كامل منذ بدء النشر.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1702:"invoicedDue": "تمت الفوترة — الاستحقاق {{date}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1705:"invoiceRef": "فاتورة {{number}} — {{date}}"
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1708:"sendInvoiceModalTitle": "إرسال الفاتورة — {{month}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1709:"sendInvoiceModalMessage": "يتم إنشاء الفاتورة نفسها في ERPNext — أدخل رقمها وتاريخها هنا، وأرفق نسخة منها للمرجعية.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1712:"invoiceDateTooEarly": "شهر {{month}} لم ينتهِ بعد — اختر تاريخًا بعد انتهائه.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1721:"expensesHint": "التكاليف التشغيلية الفعلية لهذه التعبئة — الوقود والسكن وما شابه — بالإضافة إلى الإيراد والمصاريف وصافي الربح الفعلي (من جداول الدوام المعتمدة) أدناه.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1728:"noExpensesYetDescription": "سجّل تكلفة حقيقية لهذه التعبئة — وقود، سكن، وما شابه.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1738:"supplierTimesheetHoursHint": "اختياري — أدخلها الآن إذا كانت معروفة، أو استخدم \"إدخال ساعات المقاول\" في صف هذا الشهر عند استلام جدول المقاول الخاص به.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1740:"enterSupplierHoursModalTitle": "ساعات المقاول — {{month}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1741:"enterSupplierHoursModalMessage": "جدول المقاول الزمني الخاص لهذا الشهر — يُستخدم لحساب ما تدين به الشركة له، بشكل مستقل عن ساعات العميل.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1754:"deductionAmountHint": "خصم طبّقه العميل على جدوله الزمني الخاص (مثلاً بسبب يوم غياب) — أدخل الرقم كما هو مذكور فيه.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1758:"supplierDeductionAmountHint": "تعديل يُخصم مما تدين به الشركة للمقاول من الباطن هذا الشهر (نزاع أو تصحيح) — يقلّل من مبلغ فاتورة المورد.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1771:"endedNote": "انتهت عملية النشر هذه — تم إدخال جميع الأشهر التي كان فيها العامل مُعيّنًا بالفعل."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1824:"activeEngagementWarning": "لا يزال لهذا العامل تعبئة أو عملية نشر نشطة — أنهِ التعبئة أو النشر أولًا قبل الأرشفة.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1827:"archiveConfirmMessage": "سيؤدي هذا إلى إخفاء جميع السجلات البالغ عددها {{count}} — وأي عملية نشر نتجت عنها — من كل القوائم وعمليات البحث في التطبيق. لا يُحذف شيء؛ يمكنك استعادتها في أي وقت.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1831:"restoreConfirmMessage": "سيؤدي هذا إلى إظهار جميع السجلات البالغ عددها {{count}} — وأي عملية نشر نتجت عنها — مجددًا في كل القوائم وعمليات البحث.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1860:"iqamaAutofillToast": "تم العثور على {{name}} من تعبئة سابقة — تم تعبئة التفاصيل.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1896:"otEmployeeRateHint": "يُدفع مباشرةً للعامل عن كل ساعة إضافية — لا يُدرج في فاتورة المقاول من الباطن. يُعامَل كمصروف على الشركة عند اعتماد الساعات.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1906:"checkoutDateHint": "اتركه فارغًا إذا كان العامل لا يزال هناك — إدخال تاريخ يعني أن هذه التعبئة انتهت فعليًا.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1907:"clearCheckoutDate": "مسح — لا يزال مستمرًا",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1923:"fromRequirement": "بدءًا من {{serial}} · {{client}} — للعامل {{name}}. راجع التفاصيل أدناه؛ سيربط الحفظ هذه التعبئة بذلك الطلب.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1926:"alreadyStartedDescription": "تم بدء {{serial}} لهذا المرشح مسبقًا — يمكن أن يكون للمرشح تعبئة واحدة فقط.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1932:"descriptionLine": "{{worker}} — {{client}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1939:"cannotEditDescription": "يمكن تعديل التعبئة فقط عندما تكون مسودة أو مرفوضة — هذه حالتها {{status}}.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1985:"needsConfirmationHint": "تمت إضافتك كمنسق على هذه التعبئة — أكّد مشاركتك.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:1996:"noDocumentsConfirmMessage": "لا توجد مستندات مرفقة بهذه التعبئة (مثل العقد أو نسخة الهوية) — قد يحتاج المراجع إلى واحدة لاتخاذ القرار. هل تريد التقديم للمراجعة على أي حال؟",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2132:"editModalTitle": "تعديل — {{name}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2135:"gosiHint": "لا يُحسب خصم التأمينات الاجتماعية تلقائيًا — تختلف النسب حسب الجنسية/التغطية. أدخل الرقم الصحيح وفق معدلاتك الحالية.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2137:"advanceRepaymentHint": "مقترح من سلفة الموظف المعتمدة وغير المسددة بالكامل (المبلغ ÷ عدد أشهر السداد). يمكنك تخفيضه أو جعله 0 لتخطي هذا الشهر — لا يمكن رفعه فوق المبلغ المقترح هنا. يُسجَّل تلقائيًا في سجل السلفة بمجرد اعتماد هذا الراتب.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2176:"emptyDescriptionOwn": "أضف مهمة لنفسك — وأي مهمة يُسندها إليك مدير ستظهر هنا أيضًا.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2209:"backdatedNote": "بتاريخ سابق — أُضيف في {{when}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2212:"emptyDescriptionOwn": "دوّن ما عملت عليه اليوم — يمكن لمديرك قراءته هنا.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2222:"pageDescription": "طلبات العملاء التي وردت ولم يتم تنسيبها بعد — من أول طلب حتى التنسيب.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2237:"truncated": "يتم عرض أول 1,000 طلب فقط — ضيّق العرض باستخدام التصفية.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2244:"descriptionAdmin": "المراحل هي الأعمدة التي ينتقل عبرها الطلب. ابدأ بمجموعة مقترحة — ويمكنك بعدها إعادة تسمية أي مرحلة أو ترتيبها أو حذفها — أو أنشئ مراحلك الخاصة.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2281:"pageDescription": "كل طلب أُغلق دون أن يتحول إلى نقل عامل — محفوظ هنا للمراجعة، خارج اللوحة النشطة.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2305:"clientHint": "اكتب اسم الشركة — واختر اقتراحًا لربطها بعميل موجود. لا بأس إن لم تكن الشركة عميلًا بعد.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2306:"clientHintNoSuggestions": "قائمة العملاء غير متاحة لك، فلا توجد اقتراحات — اكتب اسم الشركة فقط. وسيُربط تلقائيًا بعميل موجود إن تطابق الاسم.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2344:"emptyEditable": "لا يوجد مرشحون بعد. أضف كل عامل تجهّزه — من أين جاء وأين وصلت أوراقه.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2390:"notifyOnEnterHint": "يُخطَر كل من لديه صلاحية الفريق للطلبات — مثلًا عند \"جاهز للتنسيب\".",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2392:"isMobilisedStageHint": "عندما تتم الموافقة على تنسيب كل العمال الذين طلبهم الطلب، تنتقل بطاقته إلى هنا تلقائيًا. يمكن أن تكون هذه مرحلة واحدة فقط — واختيارها ينقل الإعداد من المرحلة السابقة."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2431:"pageDescription": "تكاليف الشركة — الإيجار، الوقود، المشتريات، المرافق — النصف الآخر من الربح إلى جانب الفواتير.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2471:"receiptAttachedNote": "الإيصال: {{name}} — أُرفق عند الإدخال، ولا يمكن تغييره هنا.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\ar.json:2475:"receiptHint": "PDF أو JPG أو PNG أو WEBP — حتى {{maxMb}} ميجابايت."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:152:"fileHint": "PNG, JPG, or WEBP — up to {{maxMb}} MB. Square images look best.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:223:"description": "Sign in when you arrive and sign out when you leave — sign out and back in as many times as you need throughout the day.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:225:"setByOfficeNotice": "Set by your office — contact HR to change it.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:233:"locationNotice": "You'll be asked for your location — you must be at the office (or on the office network) for this to work. Sign out and back in as many times as you need during the day; each session adds to today's hours.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:240:"signedOutWithHours": "Signed out — {{hours}} hrs today.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:248:"message": "You've been signed in for about {{hoursSoFar}} hrs — your expected shift is {{expected}} hrs. Sign out anyway?",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:256:"submitted": "Timesheet submitted — {{hours}} hrs{{overtime}}.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:274:"fileHint": "PDF, JPG, PNG, or WEBP — up to {{maxMb}} MB.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:328:"fileHint": "PDF, JPG, PNG, or WEBP — up to {{maxMb}} MB.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:436:"payroll": { "label": "Payroll", "description": "Monthly runs and payslips — if you've been granted access." },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:437:"expenses": { "label": "Expenses", "description": "Company spending — if you've been granted access." }
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:472:"companySettings": { "label": "Company Settings", "description": "Legal identity, contact, bank and signatory details — printed on every generated document." },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:478:"mobilisationSettings": { "label": "Mobilisation Settings", "description": "The stale mobilisation warning threshold — viewer/self-mobilise access is on Section Access now." },
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:552:"hint": "Combined profit per hour from currently active mobilisations — a rate-card estimate, not a real received payment (see Actual Performance below for that).",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:558:"hint": "Real, verified figures only — amount received and net profit are based on client payments actually verified by Accounts, not an estimate.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:653:"notHitSome": "{{achieved}} of {{target}} — keep going!",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:713:"typeHintOutsourced": "This company's own workforce, supplied to clients — visa/iqama tracking and payroll both apply.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:714:"typeHintSubcontracted": "Sourced from an outside subcontractor, placed with a client — visa/iqama tracking applies, but payroll does not: the subcontractor pays them, not this company.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:727:"wpsBreakdownHint": "WPS salary breakdown (optional — leave blank to show the full salary as Basic on payslips)",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:736:"weeklyOffDayHint": "Shown as an inferred \"Off\" day on the Attendance Records grid when nothing was recorded — a real record for that day always overrides it.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:740:"managerHintOther": "Optional — alongside or instead of a coordinator, if they report to a manager directly.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:743:"approvalWorkflowHint": "Which approval chain this employee's Leave/Salary Advance/Reimbursement/Timesheet requests route through. Leave as the default unless this person needs a different chain — configure roles and workflows under Admin & Tools → Approval Hierarchy.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:744:"documentsHint": "Leave blank if not issued yet — expiry dates drive the renewal alerts.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:823:"holidayTitle": "Holiday — {{name}} (not recorded)",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:824:"offTitle": "Off — weekly day off (not recorded)",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:831:"editorTitle": "{{name}} — {{date}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:835:"timesHint": "Both times set the worked hours automatically. Leave either blank to clear the hours for this day — the status above is still saved on its own.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:853:"punchHint": "You'll be asked for your location — you must be at the office (or on the office network) for this to work. Sign out and back in as many times as you need during the day; each session adds to today's hours.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:855:"signedOut": "Signed out — {{hours}} hrs today.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:879:"notConfigured": " Not configured yet — self-marking is disabled until you set this up.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:880:"readOnlyHint": "You can view this setting but not edit it — ask an Admin to grant you Write access if you need to change it.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:888:"ipsHint": "Exact IPs only — not a subnet/CIDR range. Find your office's public IP by visiting whatismyip.com from an office computer.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:891:"locationFilledSuccess": "Location filled in — stand at the office before clicking this."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:941:"sectionDescription": "The reduced-hours period and weekly cap used to calculate overtime — confirm the dates each year.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:962:"hint": "Labor Law Article 98 sets the default at 6 hours/day, 36 hours/week — adjust only if company policy differs.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1025:"tierHint": "The next N days of sick leave taken each leave year are paid at the given %, in order. Article 117's default is 30 days @ 100%, 60 days @ 75%, 30 days @ 0% (120 days/year total) — adjust if your company policy is more generous.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1035:"activeHint": "Active — visible when staff/workers submit a request"
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1051:"fileHint": "PDF, JPG, PNG, or WEBP — up to {{maxMb}} MB.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1080:"description": "Monthly attendance-based timesheets for internal staff — pick someone to view their month."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1083:"description": "Internal staff only — a deployed/mobilised field worker has their own timesheet on their Deployment record instead.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1176:"Resignation": "The worker is leaving on their own terms — Article 85 tiering by length of service applies.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1177:"TerminationByEmployer": "The company is ending the contract — full award, no reduction.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1178:"EndOfContract": "The contract term ended and wasn't renewed — full award, no reduction.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1179:"SponsorshipTransfer": "The worker's sponsorship is transferring to another employer — full award, no reduction. Confirm this treatment with your HR/legal advisor if unsure."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1197:"reductionNoteOther": "Not a resignation — full award, no reduction.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1341:"pendingHint": "Not usable for deployments yet — waiting on a review.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1444:"pageDescription": "Every worker actually at work with a client — born automatically once a mobilisation is approved.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1467:"truncated": "Only the first {{limit}} of {{total}} deployments are shown — narrow the view with the filters (Export to Excel shares the same {{limit}}-row limit).",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1523:"subcontractedDescription": "Workers whose most recent placement has ended, with nothing newer since — inferred from mobilisation history, since these workers have no ongoing record of their own between placements.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1529:"pageDescription": "Every client with at least one outstanding invoice, soonest-due first. A client pays in bulk for everyone placed there — see the breakdown behind each balance.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1548:"creditBalance": "This client has a {{amount}} credit balance — it will automatically apply to their next invoice.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1558:"recordPaymentModalTitle": "Record payment — {{client}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1561:"paymentRecordedToast": "Payment recorded — awaiting approval."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1660:"editDeploymentModalTitle": "Edit — {{name}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1669:"exitWarning": "This will mark {{name}} as Exited — they'll no longer appear as active staff, in payroll, or be eligible for a new mobilisation until re-activated.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1677:"monthlyHoursHint": "Enter the client's timesheet for a month once it has fully ended — or, once this deployment itself has ended, for any month it actually covered, right away.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1679:"noEligibleMonth": "No month is ready to enter yet — hours can be added once a full calendar month has passed since the deployment started.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1702:"invoicedDue": "Invoiced — due {{date}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1705:"invoiceRef": "Invoice {{number}} — {{date}}"
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1708:"sendInvoiceModalTitle": "Send invoice — {{month}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1709:"sendInvoiceModalMessage": "The invoice itself is created in ERPNext — enter its number and date here, and attach a copy for reference.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1712:"invoiceDateTooEarly": "{{month}} hasn't finished yet — pick a date after it ends.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1721:"expensesHint": "Real operational costs against this deployment — fuel, accommodation, and the like — plus its own Approved-timesheet Revenue/Expenses/Net Profit below.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1728:"noExpensesYetDescription": "Log a real cost against this deployment — fuel, accommodation, and the like.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1738:"supplierTimesheetHoursHint": "Optional — add it now if you already know it, or use \"Enter subcontractor hours\" on this month's row once the subcontractor's own timesheet comes in.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1740:"enterSupplierHoursModalTitle": "Subcontractor hours — {{month}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1741:"enterSupplierHoursModalMessage": "The subcontractor's own timesheet for this month — used to work out what this company owes them, independently of the client's own hours.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1754:"deductionAmountHint": "A deduction the client applied on their own timesheet (e.g. for an Absent day) — enter the exact figure shown there.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1758:"supplierDeductionAmountHint": "An adjustment deducted from what this company owes the subcontractor this month (a dispute or correction) — reduces the Sub Invoice amount.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1771:"endedNote": "This deployment has ended — every month it was actually placed for has already been entered."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1824:"activeEngagementWarning": "This worker still has an active mobilisation or deployment — demobilise or complete it first before archiving.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1827:"archiveConfirmMessage": "This hides all {{count}} record(s) — and any deployment they produced — from every list and lookup across the app. Nothing is deleted; you can restore it anytime.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1831:"restoreConfirmMessage": "This makes all {{count}} record(s) — and any deployment they produced — visible again in every list and lookup.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1860:"iqamaAutofillToast": "Found {{name}} from a previous mobilisation — details filled in.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1896:"otEmployeeRateHint": "Paid directly to the worker for each OT hour — not billed through the subcontractor. Treated as a company expense when the hours are approved.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1906:"checkoutDateHint": "Leave blank if the worker is still there — a date locks in when this placement actually ended.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1907:"clearCheckoutDate": "Clear — still ongoing",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1923:"fromRequirement": "Starting from {{serial}} · {{client}} — for {{name}}. Check the details below; saving links this mobilisation to that requirement.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1926:"alreadyStartedDescription": "{{serial}} was already started for this candidate — a candidate can have only one.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1932:"descriptionLine": "{{worker}} — {{client}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1939:"cannotEditDescription": "Only a Draft or Rejected mobilisation can be edited — this one is {{status}}.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1985:"needsConfirmationHint": "You've been added as a coordinator on this mobilisation — confirm your involvement.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:1996:"noDocumentsConfirmMessage": "This mobilisation has no documents attached (e.g. contract, ID copy) — the reviewer may need one to decide it. Submit for review anyway?",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2132:"editModalTitle": "Edit — {{name}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2135:"gosiHint": "GOSI is not calculated automatically — rates vary by nationality/coverage. Enter the correct figure per your current rates.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2137:"advanceRepaymentHint": "Suggested from the employee's approved, outstanding advance (amount ÷ repayment months). You can lower it or set it to 0 to skip this month — it can't be raised above the suggested amount here. Recorded against the advance automatically once this run is finalized.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2176:"emptyDescriptionOwn": "Add a to-do for yourself — anything a manager assigns you will show up here too.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2209:"backdatedNote": "Back-dated — added {{when}}",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2212:"emptyDescriptionOwn": "Write down what you worked on today — your manager can read it here.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2222:"pageDescription": "Client requirements that have come in but aren't mobilised yet — from first request to mobilised.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2237:"truncated": "Only the first 1,000 requirements are shown — narrow the view with the filters.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2244:"descriptionAdmin": "Stages are the columns a requirement moves through. Start from a suggested set — you can rename, reorder or remove anything afterwards — or build your own.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2281:"pageDescription": "Every requirement closed without converting to a mobilisation — kept here for review, out of the active board.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2305:"clientHint": "Type the company name — pick a suggestion to link an existing client. A company that isn't a client yet is fine.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2306:"clientHintNoSuggestions": "The client list isn't available to you, so there are no suggestions — just type the company name. It links to an existing client automatically if the name matches.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2344:"emptyEditable": "No candidates yet. Add each worker you line up — where they come from and how far their paperwork is.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2390:"notifyOnEnterHint": "Everyone with team access to Requirements is told — e.g. for \"Ready to mobilise\".",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2392:"isMobilisedStageHint": "When every worker a requirement asked for has been approved for mobilisation, its card moves here on its own. Only one stage can be this — choosing it moves the setting from the old one."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2431:"pageDescription": "Company costs — rent, fuel, purchases, utilities — the other half of profit alongside invoices.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2471:"receiptAttachedNote": "Receipt: {{name}} — attached at entry, cannot be changed here.",
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\i18n\locales\en.json:2475:"receiptHint": "PDF, JPG, PNG, or WEBP — up to {{maxMb}} MB."
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\lib\auditActions.js:16:'auth.refresh.reuse_detected': 'refresh token reuse detected — sessions revoked',
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\lib\constants.js:20:Own: 'Own — internal staff',
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\lib\constants.js:21:Outsourced: 'Outsourced — supplied workforce',
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\lib\constants.js:22:Subcontracted: 'Subcontracted — sourced from a subcontractor',
+c:\Users\JARVIS\Desktop\Al Jazeera CRM\client\src\lib\useCopyToClipboard.js:16:{ successMessage = 'Copied.', failureMessage = 'Could not copy — select and copy it manually.' } = {}
