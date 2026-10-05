@@ -1,0 +1,1 @@
+import{t as e}from"./axios-nI7oD8FS.js";async function t(){let{data:t}=await e.get(`/locations`);return t.data}async function n(t){let{data:n}=await e.post(`/locations`,{name:t});return n.data}async function r(t){await e.delete(`/locations/${t}`)}export{r as n,t as r,n as t};

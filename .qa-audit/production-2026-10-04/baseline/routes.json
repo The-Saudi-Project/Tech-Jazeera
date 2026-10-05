@@ -1,0 +1,4422 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/approvals/roles",
+    "file": "server/src/modules/approvals/approvals.routes.js",
+    "line": 49,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireStaffOrExecutive",
+      "canReadApprovalHierarchy",
+      "asyncHandler(approvalsController.listRoles)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/approvals/roles",
+    "file": "server/src/modules/approvals/approvals.routes.js",
+    "line": 50,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canManageApprovalHierarchy",
+      "validate({ body: createApprovalRoleSchema })",
+      "asyncHandler(approvalsController.createRole)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/approvals/roles/:id",
+    "file": "server/src/modules/approvals/approvals.routes.js",
+    "line": 56,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canManageApprovalHierarchy",
+      "validate({ params: approvalRoleIdParamSchema, body: updateApprovalRoleSchema })",
+      "asyncHandler(approvalsController.updateRole)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/approvals/workflows",
+    "file": "server/src/modules/approvals/approvals.routes.js",
+    "line": 63,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireStaffOrExecutive",
+      "canReadApprovalHierarchy",
+      "asyncHandler(approvalsController.listWorkflows)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/approvals/workflows",
+    "file": "server/src/modules/approvals/approvals.routes.js",
+    "line": 64,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canManageApprovalHierarchy",
+      "validate({ body: createApprovalWorkflowSchema })",
+      "asyncHandler(approvalsController.createWorkflow)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/approvals/workflows/:id",
+    "file": "server/src/modules/approvals/approvals.routes.js",
+    "line": 70,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canManageApprovalHierarchy",
+      "validate({ params: approvalWorkflowIdParamSchema, body: updateApprovalWorkflowSchema })",
+      "asyncHandler(approvalsController.updateWorkflow)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/approvals/log",
+    "file": "server/src/modules/approvals/approvals.routes.js",
+    "line": 79,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireStaffOrExecutive",
+      "validate({ query: approvalLogQuerySchema })",
+      "asyncHandler(approvalsController.log)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/assets",
+    "file": "server/src/modules/assets/asset.routes.js",
+    "line": 39,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: listAssetsSchema })",
+      "asyncHandler(assetController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/assets/by-employee/:employeeId",
+    "file": "server/src/modules/assets/asset.routes.js",
+    "line": 41,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: employeeIdParamSchema })",
+      "asyncHandler(assetController.listByEmployee)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/assets/:id",
+    "file": "server/src/modules/assets/asset.routes.js",
+    "line": 47,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: assetIdParamSchema })",
+      "asyncHandler(assetController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/assets",
+    "file": "server/src/modules/assets/asset.routes.js",
+    "line": 48,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: createAssetSchema })",
+      "asyncHandler(assetController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/assets/:id",
+    "file": "server/src/modules/assets/asset.routes.js",
+    "line": 49,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: assetIdParamSchema, body: updateAssetSchema })",
+      "asyncHandler(assetController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/assets/:id/status",
+    "file": "server/src/modules/assets/asset.routes.js",
+    "line": 55,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: assetIdParamSchema, body: setAssetStatusSchema })",
+      "asyncHandler(assetController.setStatus)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/assets/:id/assign",
+    "file": "server/src/modules/assets/asset.routes.js",
+    "line": 61,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: assetIdParamSchema, body: assignAssetSchema })",
+      "asyncHandler(assetController.assign)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/assets/:id/return",
+    "file": "server/src/modules/assets/asset.routes.js",
+    "line": 67,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: assetIdParamSchema, body: returnAssetSchema })",
+      "asyncHandler(assetController.returnAsset)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/assets/:id",
+    "file": "server/src/modules/assets/asset.routes.js",
+    "line": 73,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canDelete",
+      "validate({ params: assetIdParamSchema })",
+      "asyncHandler(assetController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/attendance/bulk",
+    "file": "server/src/modules/attendance/attendance.routes.js",
+    "line": 34,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageAttendance",
+      "validate({ body: markBulkSchema })",
+      "asyncHandler(attendanceController.markBulk)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/attendance/adjust",
+    "file": "server/src/modules/attendance/attendance.routes.js",
+    "line": 40,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageAttendance",
+      "validate({ body: adjustAttendanceSchema })",
+      "asyncHandler(attendanceController.adjust)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/attendance",
+    "file": "server/src/modules/attendance/attendance.routes.js",
+    "line": 46,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadAttendance",
+      "validate({ query: listAttendanceSchema })",
+      "asyncHandler(attendanceController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/attendance/summary",
+    "file": "server/src/modules/attendance/attendance.routes.js",
+    "line": 47,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadAttendance",
+      "validate({ query: summarySchema })",
+      "asyncHandler(attendanceController.summary)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/attendance/export",
+    "file": "server/src/modules/attendance/attendance.routes.js",
+    "line": 53,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadAttendance",
+      "validate({ query: exportSchema })",
+      "asyncHandler(attendanceController.exportSummary)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/attendance/office-location",
+    "file": "server/src/modules/attendance/attendance.routes.js",
+    "line": 65,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadOfficeLocation",
+      "asyncHandler(attendanceController.getOfficeLocation)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/attendance/office-location",
+    "file": "server/src/modules/attendance/attendance.routes.js",
+    "line": 66,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageOfficeLocation",
+      "validate({ body: officeLocationSchema })",
+      "asyncHandler(attendanceController.updateOfficeLocation)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/audit",
+    "file": "server/src/modules/audit/audit.routes.js",
+    "line": 15,
+    "routerGuards": [],
+    "handlers": [
+      "requireAuth",
+      "requireSectionAccess('auditLog', 'read')",
+      "validate({ query: listAuditSchema })",
+      "asyncHandler(auditController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "file": "server/src/modules/auth/auth.routes.js",
+    "line": 25,
+    "routerGuards": [
+      "requireTrustedOrigin"
+    ],
+    "handlers": [
+      "loginLimiter",
+      "validate({ body: loginSchema })",
+      "asyncHandler(authController.login)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/refresh",
+    "file": "server/src/modules/auth/auth.routes.js",
+    "line": 26,
+    "routerGuards": [
+      "requireTrustedOrigin"
+    ],
+    "handlers": [
+      "asyncHandler(authController.refresh)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/logout",
+    "file": "server/src/modules/auth/auth.routes.js",
+    "line": 27,
+    "routerGuards": [
+      "requireTrustedOrigin"
+    ],
+    "handlers": [
+      "asyncHandler(authController.logout)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/auth/password",
+    "file": "server/src/modules/auth/auth.routes.js",
+    "line": 32,
+    "routerGuards": [
+      "requireTrustedOrigin"
+    ],
+    "handlers": [
+      "requireAuth",
+      "validate({ body: changePasswordSchema })",
+      "asyncHandler(authController.changePassword)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/auth/avatar",
+    "file": "server/src/modules/auth/auth.routes.js",
+    "line": 40,
+    "routerGuards": [
+      "requireTrustedOrigin"
+    ],
+    "handlers": [
+      "requireAuth",
+      "uploadAvatarImage",
+      "asyncHandler(authController.uploadAvatar)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/auth/avatar",
+    "file": "server/src/modules/auth/auth.routes.js",
+    "line": 41,
+    "routerGuards": [
+      "requireTrustedOrigin"
+    ],
+    "handlers": [
+      "requireAuth",
+      "asyncHandler(authController.removeAvatar)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/clients",
+    "file": "server/src/modules/clients/client.routes.js",
+    "line": 41,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadClients",
+      "validate({ query: listClientsSchema })",
+      "asyncHandler(clientController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/clients/:id",
+    "file": "server/src/modules/clients/client.routes.js",
+    "line": 42,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadClients",
+      "validate({ params: clientIdParamSchema })",
+      "asyncHandler(clientController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/clients",
+    "file": "server/src/modules/clients/client.routes.js",
+    "line": 43,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageClients",
+      "validate({ body: createClientSchema })",
+      "asyncHandler(clientController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/clients/:id",
+    "file": "server/src/modules/clients/client.routes.js",
+    "line": 49,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageClients",
+      "validate({ params: clientIdParamSchema, body: updateClientSchema })",
+      "asyncHandler(clientController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/clients/:id/decide",
+    "file": "server/src/modules/clients/client.routes.js",
+    "line": 55,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageClients",
+      "validate({ params: clientIdParamSchema, body: decideClientSchema })",
+      "asyncHandler(clientController.decide)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/clients/:id",
+    "file": "server/src/modules/clients/client.routes.js",
+    "line": 61,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'Manager')",
+      "validate({ params: clientIdParamSchema })",
+      "asyncHandler(clientController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/company-settings/branding",
+    "file": "server/src/modules/companySettings/companySettings.routes.js",
+    "line": 35,
+    "routerGuards": [],
+    "handlers": [
+      "asyncHandler(companySettingsController.getBranding)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/company-settings",
+    "file": "server/src/modules/companySettings/companySettings.routes.js",
+    "line": 39,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(companySettingsController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/company-settings",
+    "file": "server/src/modules/companySettings/companySettings.routes.js",
+    "line": 40,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ body: updateCompanySettingsSchema })",
+      "asyncHandler(companySettingsController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/company-settings/logo",
+    "file": "server/src/modules/companySettings/companySettings.routes.js",
+    "line": 41,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "uploadLogoImage",
+      "asyncHandler(companySettingsController.uploadLogo)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/company-settings/logo",
+    "file": "server/src/modules/companySettings/companySettings.routes.js",
+    "line": 42,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(companySettingsController.removeLogo)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/daily-updates/coordinators",
+    "file": "server/src/modules/dailyUpdates/dailyUpdate.routes.js",
+    "line": 34,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(dailyUpdateController.coordinators)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/daily-updates",
+    "file": "server/src/modules/dailyUpdates/dailyUpdate.routes.js",
+    "line": 35,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: listDailyUpdatesSchema })",
+      "asyncHandler(dailyUpdateController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/daily-updates",
+    "file": "server/src/modules/dailyUpdates/dailyUpdate.routes.js",
+    "line": 36,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ body: createDailyUpdateSchema })",
+      "asyncHandler(dailyUpdateController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/daily-updates/:id",
+    "file": "server/src/modules/dailyUpdates/dailyUpdate.routes.js",
+    "line": 37,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: dailyUpdateIdParamSchema, body: updateDailyUpdateSchema })",
+      "asyncHandler(dailyUpdateController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/daily-updates/:id/status",
+    "file": "server/src/modules/dailyUpdates/dailyUpdate.routes.js",
+    "line": 42,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: dailyUpdateIdParamSchema, body: setStatusSchema })",
+      "asyncHandler(dailyUpdateController.setStatus)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/daily-updates/:id",
+    "file": "server/src/modules/dailyUpdates/dailyUpdate.routes.js",
+    "line": 47,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: dailyUpdateIdParamSchema })",
+      "asyncHandler(dailyUpdateController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/dashboard",
+    "file": "server/src/modules/dashboard/dashboard.routes.js",
+    "line": 21,
+    "routerGuards": [],
+    "handlers": [
+      "requireAuth",
+      "requireStaffOrExecutive",
+      "validate({ query: dashboardQuerySchema })",
+      "asyncHandler(dashboardController.overview)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/dashboard/standby-analysis",
+    "file": "server/src/modules/dashboard/dashboard.routes.js",
+    "line": 29,
+    "routerGuards": [],
+    "handlers": [
+      "requireAuth",
+      "requireStaffOrExecutive",
+      "asyncHandler(dashboardController.standbyAnalysis)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/dashboard/coordinator-leaderboard",
+    "file": "server/src/modules/dashboard/dashboard.routes.js",
+    "line": 38,
+    "routerGuards": [],
+    "handlers": [
+      "requireAuth",
+      "requireStaffOrExecutive",
+      "validate({ query: monthQuerySchema })",
+      "asyncHandler(dashboardController.coordinatorLeaderboard)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/dashboard/coordinator-drill-down/:id",
+    "file": "server/src/modules/dashboard/dashboard.routes.js",
+    "line": 46,
+    "routerGuards": [],
+    "handlers": [
+      "requireAuth",
+      "requireStaffOrExecutive",
+      "validate({ params: coordinatorIdParamSchema, query: monthQuerySchema })",
+      "asyncHandler(dashboardController.coordinatorDrillDown)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 89,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadDeployments",
+      "validate({ query: listDeploymentsSchema })",
+      "asyncHandler(deploymentController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments/standby",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 91,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadDeployments",
+      "asyncHandler(deploymentController.standby)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments/payments-due",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 95,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(deploymentController.paymentsDue)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments/paid-invoices",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 96,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(deploymentController.paidInvoices)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments/payments-due/:clientId",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 98,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: clientIdParamSchema })",
+      "asyncHandler(deploymentController.clientPaymentDetail)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/deployments/payments-due/:clientId/payments",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 106,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: clientIdParamSchema, body: recordClientPaymentSchema })",
+      "asyncHandler(deploymentController.recordClientPayment)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments/pending-payments",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 111,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canDecidePayment",
+      "asyncHandler(deploymentController.pendingPaymentsQueue)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/deployments/client-payments/:paymentId/decide",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 112,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canDecidePayment",
+      "validate({ params: clientPaymentIdParamSchema, body: decideClientPaymentSchema })",
+      "asyncHandler(deploymentController.decideClientPayment)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments/ready-to-invoice",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 120,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(deploymentController.readyToInvoice)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments/pending-hours",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 121,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(deploymentController.pendingHoursQueue)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments/export",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 122,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadDeployments",
+      "validate({ query: exportDeploymentsSchema })",
+      "asyncHandler(deploymentController.exportAll)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments/:id",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 128,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadDeployments",
+      "validate({ params: deploymentIdParamSchema })",
+      "asyncHandler(deploymentController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/deployments/:id",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 134,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireSectionAccess('deploymentsEdit', 'write')",
+      "validate({ params: deploymentIdParamSchema, body: updateDeploymentSchema })",
+      "asyncHandler(deploymentController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/deployments/:id/monthly-hours",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 140,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: deploymentIdParamSchema, body: addMonthlyHoursSchema })",
+      "asyncHandler(deploymentController.addMonthlyHours)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/deployments/:id/monthly-hours/:entryId",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 145,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: monthlyHoursEntryParamSchema, body: updateMonthlyHoursSchema })",
+      "asyncHandler(deploymentController.updateMonthlyHours)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/deployments/:id/monthly-hours/:entryId/decide",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 150,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canDecideHours",
+      "validate({ params: monthlyHoursEntryParamSchema, body: decideMonthlyHoursSchema })",
+      "asyncHandler(deploymentController.decideMonthlyHours)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/deployments/:id/monthly-hours/:entryId/send-invoice",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 156,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canInvoice",
+      "uploadSingle",
+      "validate({ params: monthlyHoursEntryParamSchema, body: sendInvoiceSchema })",
+      "asyncHandler(deploymentController.sendInvoice)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/deployments/:id/monthly-hours/:entryId/invoice-file",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 163,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadDeployments",
+      "validate({ params: monthlyHoursEntryParamSchema })",
+      "asyncHandler(deploymentController.invoiceFile)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/deployments/:id/demobilise",
+    "file": "server/src/modules/deployments/deployment.routes.js",
+    "line": 173,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canRelease",
+      "validate({ params: deploymentIdParamSchema, body: demobiliseDeploymentSchema })",
+      "asyncHandler(deploymentController.demobilise)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/documents",
+    "file": "server/src/modules/documents/document.routes.js",
+    "line": 41,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: listDocumentsSchema })",
+      "asyncHandler(documentController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/documents/:id",
+    "file": "server/src/modules/documents/document.routes.js",
+    "line": 42,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: documentIdParamSchema })",
+      "asyncHandler(documentController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/documents/:id/file",
+    "file": "server/src/modules/documents/document.routes.js",
+    "line": 48,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: documentIdParamSchema, query: fileQuerySchema })",
+      "asyncHandler(documentController.file)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/documents",
+    "file": "server/src/modules/documents/document.routes.js",
+    "line": 54,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canWrite",
+      "uploadSingle",
+      "validate({ body: createDocumentSchema })",
+      "asyncHandler(documentController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/documents/:id/versions",
+    "file": "server/src/modules/documents/document.routes.js",
+    "line": 61,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: documentIdParamSchema })",
+      "uploadSingle",
+      "asyncHandler(documentController.addVersion)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/documents/:id",
+    "file": "server/src/modules/documents/document.routes.js",
+    "line": 68,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canDelete",
+      "validate({ params: documentIdParamSchema })",
+      "asyncHandler(documentController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/employees",
+    "file": "server/src/modules/employees/employee.routes.js",
+    "line": 50,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadEmployees",
+      "validate({ query: listEmployeesSchema })",
+      "asyncHandler(employeeController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/employees/:id",
+    "file": "server/src/modules/employees/employee.routes.js",
+    "line": 51,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canReadEmployees",
+      "validate({ params: employeeIdParamSchema })",
+      "asyncHandler(employeeController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/employees",
+    "file": "server/src/modules/employees/employee.routes.js",
+    "line": 57,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireSectionAccess('employeeCreate', 'write')",
+      "validate({ body: createEmployeeSchema })",
+      "asyncHandler(employeeController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/employees/:id",
+    "file": "server/src/modules/employees/employee.routes.js",
+    "line": 63,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'Manager', 'HR')",
+      "validate({ params: employeeIdParamSchema, body: updateEmployeeSchema })",
+      "asyncHandler(employeeController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/employees/:id",
+    "file": "server/src/modules/employees/employee.routes.js",
+    "line": 69,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'HR')",
+      "validate({ params: employeeIdParamSchema })",
+      "asyncHandler(employeeController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/employees/:id/user",
+    "file": "server/src/modules/employees/employee.routes.js",
+    "line": 80,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'HR')",
+      "validate({ params: employeeIdParamSchema, body: createLoginSchema })",
+      "asyncHandler(employeeController.createLogin)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/employees/:id/user/reset-password",
+    "file": "server/src/modules/employees/employee.routes.js",
+    "line": 89,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'HR')",
+      "validate({ params: employeeIdParamSchema })",
+      "asyncHandler(employeeController.resetLoginPassword)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/employees/:id/user/role",
+    "file": "server/src/modules/employees/employee.routes.js",
+    "line": 100,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'HR')",
+      "validate({ params: employeeIdParamSchema, body: updateLoginRoleSchema })",
+      "asyncHandler(employeeController.updateLoginRole)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/outsourced-employees",
+    "file": "server/src/modules/employees/outsourcedEmployee.routes.js",
+    "line": 29,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "asyncHandler(controller.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/outsourced-employees",
+    "file": "server/src/modules/employees/outsourcedEmployee.routes.js",
+    "line": 30,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: createOutsourcedEmployeeSchema })",
+      "asyncHandler(controller.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/outsourced-employees/:id",
+    "file": "server/src/modules/employees/outsourcedEmployee.routes.js",
+    "line": 31,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "validate({ params: outsourcedEmployeeIdParamSchema })",
+      "asyncHandler(controller.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/outsourced-employees/:id",
+    "file": "server/src/modules/employees/outsourcedEmployee.routes.js",
+    "line": 32,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: outsourcedEmployeeIdParamSchema, body: updateOutsourcedEmployeeSchema })",
+      "asyncHandler(controller.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/outsourced-employees/:id",
+    "file": "server/src/modules/employees/outsourcedEmployee.routes.js",
+    "line": 38,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: outsourcedEmployeeIdParamSchema })",
+      "asyncHandler(controller.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/outsourced-employees/:id/documents",
+    "file": "server/src/modules/employees/outsourcedEmployee.routes.js",
+    "line": 47,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: outsourcedEmployeeIdParamSchema })",
+      "uploadSingle",
+      "validate({ body: outsourcedEmployeeDocumentBodySchema })",
+      "asyncHandler(controller.addDocument)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/outsourced-employees/:id/documents/:fileId",
+    "file": "server/src/modules/employees/outsourcedEmployee.routes.js",
+    "line": 55,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: outsourcedEmployeeDocumentParamSchema })",
+      "asyncHandler(controller.removeDocument)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/outsourced-employees/:id/documents/:fileId/file",
+    "file": "server/src/modules/employees/outsourcedEmployee.routes.js",
+    "line": 61,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "validate({ params: outsourcedEmployeeDocumentParamSchema })",
+      "asyncHandler(controller.documentFile)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/eosb",
+    "file": "server/src/modules/eosb/settlement.routes.js",
+    "line": 28,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: listSettlementsSchema })",
+      "asyncHandler(settlementController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/eosb/:id",
+    "file": "server/src/modules/eosb/settlement.routes.js",
+    "line": 29,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: settlementIdParamSchema })",
+      "asyncHandler(settlementController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/eosb/:id/pdf",
+    "file": "server/src/modules/eosb/settlement.routes.js",
+    "line": 30,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: settlementIdParamSchema })",
+      "asyncHandler(settlementController.pdf)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/eosb",
+    "file": "server/src/modules/eosb/settlement.routes.js",
+    "line": 31,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: createSettlementSchema })",
+      "asyncHandler(settlementController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/eosb/:id",
+    "file": "server/src/modules/eosb/settlement.routes.js",
+    "line": 32,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: settlementIdParamSchema })",
+      "asyncHandler(settlementController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/exit-documents/exit-reentry",
+    "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+    "line": 51,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: listExitReentrySchema })",
+      "asyncHandler(exitReentryController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/exit-documents/exit-reentry",
+    "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+    "line": 52,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: submitExitReentrySchema })",
+      "asyncHandler(exitReentryController.submit)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/exit-documents/exit-reentry/:id/decide",
+    "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+    "line": 58,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: exitReentryIdParamSchema, body: decideExitReentrySchema })",
+      "asyncHandler(exitReentryController.decide)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/exit-documents/exit-reentry/:id/issue",
+    "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+    "line": 64,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'Manager', 'HR')",
+      "validate({ params: exitReentryIdParamSchema, body: markExitReentryIssuedSchema })",
+      "asyncHandler(exitReentryController.markIssued)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/exit-documents/certificates",
+    "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+    "line": 71,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: listCertificatesSchema })",
+      "asyncHandler(certificateController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/exit-documents/certificates",
+    "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+    "line": 72,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: submitCertificateSchema })",
+      "asyncHandler(certificateController.submit)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/exit-documents/certificates/:id/pdf",
+    "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+    "line": 78,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: certificateIdParamSchema })",
+      "asyncHandler(certificateController.pdf)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/exit-documents/certificates/:id/decide",
+    "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+    "line": 84,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: certificateIdParamSchema, body: decideCertificateSchema })",
+      "asyncHandler(certificateController.decide)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/exit-documents/certificates/:id/issue",
+    "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+    "line": 90,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'Manager', 'HR')",
+      "validate({ params: certificateIdParamSchema })",
+      "asyncHandler(certificateController.markIssued)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/expenses",
+    "file": "server/src/modules/expenses/expense.routes.js",
+    "line": 32,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: listExpensesSchema })",
+      "asyncHandler(expenseController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/expenses/summary",
+    "file": "server/src/modules/expenses/expense.routes.js",
+    "line": 33,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: summaryQuerySchema })",
+      "asyncHandler(expenseController.summary)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/expenses/:id",
+    "file": "server/src/modules/expenses/expense.routes.js",
+    "line": 34,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: expenseIdParamSchema })",
+      "asyncHandler(expenseController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/expenses/:id/receipt",
+    "file": "server/src/modules/expenses/expense.routes.js",
+    "line": 35,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: expenseIdParamSchema })",
+      "asyncHandler(expenseController.receipt)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/expenses",
+    "file": "server/src/modules/expenses/expense.routes.js",
+    "line": 36,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "uploadSingle",
+      "validate({ body: createExpenseSchema })",
+      "asyncHandler(expenseController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/expenses/:id",
+    "file": "server/src/modules/expenses/expense.routes.js",
+    "line": 37,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: expenseIdParamSchema, body: updateExpenseSchema })",
+      "asyncHandler(expenseController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/expenses/:id",
+    "file": "server/src/modules/expenses/expense.routes.js",
+    "line": 43,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: expenseIdParamSchema })",
+      "asyncHandler(expenseController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/financial-requests/advances",
+    "file": "server/src/modules/financialRequests/financialRequests.routes.js",
+    "line": 67,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireStaffOrExecutive",
+      "validate({ query: listAdvancesSchema })",
+      "asyncHandler(advanceController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/financial-requests/advances",
+    "file": "server/src/modules/financialRequests/financialRequests.routes.js",
+    "line": 73,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireStaffOrExecutive",
+      "validate({ body: submitAdvanceSchema })",
+      "asyncHandler(advanceController.submit)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/financial-requests/advances/:id/decide",
+    "file": "server/src/modules/financialRequests/financialRequests.routes.js",
+    "line": 79,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canDecideFinancialRequests",
+      "validate({ params: advanceIdParamSchema, body: decideAdvanceSchema })",
+      "asyncHandler(advanceController.decide)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/financial-requests/advances/:id/repayments",
+    "file": "server/src/modules/financialRequests/financialRequests.routes.js",
+    "line": 85,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canHandleMoney",
+      "validate({ params: advanceIdParamSchema, body: addRepaymentSchema })",
+      "asyncHandler(advanceController.addRepayment)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/financial-requests/reimbursements",
+    "file": "server/src/modules/financialRequests/financialRequests.routes.js",
+    "line": 92,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireStaffOrExecutive",
+      "validate({ query: listReimbursementsSchema })",
+      "asyncHandler(reimbursementController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/financial-requests/reimbursements",
+    "file": "server/src/modules/financialRequests/financialRequests.routes.js",
+    "line": 98,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireStaffOrExecutive",
+      "uploadSingle",
+      "validate({ body: submitReimbursementSchema })",
+      "asyncHandler(reimbursementController.submit)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/financial-requests/reimbursements/:id/receipt",
+    "file": "server/src/modules/financialRequests/financialRequests.routes.js",
+    "line": 110,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canHandleMoney",
+      "validate({ params: reimbursementIdParamSchema })",
+      "asyncHandler(reimbursementController.receipt)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/financial-requests/reimbursements/:id/decide",
+    "file": "server/src/modules/financialRequests/financialRequests.routes.js",
+    "line": 116,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canDecideFinancialRequests",
+      "validate({ params: reimbursementIdParamSchema, body: decideReimbursementSchema })",
+      "asyncHandler(reimbursementController.decide)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/financial-requests/reimbursements/:id/pay",
+    "file": "server/src/modules/financialRequests/financialRequests.routes.js",
+    "line": 122,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canHandleMoney",
+      "validate({ params: reimbursementIdParamSchema })",
+      "asyncHandler(reimbursementController.markPaid)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/holidays",
+    "file": "server/src/modules/holidays/holiday.routes.js",
+    "line": 28,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "validate({ query: listHolidaysSchema })",
+      "asyncHandler(holidayController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/holidays",
+    "file": "server/src/modules/holidays/holiday.routes.js",
+    "line": 29,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canManageHolidays",
+      "validate({ body: createHolidaySchema })",
+      "asyncHandler(holidayController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/holidays/:id",
+    "file": "server/src/modules/holidays/holiday.routes.js",
+    "line": 30,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canManageHolidays",
+      "validate({ params: holidayIdParamSchema, body: updateHolidaySchema })",
+      "asyncHandler(holidayController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/holidays/:id",
+    "file": "server/src/modules/holidays/holiday.routes.js",
+    "line": 36,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canManageHolidays",
+      "validate({ params: holidayIdParamSchema })",
+      "asyncHandler(holidayController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/job-titles",
+    "file": "server/src/modules/jobTitles/jobTitle.routes.js",
+    "line": 25,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: listJobTitlesSchema })",
+      "asyncHandler(jobTitleController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/job-titles",
+    "file": "server/src/modules/jobTitles/jobTitle.routes.js",
+    "line": 26,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ body: createJobTitleSchema })",
+      "asyncHandler(jobTitleController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/job-titles/:id",
+    "file": "server/src/modules/jobTitles/jobTitle.routes.js",
+    "line": 27,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: jobTitleIdParamSchema, body: updateJobTitleSchema })",
+      "asyncHandler(jobTitleController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/job-titles/:id",
+    "file": "server/src/modules/jobTitles/jobTitle.routes.js",
+    "line": 32,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: jobTitleIdParamSchema })",
+      "asyncHandler(jobTitleController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/leave",
+    "file": "server/src/modules/leave/leaveRequest.routes.js",
+    "line": 37,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canReadLeaveRequests",
+      "validate({ query: listLeaveRequestsSchema })",
+      "asyncHandler(leaveController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/leave",
+    "file": "server/src/modules/leave/leaveRequest.routes.js",
+    "line": 41,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWriteLeaveRequests",
+      "uploadSingle",
+      "validate({ body: submitLeaveRequestSchema })",
+      "asyncHandler(leaveController.submit)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/leave/:id/attachment",
+    "file": "server/src/modules/leave/leaveRequest.routes.js",
+    "line": 42,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canReadLeaveRequests",
+      "validate({ params: leaveRequestIdParamSchema })",
+      "asyncHandler(leaveController.attachment)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/leave/:id/decide",
+    "file": "server/src/modules/leave/leaveRequest.routes.js",
+    "line": 56,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWriteLeaveRequests",
+      "validate({ params: leaveRequestIdParamSchema, body: decideLeaveRequestSchema })",
+      "asyncHandler(leaveController.decide)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/leave/:id/acknowledge",
+    "file": "server/src/modules/leave/leaveRequest.routes.js",
+    "line": 62,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'Manager', 'HR', 'Coordinator')",
+      "validate({ params: leaveRequestIdParamSchema })",
+      "asyncHandler(leaveController.acknowledge)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/leave-types",
+    "file": "server/src/modules/leave/leaveType.routes.js",
+    "line": 30,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "validate({ query: listLeaveTypesSchema })",
+      "asyncHandler(leaveController.listTypes)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/leave-types",
+    "file": "server/src/modules/leave/leaveType.routes.js",
+    "line": 31,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'HR')",
+      "validate({ body: createLeaveTypeSchema })",
+      "asyncHandler(leaveController.createType)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/leave-types/:id",
+    "file": "server/src/modules/leave/leaveType.routes.js",
+    "line": 32,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireRoles('Admin', 'HR')",
+      "validate({ params: leaveTypeIdParamSchema, body: updateLeaveTypeSchema })",
+      "asyncHandler(leaveController.updateType)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/locations",
+    "file": "server/src/modules/locations/location.routes.js",
+    "line": 23,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(locationController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/locations",
+    "file": "server/src/modules/locations/location.routes.js",
+    "line": 24,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ body: createLocationSchema })",
+      "asyncHandler(locationController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/locations/:id",
+    "file": "server/src/modules/locations/location.routes.js",
+    "line": 25,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireRoles('Admin')",
+      "validate({ params: locationIdParamSchema })",
+      "asyncHandler(locationController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 64,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "asyncHandler(meController.getProfile)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/me",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 65,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ body: updateMyProfileSchema })",
+      "asyncHandler(meController.updateProfile)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/documents",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 66,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "asyncHandler(meController.listDocuments)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/documents/:id/file",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 67,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ params: documentIdParamSchema, query: fileQuerySchema })",
+      "asyncHandler(meController.documentFile)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/leave",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 72,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ query: listMyLeaveRequestsSchema })",
+      "asyncHandler(meController.listLeave)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/me/leave",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 73,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "uploadSingle",
+      "validate({ body: submitLeaveRequestSchema })",
+      "asyncHandler(meController.submitLeave)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/leave/:id/attachment",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 79,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ params: leaveRequestIdParamSchema })",
+      "asyncHandler(meController.leaveAttachment)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/me/leave/:id/cancel",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 84,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ params: leaveRequestIdParamSchema })",
+      "asyncHandler(meController.cancelLeave)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/me/attendance/punch",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 90,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ body: selfMarkSchema })",
+      "asyncHandler(meController.punch)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/attendance",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 95,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ query: listMyAttendanceSchema })",
+      "asyncHandler(meController.listAttendance)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/advances",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 101,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ query: listMyAdvancesSchema })",
+      "asyncHandler(meController.listAdvances)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/me/advances",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 102,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ body: submitAdvanceSchema })",
+      "asyncHandler(meController.submitAdvance)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/me/advances/:id/cancel",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 103,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ params: advanceIdParamSchema })",
+      "asyncHandler(meController.cancelAdvance)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/reimbursements",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 109,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ query: listMyReimbursementsSchema })",
+      "asyncHandler(meController.listReimbursements)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/me/reimbursements",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 114,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "uploadSingle",
+      "validate({ body: submitReimbursementSchema })",
+      "asyncHandler(meController.submitReimbursement)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/reimbursements/:id/receipt",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 120,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ params: reimbursementIdParamSchema })",
+      "asyncHandler(meController.reimbursementReceipt)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/me/reimbursements/:id/cancel",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 125,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ params: reimbursementIdParamSchema })",
+      "asyncHandler(meController.cancelReimbursement)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/exit-reentry",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 131,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ query: listMyExitReentrySchema })",
+      "asyncHandler(meController.listExitReentry)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/me/exit-reentry",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 136,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ body: submitExitReentrySchema })",
+      "asyncHandler(meController.submitExitReentry)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/me/exit-reentry/:id/cancel",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 141,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ params: exitReentryIdParamSchema })",
+      "asyncHandler(meController.cancelExitReentry)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/certificates",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 147,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ query: listMyCertificatesSchema })",
+      "asyncHandler(meController.listCertificates)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/me/certificates",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 152,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ body: submitCertificateSchema })",
+      "asyncHandler(meController.submitCertificate)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/certificates/:id/pdf",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 157,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ params: certificateIdParamSchema })",
+      "asyncHandler(meController.certificatePdf)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/me/certificates/:id/cancel",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 162,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ params: certificateIdParamSchema })",
+      "asyncHandler(meController.cancelCertificate)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/assets",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 168,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "asyncHandler(meController.listAssets)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/me/timesheets",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 170,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ query: listMyTimesheetsSchema })",
+      "asyncHandler(meController.listTimesheets)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/me/timesheets",
+    "file": "server/src/modules/me/me.routes.js",
+    "line": 175,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Worker', 'Staff')",
+      "asyncHandler(async (req, res, next) => {\r\n    if (!req.user.employee) return next();\r\n    const employee = await Employee.findById(req.user.employee).select('type').lean();\r\n    if (employee && employee.type !== 'Own') {\r\n      throw new ApiError(403, 'This portal is only available to internal staff.');\r\n    }\r\n    next();\r\n  })"
+    ],
+    "handlers": [
+      "validate({ body: submitTimesheetSchema })",
+      "asyncHandler(meController.submitTimesheet)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/profile",
+    "file": "server/src/modules/me/profile.routes.js",
+    "line": 29,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Manager', 'HR', 'Accounts', 'Coordinator', 'Executive', 'Office Secretary')"
+    ],
+    "handlers": [
+      "asyncHandler(meController.getProfile)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/profile",
+    "file": "server/src/modules/me/profile.routes.js",
+    "line": 30,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Manager', 'HR', 'Accounts', 'Coordinator', 'Executive', 'Office Secretary')"
+    ],
+    "handlers": [
+      "validate({ body: updateMyProfileSchema })",
+      "asyncHandler(meController.updateProfile)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisations",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 43,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: listMobilisationsSchema })",
+      "asyncHandler(mobilisationController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisations/coordinators",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 45,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(mobilisationController.listCoordinatorCandidates)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisations/lookup-by-iqama",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 46,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: mobilisationIqamaLookupQuerySchema })",
+      "asyncHandler(mobilisationController.lookupByIqama)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisations/previous-workers",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 51,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: mobilisationPreviousWorkersQuerySchema })",
+      "asyncHandler(mobilisationController.previousWorkers)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisations/worker-history",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 60,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireRoles('Admin')",
+      "validate({ query: workerHistoryQuerySchema })",
+      "asyncHandler(mobilisationController.getWorkerHistory)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/mobilisations/worker-history/archive",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 66,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireRoles('Admin')",
+      "validate({ body: workerIqamaBodySchema })",
+      "asyncHandler(mobilisationController.archiveWorker)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/mobilisations/worker-history/unarchive",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 72,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "requireRoles('Admin')",
+      "validate({ body: workerIqamaBodySchema })",
+      "asyncHandler(mobilisationController.unarchiveWorker)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisations/export",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 78,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: exportMobilisationsSchema })",
+      "asyncHandler(mobilisationController.exportAll)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisations/:id",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 83,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationIdParamSchema })",
+      "asyncHandler(mobilisationController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisations/:id/export",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 84,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationIdParamSchema })",
+      "asyncHandler(mobilisationController.exportOne)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/mobilisations",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 89,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ body: createMobilisationSchema })",
+      "asyncHandler(mobilisationController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/mobilisations/:id",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 90,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationIdParamSchema, body: updateMobilisationSchema })",
+      "asyncHandler(mobilisationController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/mobilisations/:id/coordinators",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 96,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationIdParamSchema, body: addCoordinatorSchema })",
+      "asyncHandler(mobilisationController.addCoordinator)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/mobilisations/:id/coordinators/:userId",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 101,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationCoordinatorParamSchema })",
+      "asyncHandler(mobilisationController.removeCoordinator)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/mobilisations/:id/coordinators/:userId/confirm",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 106,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationCoordinatorParamSchema })",
+      "asyncHandler(mobilisationController.confirmCoordinator)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PUT",
+    "path": "/api/mobilisations/:id/coordinator-shares",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 111,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationIdParamSchema, body: setCoordinatorSharesSchema })",
+      "asyncHandler(mobilisationController.setCoordinatorShares)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/mobilisations/:id/coordinator-shares",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 116,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationIdParamSchema })",
+      "asyncHandler(mobilisationController.clearCoordinatorShares)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/mobilisations/:id/submit",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 121,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationIdParamSchema })",
+      "asyncHandler(mobilisationController.submit)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/mobilisations/:id/commercial-details",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 128,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationIdParamSchema, body: commercialDetailsSchema })",
+      "asyncHandler(mobilisationController.saveCommercialDetails)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/mobilisations/:id/decide",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 133,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationIdParamSchema, body: decideMobilisationSchema })",
+      "asyncHandler(mobilisationController.decide)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/mobilisations/:id/documents",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 140,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationIdParamSchema })",
+      "uploadMultiple",
+      "validate({ body: mobilisationDocumentCategorySchema })",
+      "asyncHandler(mobilisationController.addDocuments)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/mobilisations/:id/documents/:fileId",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 147,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationDocumentParamSchema })",
+      "asyncHandler(mobilisationController.removeDocument)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisations/:id/documents/:fileId/file",
+    "file": "server/src/modules/mobilisations/mobilisation.routes.js",
+    "line": 152,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: mobilisationDocumentParamSchema })",
+      "asyncHandler(mobilisationController.documentFile)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisation-settings",
+    "file": "server/src/modules/mobilisationSettings/mobilisationSettings.routes.js",
+    "line": 17,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Admin')"
+    ],
+    "handlers": [
+      "asyncHandler(settingsController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/mobilisation-settings",
+    "file": "server/src/modules/mobilisationSettings/mobilisationSettings.routes.js",
+    "line": 18,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Admin')"
+    ],
+    "handlers": [
+      "validate({ body: updateMobilisationSettingsSchema })",
+      "asyncHandler(settingsController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisation-targets/my",
+    "file": "server/src/modules/mobilisationTargets/mobilisationTarget.routes.js",
+    "line": 27,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: getMyTargetSchema })",
+      "asyncHandler(targetController.getMy)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisation-targets/semi-annual/my",
+    "file": "server/src/modules/mobilisationTargets/mobilisationTarget.routes.js",
+    "line": 28,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: getSemiAnnualSchema })",
+      "asyncHandler(targetController.getMySemiAnnual)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisation-targets/progress",
+    "file": "server/src/modules/mobilisationTargets/mobilisationTarget.routes.js",
+    "line": 31,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: getProgressSchema })",
+      "asyncHandler(targetController.getProgress)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisation-targets/semi-annual",
+    "file": "server/src/modules/mobilisationTargets/mobilisationTarget.routes.js",
+    "line": 32,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: getSemiAnnualSchema })",
+      "asyncHandler(targetController.getSemiAnnual)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/mobilisation-targets",
+    "file": "server/src/modules/mobilisationTargets/mobilisationTarget.routes.js",
+    "line": 33,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(targetController.listAll)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/mobilisation-targets",
+    "file": "server/src/modules/mobilisationTargets/mobilisationTarget.routes.js",
+    "line": 36,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ body: setTargetSchema })",
+      "asyncHandler(targetController.set)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/mobilisation-targets/:id",
+    "file": "server/src/modules/mobilisationTargets/mobilisationTarget.routes.js",
+    "line": 37,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: targetIdParamSchema })",
+      "asyncHandler(targetController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/c/:token",
+    "file": "server/src/modules/nfc/nfc.public.routes.js",
+    "line": 66,
+    "routerGuards": [
+      "(req, res, next) => {\r\n  res.locals.nonce = crypto.randomBytes(16).toString('base64');\r\n  next();\r\n}",
+      "helmet.contentSecurityPolicy({\r\n    useDefaults: false,\r\n    directives: {\r\n      'default-src': [\"'self'\"],\r\n      'base-uri': [\"'self'\"],\r\n      'object-src': [\"'none'\"],\r\n      'frame-ancestors': [\"'self'\"],\r\n      'form-action': [\"'self'\"],\r\n      'img-src': [\"'self'\", 'data:', 'https://res.cloudinary.com'],\r\n      // Inline styles are used by the page, and we load an external font from Google Fonts.\r\n      'style-src': [\"'self'\", \"'unsafe-inline'\", 'https://fonts.googleapis.com'],\r\n      'font-src': [\"'self'\", 'https://fonts.gstatic.com'],\r\n      'script-src': [\"'self'\", (req, res) => `'nonce-${res.locals.nonce}'`],\r\n      'connect-src': [\"'self'\"], // the click beacon posts back here\r\n    },\r\n  })",
+      "publicCardLimiter"
+    ],
+    "handlers": [
+      "asyncHandler(async (req, res) => {\r\n  const { token } = req.params;\r\n  if (!TOKEN_RE.test(token)) return notFound(res);\r\n  const data = await getPublicCardByToken(token);\r\n  if (!data) return notFound(res);\r\n\r\n  const html = renderProfilePage({\r\n    ...data,\r\n    cardUrl: cardUrl(token),\r\n    vcardUrl: `${cardUrl(token)}/vcard`,\r\n    cardImageUrl: `${cardUrl(token)}/card.png`,\r\n    token,\r\n    nonce: res.locals.nonce,\r\n  });\r\n  res.status(200).type('html').send(html);\r\n\r\n  // After the response — a slow analytics write must not delay the card.\r\n  recordTapEvent({ ref: data.ref, type: 'view', req });\r\n})"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/c/:token/vcard",
+    "file": "server/src/modules/nfc/nfc.public.routes.js",
+    "line": 87,
+    "routerGuards": [
+      "(req, res, next) => {\r\n  res.locals.nonce = crypto.randomBytes(16).toString('base64');\r\n  next();\r\n}",
+      "helmet.contentSecurityPolicy({\r\n    useDefaults: false,\r\n    directives: {\r\n      'default-src': [\"'self'\"],\r\n      'base-uri': [\"'self'\"],\r\n      'object-src': [\"'none'\"],\r\n      'frame-ancestors': [\"'self'\"],\r\n      'form-action': [\"'self'\"],\r\n      'img-src': [\"'self'\", 'data:', 'https://res.cloudinary.com'],\r\n      // Inline styles are used by the page, and we load an external font from Google Fonts.\r\n      'style-src': [\"'self'\", \"'unsafe-inline'\", 'https://fonts.googleapis.com'],\r\n      'font-src': [\"'self'\", 'https://fonts.gstatic.com'],\r\n      'script-src': [\"'self'\", (req, res) => `'nonce-${res.locals.nonce}'`],\r\n      'connect-src': [\"'self'\"], // the click beacon posts back here\r\n    },\r\n  })",
+      "publicCardLimiter"
+    ],
+    "handlers": [
+      "asyncHandler(async (req, res) => {\r\n  const { token } = req.params;\r\n  if (!TOKEN_RE.test(token)) return notFound(res);\r\n  const data = await getPublicCardByToken(token);\r\n  if (!data) return notFound(res);\r\n  const safeName = (data.employee.name || 'contact').replace(/[^\\w]+/g, '_');\r\n  res.setHeader('Content-Type', 'text/vcard; charset=utf-8');\r\n  res.setHeader('Content-Disposition', `attachment; filename=\"${safeName}.vcf\"`);\r\n  res.send(buildVCard(data));\r\n\r\n  recordTapEvent({ ref: data.ref, type: 'save', req });\r\n})"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/c/:token/card.png",
+    "file": "server/src/modules/nfc/nfc.public.routes.js",
+    "line": 106,
+    "routerGuards": [
+      "(req, res, next) => {\r\n  res.locals.nonce = crypto.randomBytes(16).toString('base64');\r\n  next();\r\n}",
+      "helmet.contentSecurityPolicy({\r\n    useDefaults: false,\r\n    directives: {\r\n      'default-src': [\"'self'\"],\r\n      'base-uri': [\"'self'\"],\r\n      'object-src': [\"'none'\"],\r\n      'frame-ancestors': [\"'self'\"],\r\n      'form-action': [\"'self'\"],\r\n      'img-src': [\"'self'\", 'data:', 'https://res.cloudinary.com'],\r\n      // Inline styles are used by the page, and we load an external font from Google Fonts.\r\n      'style-src': [\"'self'\", \"'unsafe-inline'\", 'https://fonts.googleapis.com'],\r\n      'font-src': [\"'self'\", 'https://fonts.gstatic.com'],\r\n      'script-src': [\"'self'\", (req, res) => `'nonce-${res.locals.nonce}'`],\r\n      'connect-src': [\"'self'\"], // the click beacon posts back here\r\n    },\r\n  })",
+      "publicCardLimiter"
+    ],
+    "handlers": [
+      "asyncHandler(async (req, res) => {\r\n  const { token } = req.params;\r\n  if (!TOKEN_RE.test(token)) return notFound(res);\r\n  const data = await getPublicCardByToken(token);\r\n  if (!data) return notFound(res);\r\n\r\n  const lang = req.query.lang === 'ar' ? 'ar' : 'en';\r\n  const png = await buildCardImagePng({\r\n    employee: data.employee,\r\n    company: data.company,\r\n    lang,\r\n    cardUrl: cardUrl(token),\r\n    logoUrl: data.logoUrl,\r\n    photoUrl: data.photoUrl,\r\n  });\r\n\r\n  const safeName = (data.employee.name || 'card').replace(/[^\\w]+/g, '_');\r\n  res.setHeader('Content-Type', 'image/png');\r\n  res.setHeader('Content-Disposition', `attachment; filename=\"${safeName}_card_${lang}.png\"`);\r\n  res.send(png);\r\n\r\n  recordTapEvent({ ref: data.ref, type: 'image', req });\r\n})"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/c/:token/e",
+    "file": "server/src/modules/nfc/nfc.public.routes.js",
+    "line": 142,
+    "routerGuards": [
+      "(req, res, next) => {\r\n  res.locals.nonce = crypto.randomBytes(16).toString('base64');\r\n  next();\r\n}",
+      "helmet.contentSecurityPolicy({\r\n    useDefaults: false,\r\n    directives: {\r\n      'default-src': [\"'self'\"],\r\n      'base-uri': [\"'self'\"],\r\n      'object-src': [\"'none'\"],\r\n      'frame-ancestors': [\"'self'\"],\r\n      'form-action': [\"'self'\"],\r\n      'img-src': [\"'self'\", 'data:', 'https://res.cloudinary.com'],\r\n      // Inline styles are used by the page, and we load an external font from Google Fonts.\r\n      'style-src': [\"'self'\", \"'unsafe-inline'\", 'https://fonts.googleapis.com'],\r\n      'font-src': [\"'self'\", 'https://fonts.gstatic.com'],\r\n      'script-src': [\"'self'\", (req, res) => `'nonce-${res.locals.nonce}'`],\r\n      'connect-src': [\"'self'\"], // the click beacon posts back here\r\n    },\r\n  })",
+      "publicCardLimiter"
+    ],
+    "handlers": [
+      "publicEventLimiter",
+      "async (req, res) => {\r\n  res.status(204).end();\r\n\r\n  // Deliberately NOT wrapped in asyncHandler: the response has already gone\r\n  // out, so a failure here has nowhere to be reported except the log.\r\n  try {\r\n    const { token } = req.params;\r\n    if (!TOKEN_RE.test(token)) return;\r\n    const target = req.body?.target;\r\n    if (!NFC_CLICK_TARGETS.includes(target)) return;\r\n\r\n    const data = await getPublicCardByToken(token);\r\n    if (!data) return;\r\n    await recordTapEvent({ ref: data.ref, type: 'click', target, req });\r\n  } catch (err) {\r\n    logger.warn(`[nfc] click beacon failed: ${err.message}`);\r\n  }\r\n}"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/analytics",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 39,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: analyticsQuerySchema })",
+      "asyncHandler(nfc.overviewAnalytics)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/cards/:id/analytics",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 40,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: idParamSchema, query: analyticsQuerySchema })",
+      "asyncHandler(nfc.cardAnalytics)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/companies/:id/analytics",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 41,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: idParamSchema, query: analyticsQuerySchema })",
+      "asyncHandler(nfc.companyAnalytics)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/companies",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 44,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: listCompaniesSchema })",
+      "asyncHandler(nfc.listCompanies)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/companies",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 45,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: createCompanySchema })",
+      "asyncHandler(nfc.createCompany)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/companies/:id",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 46,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.getCompany)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/nfc/companies/:id",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 47,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema, body: updateCompanySchema })",
+      "asyncHandler(nfc.updateCompany)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/nfc/companies/:id",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 48,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.deleteCompany)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/companies/:id/logo",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 49,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "uploadNfcImage",
+      "asyncHandler(nfc.uploadCompanyLogo)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/nfc/companies/:id/logo",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 50,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.removeCompanyLogo)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/employees",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 53,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: createEmployeeSchema })",
+      "asyncHandler(nfc.createEmployee)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/nfc/employees/:id",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 54,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema, body: updateEmployeeSchema })",
+      "asyncHandler(nfc.updateEmployee)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/nfc/employees/:id",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 55,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.deleteEmployee)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/employees/:id/photo",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 56,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "uploadNfcImage",
+      "asyncHandler(nfc.uploadEmployeePhoto)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/nfc/employees/:id/photo",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 57,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.removeEmployeePhoto)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/batches",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 60,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: generateBatchSchema })",
+      "asyncHandler(nfc.generateBatch)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/batches",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 61,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "asyncHandler(nfc.listBatches)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/batches/:id/cards.csv",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 62,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.batchCsv)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/cards",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 65,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: listCardsSchema })",
+      "asyncHandler(nfc.listCards)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/cards/:id",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 66,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.getCard)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/cards/:id/qr.png",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 67,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.cardQr)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/nfc/cards/:id/qr-offline.png",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 68,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.cardQrOffline)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/nfc/cards/:id",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 69,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema, body: updateCardSchema })",
+      "asyncHandler(nfc.updateCard)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/nfc/cards/:id",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 70,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.deleteCard)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/cards/:id/assign",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 71,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema, body: assignCardSchema })",
+      "asyncHandler(nfc.assignCard)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/cards/:id/assign-company",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 72,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema, body: assignCardToCompanySchema })",
+      "asyncHandler(nfc.assignCardToCompany)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/cards/:id/unassign",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 73,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.unassignCard)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/cards/:id/lost",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 74,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.markLost)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/cards/:id/return",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 75,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.markReturned)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/cards/:id/disable",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 76,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.disableCard)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/nfc/cards/:id/rotate",
+    "file": "server/src/modules/nfc/nfc.routes.js",
+    "line": 77,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: idParamSchema })",
+      "asyncHandler(nfc.rotateToken)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/notifications",
+    "file": "server/src/modules/notifications/notification.routes.js",
+    "line": 23,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "validate({ query: listNotificationsSchema })",
+      "asyncHandler(notificationController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/notifications/unread-count",
+    "file": "server/src/modules/notifications/notification.routes.js",
+    "line": 26,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "asyncHandler(notificationController.unreadCount)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/notifications/vapid-public-key",
+    "file": "server/src/modules/notifications/notification.routes.js",
+    "line": 27,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "asyncHandler(notificationController.vapidPublicKey)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/notifications/:id/read",
+    "file": "server/src/modules/notifications/notification.routes.js",
+    "line": 28,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "validate({ params: notificationIdParamSchema })",
+      "asyncHandler(notificationController.markRead)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/notifications/read-all",
+    "file": "server/src/modules/notifications/notification.routes.js",
+    "line": 29,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "asyncHandler(notificationController.markAllRead)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/notifications/subscribe",
+    "file": "server/src/modules/notifications/notification.routes.js",
+    "line": 30,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "validate({ body: subscribePushSchema })",
+      "asyncHandler(notificationController.subscribe)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/notifications/unsubscribe",
+    "file": "server/src/modules/notifications/notification.routes.js",
+    "line": 31,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "validate({ body: unsubscribePushSchema })",
+      "asyncHandler(notificationController.unsubscribe)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/ramadan-periods",
+    "file": "server/src/modules/ramadan/ramadanPeriod.routes.js",
+    "line": 32,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canReadRamadan",
+      "validate({ query: listRamadanPeriodsSchema })",
+      "asyncHandler(ramadanPeriodController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/ramadan-periods",
+    "file": "server/src/modules/ramadan/ramadanPeriod.routes.js",
+    "line": 33,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canManageRamadan",
+      "validate({ body: createRamadanPeriodSchema })",
+      "asyncHandler(ramadanPeriodController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/ramadan-periods/:id",
+    "file": "server/src/modules/ramadan/ramadanPeriod.routes.js",
+    "line": 39,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canManageRamadan",
+      "validate({ params: ramadanPeriodIdParamSchema, body: updateRamadanPeriodSchema })",
+      "asyncHandler(ramadanPeriodController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/ramadan-periods/:id",
+    "file": "server/src/modules/ramadan/ramadanPeriod.routes.js",
+    "line": 45,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canManageRamadan",
+      "validate({ params: ramadanPeriodIdParamSchema })",
+      "asyncHandler(ramadanPeriodController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/reconciliation",
+    "file": "server/src/modules/reconciliation/reconciliation.routes.js",
+    "line": 15,
+    "routerGuards": [],
+    "handlers": [
+      "requireAuth",
+      "requireSectionAccess('reconciliation', 'read')",
+      "asyncHandler(reconciliationController.run)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirements/board",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 43,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: boardQuerySchema })",
+      "asyncHandler(controller.board)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirements/export",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 44,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: boardQuerySchema })",
+      "asyncHandler(controller.exportAll)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirements/lost",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 45,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: boardQuerySchema })",
+      "asyncHandler(controller.lost)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirements/lost/export",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 46,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ query: boardQuerySchema })",
+      "asyncHandler(controller.exportLost)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirements/coordinators",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 47,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "asyncHandler(controller.coordinators)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirements/stages/defaults",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 49,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageStages",
+      "asyncHandler(controller.createSuggestedStages)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PUT",
+    "path": "/api/requirements/stages/order",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 50,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageStages",
+      "validate({ body: reorderStagesSchema })",
+      "asyncHandler(controller.reorderStages)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirements/stages",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 51,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageStages",
+      "validate({ body: createStageSchema })",
+      "asyncHandler(controller.createStage)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/requirements/stages/:id",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 52,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageStages",
+      "validate({ params: stageIdParamSchema, body: updateStageSchema })",
+      "asyncHandler(controller.updateStage)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/requirements/stages/:id",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 58,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canManageStages",
+      "validate({ params: stageIdParamSchema })",
+      "asyncHandler(controller.removeStage)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirements",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 60,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ body: createRequirementSchema })",
+      "asyncHandler(controller.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/requirements/:id",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 61,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: requirementIdParamSchema })",
+      "asyncHandler(controller.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/requirements/:id",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 62,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: requirementIdParamSchema, body: updateRequirementSchema })",
+      "asyncHandler(controller.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/requirements/:id/stage",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 67,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: requirementIdParamSchema, body: moveStageSchema })",
+      "asyncHandler(controller.move)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/requirements/:id",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 72,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: requirementIdParamSchema })",
+      "asyncHandler(controller.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/requirements/:id/candidates",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 75,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: requirementIdParamSchema, body: createCandidateSchema })",
+      "asyncHandler(controller.addCandidate)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/requirements/:id/candidates/:candidateId",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 80,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: candidateParamSchema, body: updateCandidateSchema })",
+      "asyncHandler(controller.updateCandidate)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/requirements/:id/candidates/:candidateId",
+    "file": "server/src/modules/requirements/requirement.routes.js",
+    "line": 85,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "validate({ params: candidateParamSchema })",
+      "asyncHandler(controller.removeCandidate)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/section-access/:sectionKey/mine",
+    "file": "server/src/modules/sectionAccess/sectionAccess.routes.js",
+    "line": 18,
+    "routerGuards": [],
+    "handlers": [
+      "requireAuth",
+      "validate({ params: sectionKeyParamSchema })",
+      "asyncHandler(sectionAccessController.mine)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/section-access",
+    "file": "server/src/modules/sectionAccess/sectionAccess.routes.js",
+    "line": 27,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Admin')"
+    ],
+    "handlers": [
+      "asyncHandler(sectionAccessController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/section-access/:sectionKey",
+    "file": "server/src/modules/sectionAccess/sectionAccess.routes.js",
+    "line": 28,
+    "routerGuards": [
+      "requireAuth",
+      "requireRoles('Admin')"
+    ],
+    "handlers": [
+      "validate({ params: sectionKeyParamSchema, body: updateSectionAccessSchema })",
+      "asyncHandler(sectionAccessController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/staff-attendance/punch",
+    "file": "server/src/modules/staffAttendance/staffAttendance.routes.js",
+    "line": 38,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canSelfMark",
+      "validate({ body: selfMarkSchema })",
+      "asyncHandler(staffAttendanceController.punch)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/staff-attendance/all",
+    "file": "server/src/modules/staffAttendance/staffAttendance.routes.js",
+    "line": 39,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canReadSignInOut",
+      "validate({ query: listAllStaffAttendanceSchema })",
+      "asyncHandler(staffAttendanceController.listAll)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/staff-attendance",
+    "file": "server/src/modules/staffAttendance/staffAttendance.routes.js",
+    "line": 45,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canSelfMark",
+      "validate({ query: listMyAttendanceSchema })",
+      "asyncHandler(staffAttendanceController.listMine)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/subcontractors",
+    "file": "server/src/modules/subcontractors/subcontractor.routes.js",
+    "line": 35,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: listSubcontractorsSchema })",
+      "asyncHandler(subcontractorController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/subcontractors/:id",
+    "file": "server/src/modules/subcontractors/subcontractor.routes.js",
+    "line": 36,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ params: subcontractorIdParamSchema })",
+      "asyncHandler(subcontractorController.get)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/subcontractors",
+    "file": "server/src/modules/subcontractors/subcontractor.routes.js",
+    "line": 37,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: createSubcontractorSchema })",
+      "asyncHandler(subcontractorController.create)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/subcontractors/:id",
+    "file": "server/src/modules/subcontractors/subcontractor.routes.js",
+    "line": 43,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: subcontractorIdParamSchema, body: updateSubcontractorSchema })",
+      "asyncHandler(subcontractorController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/subcontractors/:id",
+    "file": "server/src/modules/subcontractors/subcontractor.routes.js",
+    "line": 49,
+    "routerGuards": [
+      "requireAuth",
+      "requireStaff"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: subcontractorIdParamSchema })",
+      "asyncHandler(subcontractorController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/timesheet-processor/preview",
+    "file": "server/src/modules/timesheetProcessor/timesheet.routes.js",
+    "line": 53,
+    "routerGuards": [
+      "requireAuth",
+      "requireSectionAccess('timesheetProcessor')"
+    ],
+    "handlers": [
+      "uploadTimesheet",
+      "validate({ body: processTimesheetSchema })",
+      "asyncHandler(timesheetController.preview)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/timesheet-processor/export",
+    "file": "server/src/modules/timesheetProcessor/timesheet.routes.js",
+    "line": 59,
+    "routerGuards": [
+      "requireAuth",
+      "requireSectionAccess('timesheetProcessor')"
+    ],
+    "handlers": [
+      "uploadTimesheet",
+      "validate({ body: processTimesheetSchema })",
+      "asyncHandler(timesheetController.exportXlsx)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/timesheets",
+    "file": "server/src/modules/timesheets/timesheet.routes.js",
+    "line": 38,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: listTimesheetsSchema })",
+      "asyncHandler(timesheetController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/timesheets",
+    "file": "server/src/modules/timesheets/timesheet.routes.js",
+    "line": 39,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: submitTimesheetSchema })",
+      "asyncHandler(timesheetController.submit)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/timesheets/:id/decide",
+    "file": "server/src/modules/timesheets/timesheet.routes.js",
+    "line": 40,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ params: timesheetIdParamSchema, body: decideTimesheetSchema })",
+      "asyncHandler(timesheetController.decide)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/timesheets/bulk-approve",
+    "file": "server/src/modules/timesheets/timesheet.routes.js",
+    "line": 46,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canWrite",
+      "validate({ body: bulkApproveTimesheetSchema })",
+      "asyncHandler(timesheetController.bulkApprove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/timesheets/monthly-report",
+    "file": "server/src/modules/timesheets/timesheet.routes.js",
+    "line": 56,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ query: generateMonthlyReportSchema })",
+      "asyncHandler(timesheetController.getMonthlyReport)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/timesheets/monthly-report",
+    "file": "server/src/modules/timesheets/timesheet.routes.js",
+    "line": 62,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "canRead",
+      "validate({ body: generateMonthlyReportSchema })",
+      "asyncHandler(timesheetController.generateMonthlyReport)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/users",
+    "file": "server/src/modules/users/user.routes.js",
+    "line": 30,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireSectionAccess('team', 'read')",
+      "validate({ query: listStaffUsersSchema })",
+      "asyncHandler(userController.list)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/users/:id",
+    "file": "server/src/modules/users/user.routes.js",
+    "line": 36,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireRoles('Admin')",
+      "validate({ params: userIdParamSchema, body: updateStaffUserSchema })",
+      "asyncHandler(userController.update)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/users/:id/reset-password",
+    "file": "server/src/modules/users/user.routes.js",
+    "line": 42,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireRoles('Admin')",
+      "validate({ params: userIdParamSchema })",
+      "asyncHandler(userController.resetPassword)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/users/:id",
+    "file": "server/src/modules/users/user.routes.js",
+    "line": 48,
+    "routerGuards": [
+      "requireAuth"
+    ],
+    "handlers": [
+      "requireRoles('Admin')",
+      "validate({ params: userIdParamSchema })",
+      "asyncHandler(userController.remove)"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/health",
+    "file": "server/src/app.js",
+    "line": 99,
+    "routerGuards": [],
+    "handlers": [
+      "(req, res) => {\r\n  res.json(new ApiResponse('OK', { status: 'up' }));\r\n}"
+    ],
+    "mounted": true
+  },
+  {
+    "method": "GET",
+    "path": "/nfc-media/:filename",
+    "file": "server/src/app.js",
+    "line": 160,
+    "routerGuards": [],
+    "handlers": [
+      "serveNfcMedia"
+    ],
+    "mounted": true
+  }
+]

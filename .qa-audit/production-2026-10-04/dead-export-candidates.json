@@ -1,0 +1,261 @@
+[
+  {
+    "file": "server/src/middleware/upload.js",
+    "line": 66,
+    "name": "DOCUMENT_DELIVERY_TYPE",
+    "identifierOccurrencesInOwnModule": 4,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/assets/assetAssignment.model.js",
+    "line": 11,
+    "name": "ASSET_ASSIGNMENT_STATUSES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/attendance/attendance.model.js",
+    "line": 34,
+    "name": "ATTENDANCE_SOURCES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/attendance/attendance.model.js",
+    "line": 35,
+    "name": "ATTENDANCE_VERIFICATION_METHODS",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/deployments/clientPayment.model.js",
+    "line": 20,
+    "name": "CLIENT_PAYMENT_DECISION_STATUSES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/deployments/deployment.model.js",
+    "line": 42,
+    "name": "MONTHLY_HOURS_STATUSES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/deployments/deployment.model.js",
+    "line": 91,
+    "name": "DAILY_ENTRY_STATUSES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/deployments/deployment.service.js",
+    "line": 1814,
+    "name": "deductionsForEmployeesMonth",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/deployments/deployment.service.js",
+    "line": 1851,
+    "name": "PROFIT_RATE_FIELDS",
+    "identifierOccurrencesInOwnModule": 3,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/financialRequests/advance.service.js",
+    "line": 34,
+    "name": "computeOutstanding",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/financialRequests/reimbursement.controller.js",
+    "line": 54,
+    "name": "streamReceipt",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/leave/leave.controller.js",
+    "line": 64,
+    "name": "streamAttachment",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/mobilisations/mobilisation.service.js",
+    "line": 323,
+    "name": "activeMobilisationIqamas",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/nfc/nfc.qr.js",
+    "line": 65,
+    "name": "ensureQrSafeColour",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/nfc/nfc.service.js",
+    "line": 24,
+    "name": "mediaUrl",
+    "identifierOccurrencesInOwnModule": 8,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/nfc/nfc.upload.js",
+    "line": 12,
+    "name": "NFC_MEDIA_DIR",
+    "identifierOccurrencesInOwnModule": 4,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/nfc/nfc.visitor.js",
+    "line": 74,
+    "name": "countryFrom",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/nfc/nfc.visitor.js",
+    "line": 85,
+    "name": "deviceFrom",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/nfc/nfc.visitor.js",
+    "line": 96,
+    "name": "platformFrom",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/nfc/nfc.visitor.js",
+    "line": 111,
+    "name": "referrerHostFrom",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/nfc/nfc.visitor.js",
+    "line": 147,
+    "name": "visitorHash",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/nfc/nfcTapEvent.model.js",
+    "line": 27,
+    "name": "NFC_EVENT_TYPES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/nfc/nfcTapEvent.model.js",
+    "line": 38,
+    "name": "RETENTION_DAYS",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/notifications/notification.model.js",
+    "line": 14,
+    "name": "NOTIFICATION_TYPES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/requirements/requirement.model.js",
+    "line": 46,
+    "name": "CANDIDATE_STATUSES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/modules/users/user.validation.js",
+    "line": 16,
+    "name": "STAFF_ASSIGNABLE_ROLES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/utils/csv.js",
+    "line": 42,
+    "name": "csvRow",
+    "identifierOccurrencesInOwnModule": 3,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "server/src/utils/imageUpload.js",
+    "line": 7,
+    "name": "IMAGE_MIME_TYPES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "client/src/components/shared/BrandLogo.jsx",
+    "line": 13,
+    "name": "FALLBACK_BRAND_NAME",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "client/src/features/attendance/attendance.dates.js",
+    "line": 9,
+    "name": "toDateKey",
+    "identifierOccurrencesInOwnModule": 9,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "client/src/features/companySettings/companySettings.schema.js",
+    "line": 51,
+    "name": "emptyCompanySettingsForm",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "client/src/features/nfc/components/NfcAnalyticsBits.jsx",
+    "line": 13,
+    "name": "RANGES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "client/src/i18n/index.js",
+    "line": 36,
+    "name": "RTL_LANGUAGES",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "client/src/i18n/index.js",
+    "line": 71,
+    "name": "applyDocumentDirection",
+    "identifierOccurrencesInOwnModule": 3,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "client/src/lib/auditActions.js",
+    "line": 12,
+    "name": "ACTION_LABELS",
+    "identifierOccurrencesInOwnModule": 2,
+    "classification": "Locally used; only export appears redundant"
+  },
+  {
+    "file": "client/src/lib/constants.js",
+    "line": 170,
+    "name": "PAYROLL_STATUS_VARIANT",
+    "identifierOccurrencesInOwnModule": 1,
+    "classification": "No code references found"
+  },
+  {
+    "file": "client/src/lib/utils.js",
+    "line": 127,
+    "name": "lineAmount",
+    "identifierOccurrencesInOwnModule": 1,
+    "classification": "No code references found"
+  }
+]

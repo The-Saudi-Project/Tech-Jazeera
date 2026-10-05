@@ -60,6 +60,24 @@ function previousMonthStr() {
   return addMonthsToStr(monthStrOf(new Date()), -1);
 }
 
+const HOURS_CAP_PER_DAY = 18;
+
+/** Mirrors deployment.service.js's own realPlacementDaysInMonth exactly, for
+ *  immediate client-side feedback — the server re-checks this for real, this
+ *  is purely so the "impossible hours" warning shows before a round trip. */
+function realPlacementDaysInMonth(deployment, monthStr) {
+  if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) return 31;
+  const [year, month] = monthStr.split('-').map(Number);
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0);
+  const placementStart = new Date(deployment.startDate);
+  const placementEnd = deployment.endDate ? new Date(deployment.endDate) : monthEnd;
+  const effectiveStart = placementStart > monthStart ? placementStart : monthStart;
+  const effectiveEnd = placementEnd < monthEnd ? placementEnd : monthEnd;
+  const days = Math.floor((effectiveEnd - effectiveStart) / 86_400_000) + 1;
+  return Math.max(0, days);
+}
+
 /** Locale-aware weekday abbreviation for one calendar day of a 'YYYY-MM'
  *  month — shown above each day's input so a reviewer can see at a glance
  *  which days are weekends without cross-checking a calendar. Intl's 'short'
@@ -160,7 +178,7 @@ function MonthlyHoursForm({ deployment, defaultValues, onSubmit, submitting, sub
   const { t } = useTranslation();
   const toast = useToast();
   const isSupplierEmployee = deployment.workerType === 'SupplierEmployee';
-  const schema = useMemo(() => buildMonthlyHoursFormSchema(deployment.workerType), [deployment.workerType]);
+  const schema = useMemo(() => buildMonthlyHoursFormSchema(), []);
   const {
     register,
     handleSubmit,
@@ -171,16 +189,35 @@ function MonthlyHoursForm({ deployment, defaultValues, onSubmit, submitting, sub
   const max = maxEligibleMonthFor(deployment);
 
   const agreementHours = contractHours ?? 0;
+  const watchedMonth = watch('month');
   const actualHoursPreview = Number(watch('actualHours')) || 0;
-  const supplierHoursPreview = Number(watch('supplierHours')) || 0;
-  // Formula depends on worker type (2026-09-19, the user's own ask) — see
-  // deployment.service.js's computeOtHours, mirrored here purely for live
-  // feedback.
-  const otHoursPreview = isSupplierEmployee
-    ? Math.max(0, actualHoursPreview - supplierHoursPreview)
-    : Math.max(0, actualHoursPreview - agreementHours);
+  const supplierHoursRaw = watch('supplierHours');
+  const supplierHoursPreview = Number(supplierHoursRaw) || 0;
+  // Client-billed OT is always against this deployment's own contract hours,
+  // for every worker type alike (2026-10-01, the user's own correction — see
+  // deployment.service.js's computeOtHours doc comment for why this can no
+  // longer depend on the subcontractor's own, separately-entered timesheet).
+  const otHoursPreview = Math.max(0, actualHoursPreview - agreementHours);
   const otAmountPreview = otHoursPreview * (otClientRate ?? 0);
+  // The subcontractor's OWN overtime — an independent figure, only shown
+  // once they've actually typed a supplier-hours value (mirrors
+  // deployment.service.js's computeSupplierOtHours: 0/hidden while unknown,
+  // never a guess).
+  const supplierOtHoursPreview =
+    isSupplierEmployee && supplierHoursRaw ? Math.max(0, supplierHoursPreview - agreementHours) : null;
   const deductionPreview = Number(watch('deductionAmount')) || 0;
+  const supplierDeductionPreview = Number(watch('supplierDeductionAmount')) || 0;
+  const employeeAdditionalAmountPreview = Number(watch('employeeAdditionalAmount')) || 0;
+
+  // "Impossible hours" guard (2026-09-30, the user's own ask): 18h/day × the
+  // real placement days this deployment actually covers in the selected
+  // month — tighter than a flat cap for a month it only partly covered (e.g.
+  // demobilised mid-month). A live warning here, not a Zod bound — the
+  // ceiling depends on the currently-typed month, which would otherwise mean
+  // rebuilding the resolver on every keystroke; deployment.service.js's own
+  // assertPossibleHours is the real, authoritative enforcement regardless.
+  const maxPossibleHours = HOURS_CAP_PER_DAY * realPlacementDaysInMonth(deployment, watchedMonth);
+  const exceedsPossibleHours = actualHoursPreview > maxPossibleHours || supplierHoursPreview > maxPossibleHours;
 
   // A client-side validation failure previously failed silently (react-hook-
   // form never fires a mutation's own onError for one) — found via a real
@@ -195,8 +232,21 @@ function MonthlyHoursForm({ deployment, defaultValues, onSubmit, submitting, sub
     toast.error(messages.length ? messages.join(' · ') : t('staffDeployments.detail.fixHighlighted'));
   }
 
+  function onSubmitGuarded(values) {
+    if (exceedsPossibleHours) {
+      toast.error(
+        t(
+          'staffDeployments.detail.impossibleHoursError',
+          `That's more hours than physically possible for this period — max ${maxPossibleHours}h at 18h/day for this deployment's real placement days in ${watchedMonth || 'that month'}.`
+        )
+      );
+      return;
+    }
+    onSubmit(values);
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="space-y-3">
+    <form onSubmit={handleSubmit(onSubmitGuarded, onInvalid)} noValidate className="space-y-3">
       {/* Row 1: Month | Client timesheet | Supplier timesheet | Client deduction — all 4 in one line */}
       <div className={cn('grid grid-cols-1 gap-3', isSupplierEmployee ? 'sm:grid-cols-4' : 'sm:grid-cols-3')}>
         <Input
@@ -217,14 +267,18 @@ function MonthlyHoursForm({ deployment, defaultValues, onSubmit, submitting, sub
           {...register('actualHours')}
         />
         {isSupplierEmployee && (
-          <Input
-            label={t('staffDeployments.detail.supplierTimesheetHoursLabel')}
-            type="number"
-            step="0.01"
-            min="0"
-            error={errors.supplierHours?.message}
-            {...register('supplierHours')}
-          />
+          <div>
+            <Input
+              label={t('staffDeployments.detail.supplierTimesheetHoursLabel')}
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder={t('staffDeployments.detail.supplierTimesheetHoursPlaceholder')}
+              error={errors.supplierHours?.message}
+              {...register('supplierHours')}
+            />
+            <p className="mt-1 text-xs text-muted">{t('staffDeployments.detail.supplierTimesheetHoursHint')}</p>
+          </div>
         )}
         <div>
           <Input
@@ -239,6 +293,65 @@ function MonthlyHoursForm({ deployment, defaultValues, onSubmit, submitting, sub
           <p className="mt-1 text-xs text-muted">{t('staffDeployments.detail.deductionAmountHint')}</p>
         </div>
       </div>
+
+      {/* Row 1b: Supplier deduction (amount + optional reason) — only for a
+          SupplierEmployee deployment, since only that type has a Sub Invoice
+          to deduct against (2026-09-30, the user's own ask). */}
+      {isSupplierEmployee && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Input
+              label={t('staffDeployments.detail.supplierDeductionAmountLabel')}
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder={t('staffDeployments.detail.supplierDeductionAmountPlaceholder')}
+              error={errors.supplierDeductionAmount?.message}
+              {...register('supplierDeductionAmount')}
+            />
+            <p className="mt-1 text-xs text-muted">{t('staffDeployments.detail.supplierDeductionAmountHint')}</p>
+          </div>
+          <Input
+            label={t('staffDeployments.detail.supplierDeductionNoteLabel')}
+            placeholder={t('staffDeployments.detail.supplierDeductionNotePlaceholder')}
+            error={errors.supplierDeductionNote?.message}
+            {...register('supplierDeductionNote')}
+          />
+        </div>
+      )}
+
+      {/* Row 1c: Additional amount for own employees (amount + optional reason) */}
+      {deployment.workerType === 'Employee' && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Input
+              label={t('staffDeployments.detail.employeeAdditionalAmountLabel')}
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder={t('staffDeployments.detail.employeeAdditionalAmountPlaceholder')}
+              error={errors.employeeAdditionalAmount?.message}
+              {...register('employeeAdditionalAmount')}
+            />
+            <p className="mt-1 text-xs text-muted">{t('staffDeployments.detail.employeeAdditionalAmountHint')}</p>
+          </div>
+          <Input
+            label={t('staffDeployments.detail.employeeAdditionalAmountNoteLabel')}
+            placeholder={t('staffDeployments.detail.employeeAdditionalAmountNotePlaceholder')}
+            error={errors.employeeAdditionalAmountNote?.message}
+            {...register('employeeAdditionalAmountNote')}
+          />
+        </div>
+      )}
+
+      {exceedsPossibleHours && (
+        <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
+          {t(
+            'staffDeployments.detail.impossibleHoursWarning',
+            `That's more hours than physically possible for this period — max ${maxPossibleHours}h at 18h/day for this deployment's real placement days in ${watchedMonth || 'that month'}.`
+          )}
+        </p>
+      )}
 
       {/* Row 2: Notes full-width */}
       <Textarea label={t('staffDeployments.detail.notesLabel')} error={errors.notes?.message} {...register('notes')} />
@@ -266,6 +379,12 @@ function MonthlyHoursForm({ deployment, defaultValues, onSubmit, submitting, sub
           <p className="text-xs text-muted">{t('staffDeployments.detail.summaryOtHours')}</p>
           <p className="text-sm font-semibold tabular-nums">{otHoursPreview}</p>
         </div>
+        {supplierOtHoursPreview != null && (
+          <div>
+            <p className="text-xs text-muted">{t('staffDeployments.detail.summarySupplierOtHours')}</p>
+            <p className="text-sm font-semibold tabular-nums">{supplierOtHoursPreview}</p>
+          </div>
+        )}
         {canDecideHours && (
           <div>
             <p className="text-xs text-muted">{t('staffDeployments.detail.summaryOtAmount')}</p>
@@ -276,6 +395,18 @@ function MonthlyHoursForm({ deployment, defaultValues, onSubmit, submitting, sub
           <div>
             <p className="text-xs text-muted">{t('staffDeployments.detail.summaryDeduction')}</p>
             <p className="text-sm font-semibold tabular-nums text-danger">{formatMoney(deductionPreview)}</p>
+          </div>
+        )}
+        {isSupplierEmployee && supplierDeductionPreview > 0 && (
+          <div>
+            <p className="text-xs text-muted">{t('staffDeployments.detail.summarySupplierDeduction')}</p>
+            <p className="text-sm font-semibold tabular-nums text-success">{formatMoney(supplierDeductionPreview)}</p>
+          </div>
+        )}
+        {deployment.workerType === 'Employee' && employeeAdditionalAmountPreview > 0 && (
+          <div>
+            <p className="text-xs text-muted">{t('staffDeployments.detail.employeeAdditionalAmountLabel')}</p>
+            <p className="text-sm font-semibold tabular-nums text-danger">{formatMoney(employeeAdditionalAmountPreview)}</p>
           </div>
         )}
       </div>
@@ -381,6 +512,11 @@ export default function DeploymentDetailPage() {
   const [eosbPrompt, setEosbPrompt] = useState(null); // { exitDate, exitReason } | null
   const [editingEntry, setEditingEntry] = useState(null);
   const [editingDeployment, setEditingDeployment] = useState(false);
+  // The dedicated "Enter subcontractor hours" follow-up (2026-10-01) — holds
+  // the entry being completed; a single-field quick action, not the full
+  // Edit form, since that's the one real thing missing on it.
+  const [enteringSupplierHoursFor, setEnteringSupplierHoursFor] = useState(null);
+  const [supplierHoursInput, setSupplierHoursInput] = useState('');
 
   // Office Secretary is a hardcoded exception to the Section Access gate —
   // mirrors deployment.service.js's addMonthlyHours exactly (they aren't a
@@ -432,6 +568,27 @@ export default function DeploymentDetailPage() {
     onError: (error) => toast.error(apiMessage(error)),
   });
 
+  const supplierHoursMutation = useMutation({
+    mutationFn: ({ entryId, supplierHours }) =>
+      updateMonthlyHours(id, entryId, {
+        actualHours: enteringSupplierHoursFor.actualHours,
+        supplierHours,
+        deductionAmount: enteringSupplierHoursFor.deductionAmount || undefined,
+        supplierDeductionAmount: enteringSupplierHoursFor.supplierDeductionAmount || undefined,
+        supplierDeductionNote: enteringSupplierHoursFor.supplierDeductionNote || undefined,
+        employeeAdditionalAmount: enteringSupplierHoursFor.employeeAdditionalAmount || undefined,
+        employeeAdditionalAmountNote: enteringSupplierHoursFor.employeeAdditionalAmountNote || undefined,
+        notes: enteringSupplierHoursFor.notes || undefined,
+      }),
+    onSuccess: () => {
+      toast.success(t('staffDeployments.detail.supplierHoursAddedToast'));
+      setEnteringSupplierHoursFor(null);
+      setSupplierHoursInput('');
+      invalidate();
+    },
+    onError: (error) => toast.error(apiMessage(error)),
+  });
+
   const demobiliseMutation = useMutation({
     mutationFn: (values) => demobiliseDeployment(id, values),
     onSuccess: (_data, values) => {
@@ -470,13 +627,14 @@ export default function DeploymentDetailPage() {
 
   const addDefaultValues = useMemo(() => {
     if (!deployment) return emptyMonthlyHoursForm;
-    return { 
-      ...emptyMonthlyHoursForm, 
-      month: nextEligibleMonth(deployment),
-      supplierHours: deployment.workerType === 'SupplierEmployee' && deployment.requiredTimesheetHours != null 
-        ? deployment.requiredTimesheetHours.toString() 
-        : '',
-    };
+    // 2026-10-01, the user's own ask: subcontractor hours are a real,
+    // separately-known figure now — a hard requirement at creation briefly
+    // justified pre-filling a guess (the deployment's own contract hours)
+    // for the coordinator to overwrite, but doing that now would silently
+    // submit a FAKE number as if it were the subcontractor's real timesheet.
+    // Left genuinely blank until actually known (see computeSupplierOtHours's
+    // own doc comment on `null` being a real, expected interim state).
+    return { ...emptyMonthlyHoursForm, month: nextEligibleMonth(deployment) };
   }, [deployment]);
 
   const {
@@ -664,6 +822,12 @@ export default function DeploymentDetailPage() {
                       client's own timesheet in front of her. Visible to
                       everyone who can see this section at all. */}
                   <th className="px-3 py-2">{t('staffDeployments.detail.columns.deduction')}</th>
+                  {deployment.workerType === 'SupplierEmployee' && (
+                    <th className="px-3 py-2">{t('staffDeployments.detail.columns.supplierDeduction')}</th>
+                  )}
+                  {deployment.workerType === 'Employee' && (
+                    <th className="px-3 py-2">{t('staffDeployments.detail.columns.employeeAdditionalAmount')}</th>
+                  )}
                   {deployment.totalProfit != null && <th className="px-3 py-2">{t('staffDeployments.detail.columns.profitOrDue')}</th>}
                   <th className="px-3 py-2">{t('staffDeployments.detail.columns.status')}</th>
                   {(canInvoice || canEnterHours || canDecidePaymentAccess) && (
@@ -675,13 +839,11 @@ export default function DeploymentDetailPage() {
               <tbody className="divide-y divide-border">
                 {sortedMonths.map((entry) => {
                   const statusVariant = entry.status === 'Approved' ? 'success' : entry.status === 'Rejected' ? 'danger' : 'warning';
-                  // The enterer can edit Pending/Rejected only; whoever can decide
-                  // this section may also correct an already-Approved entry
-                  // directly (2026-09-13 rule, restored — see docs/CHANGELOG.md).
-                  // Approve/Reject of a Pending entry itself now lives only on
-                  // the dedicated Hours Approval Queue (HoursReviewPage).
+                  // The enterer can edit Pending/Rejected only.
+                  // Only an Admin can edit an already-Approved entry.
+                  const isAdmin = user?.role === 'Admin';
                   const canEditThis =
-                    isActive && ((canEnterHours && entry.status !== 'Approved') || (canDecideHours && entry.status === 'Approved'));
+                    isActive && ((canEnterHours && entry.status !== 'Approved') || isAdmin);
                   return (
                     <tr key={entry._id}>
                       <td className="px-3 py-2 font-medium">
@@ -702,6 +864,28 @@ export default function DeploymentDetailPage() {
                           '—'
                         )}
                       </td>
+                      {deployment.workerType === 'SupplierEmployee' && (
+                        <td className="px-3 py-2">
+                          {entry.supplierDeductionAmount > 0 ? (
+                            <span className="text-success" title={entry.supplierDeductionNote || undefined}>
+                              {formatMoney(entry.supplierDeductionAmount)}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                      )}
+                      {deployment.workerType === 'Employee' && (
+                        <td className="px-3 py-2">
+                          {entry.employeeAdditionalAmount > 0 ? (
+                            <span className="text-danger" title={entry.employeeAdditionalAmountNote || undefined}>
+                              {formatMoney(entry.employeeAdditionalAmount)}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                      )}
                       {deployment.totalProfit != null && (
                         <td className="px-3 py-2">
                           {!entry.fullyPaid ? (
@@ -735,6 +919,17 @@ export default function DeploymentDetailPage() {
                       {(canEnterHours || canDecideHours || canInvoice || canDecidePaymentAccess) && isActive && (
                         <td className="px-3 py-2 text-right">
                           <div className="flex flex-wrap justify-end gap-1.5">
+                            {/* A real, dedicated follow-up step (2026-10-01, the
+                                user's own ask) — subcontractor hours are no
+                                longer required at creation, so this surfaces the
+                                one real thing still missing on this entry
+                                without making a coordinator hunt for it inside
+                                the full Edit form. */}
+                            {canEditThis && deployment.workerType === 'SupplierEmployee' && entry.supplierHours == null && (
+                              <Button size="sm" onClick={() => setEnteringSupplierHoursFor(entry)}>
+                                {t('staffDeployments.detail.enterSupplierHoursButton')}
+                              </Button>
+                            )}
                             {canEditThis && (
                               <Button size="sm" variant="ghost" onClick={() => setEditingEntry(entry)}>
                                 {t('staffDeployments.detail.editEntry')}
@@ -785,6 +980,10 @@ export default function DeploymentDetailPage() {
                   actualHours: Number(values.actualHours),
                   supplierHours: values.supplierHours !== '' ? Number(values.supplierHours) : undefined,
                   deductionAmount: values.deductionAmount ? Number(values.deductionAmount) : undefined,
+                  supplierDeductionAmount: values.supplierDeductionAmount ? Number(values.supplierDeductionAmount) : undefined,
+                  supplierDeductionNote: values.supplierDeductionNote || undefined,
+                  employeeAdditionalAmount: values.employeeAdditionalAmount ? Number(values.employeeAdditionalAmount) : undefined,
+                  employeeAdditionalAmountNote: values.employeeAdditionalAmountNote || undefined,
                   notes: values.notes || undefined,
                 })
               }
@@ -821,11 +1020,66 @@ export default function DeploymentDetailPage() {
                   actualHours: Number(values.actualHours),
                   supplierHours: values.supplierHours !== '' ? Number(values.supplierHours) : undefined,
                   deductionAmount: values.deductionAmount ? Number(values.deductionAmount) : undefined,
+                  supplierDeductionAmount: values.supplierDeductionAmount ? Number(values.supplierDeductionAmount) : undefined,
+                  supplierDeductionNote: values.supplierDeductionNote || undefined,
+                  employeeAdditionalAmount: values.employeeAdditionalAmount ? Number(values.employeeAdditionalAmount) : undefined,
+                  employeeAdditionalAmountNote: values.employeeAdditionalAmountNote || undefined,
                   notes: values.notes || undefined,
                 },
               })
             }
           />
+        )}
+      </Modal>
+
+      {/* "Enter subcontractor hours" — a single-field quick action (2026-10-01),
+          not the full Edit form, for the one thing a two-step entry leaves
+          missing on a fresh month. */}
+      <Modal
+        open={Boolean(enteringSupplierHoursFor)}
+        onClose={() => {
+          if (supplierHoursMutation.isPending) return;
+          setEnteringSupplierHoursFor(null);
+          setSupplierHoursInput('');
+        }}
+        title={enteringSupplierHoursFor ? t('staffDeployments.detail.enterSupplierHoursModalTitle', { month: enteringSupplierHoursFor.month }) : ''}
+      >
+        {enteringSupplierHoursFor && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">{t('staffDeployments.detail.enterSupplierHoursModalMessage')}</p>
+            <Input
+              label={t('staffDeployments.detail.supplierTimesheetHoursLabel')}
+              type="number"
+              step="0.01"
+              min="0"
+              autoFocus
+              value={supplierHoursInput}
+              onChange={(e) => setSupplierHoursInput(e.target.value)}
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setEnteringSupplierHoursFor(null);
+                  setSupplierHoursInput('');
+                }}
+                disabled={supplierHoursMutation.isPending}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type="button"
+                isLoading={supplierHoursMutation.isPending}
+                disabled={supplierHoursInput === '' || Number.isNaN(Number(supplierHoursInput)) || Number(supplierHoursInput) < 0}
+                onClick={() =>
+                  supplierHoursMutation.mutate({ entryId: enteringSupplierHoursFor._id, supplierHours: Number(supplierHoursInput) })
+                }
+              >
+                {t('staffDeployments.detail.save')}
+              </Button>
+            </div>
+          </div>
         )}
       </Modal>
 

@@ -19,7 +19,7 @@
  * "Export to Excel" of whatever the current filters show.
  */
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getBoard, listRequirementCoordinators, moveRequirement, createSuggestedStages, downloadRequirementsExport } from '../requirements.api.js';
@@ -45,6 +45,7 @@ export default function RequirementsBoardPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -99,6 +100,7 @@ export default function RequirementsBoardPage() {
   }, [stages, requirements]);
   const staleTotal = (requirements ?? []).filter((r) => r.stale).length;
   const hasClosedStage = stages.some((s) => s.isTerminal);
+  const activeStages = stages.filter((s) => !(s.isTerminal && !s.isMobilisedStage));
   const clientChoices = data?.filterOptions?.clients ?? [];
   const subcontractorChoices = data?.filterOptions?.subcontractors ?? [];
 
@@ -198,6 +200,7 @@ export default function RequirementsBoardPage() {
       <PageHeader
         title={t('staffRequirements.pageTitle')}
         description={t('staffRequirements.pageDescription')}
+        onBack={() => navigate(-1)}
         actions={
           <>
             {stages.length > 0 && (
@@ -312,7 +315,7 @@ export default function RequirementsBoardPage() {
         // overflow-y-hidden is required alongside overflow-x (see Tabs.jsx's note:
         // a non-visible overflow-x forces the other axis to `auto`).
         <div className="-mx-1 flex gap-4 overflow-x-auto overflow-y-hidden px-1 pb-4">
-          {stages.map((stage) => {
+          {activeStages.map((stage) => {
             const cards = byStage.get(stage._id) ?? [];
             return (
               <BoardColumn key={stage._id} stage={stage} count={cards.length} staleCount={cards.filter((c) => c.stale).length} onDropCard={moveCard}>

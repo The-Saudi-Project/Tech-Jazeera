@@ -1,0 +1,1 @@
+import{bt as e}from"./axios-nI7oD8FS.js";import{y as t}from"./utils-DXtpvgmb.js";var n=e(t(),1);function r(e,t){let r=(0,n.useRef)(null);return(0,n.useEffect)(()=>{if(!e)return;function n(e){r.current&&!r.current.contains(e.target)&&t(!1)}return document.addEventListener(`mousedown`,n),()=>document.removeEventListener(`mousedown`,n)},[e,t]),r}export{r as t};

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "invalid-regex-filter",
+    "status": 500,
+    "data": {
+      "success": false,
+      "message": "Something went wrong. Please try again."
+    }
+  },
+  {
+    "name": "joint-coordinator-deployments-list",
+    "status": 200,
+    "data": {
+      "listed": true,
+      "deploymentId": "6ac2534f0f6e94b0fd5a4b64"
+    }
+  },
+  {
+    "name": "joint-coordinator-detail-rejected",
+    "status": 403,
+    "data": {
+      "success": false,
+      "message": "You do not have access to this employee."
+    }
+  },
+  {
+    "name": "warm-target-query-count",
+    "dbCalls": 234,
+    "ms": 316,
+    "callsByType": {
+      "deployments.find": 78,
+      "mobilisationtargets.find": 6,
+      "mobilisations.find": 78,
+      "clientpayments.find": 72
+    }
+  }
+]

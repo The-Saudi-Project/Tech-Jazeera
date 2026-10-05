@@ -46,6 +46,13 @@ export function daysInMonth(monthStr) {
 // only check non-empty, so a negative or wildly-too-high value passed here
 // and only ever got caught by a raw server-error toast instead of inline
 // field feedback).
+// The real "impossible hours" ceiling (18h/day × this deployment's actual
+// placement days in the selected month) depends on the currently-typed
+// month, which would mean rebuilding this schema/resolver on every keystroke
+// — instead enforced as a live warning + submit guard in
+// DeploymentDetailPage's own MonthlyHoursForm (mirroring
+// deployment.service.js's real, authoritative assertPossibleHours check).
+// This flat 1000 stays as a basic sanity bound underneath that.
 const hoursField = (message) =>
   z
     .string()
@@ -54,20 +61,41 @@ const hoursField = (message) =>
     .refine((v) => Number(v) >= 0, 'Cannot be negative.')
     .refine((v) => Number(v) <= 1000, 'That looks too high for one month — check the figure.');
 
-export function buildMonthlyHoursFormSchema(workerType) {
+// Optional counterpart of hoursField — same bounds when a value IS given,
+// but never required (2026-10-01, the user's own ask: subcontractor hours
+// are now a real, optional follow-up step, not a blocking requirement at
+// creation — see deployment.service.js's addMonthlyHours doc comment).
+const optionalHoursField = z
+  .string()
+  .optional()
+  .or(z.literal(''))
+  .refine((v) => !v || !Number.isNaN(Number(v)), 'Enter a number.')
+  .refine((v) => !v || Number(v) >= 0, 'Cannot be negative.')
+  .refine((v) => !v || Number(v) <= 1000, 'That looks too high for one month — check the figure.');
+
+// Optional non-negative amount capped at 1,000,000 — shared by deductionAmount/
+// supplierDeductionAmount/employeeAdditionalAmount below (2026-10-03, a real
+// code-review finding: this exact chain was copy-pasted a 3rd time; same
+// extraction reasoning as hoursField/optionalHoursField above).
+const optionalMoneyField = z
+  .string()
+  .optional()
+  .or(z.literal(''))
+  .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0), 'Cannot be negative.')
+  .refine((v) => !v || Number(v) <= 1_000_000, 'That looks too high — check the figure.');
+
+export function buildMonthlyHoursFormSchema() {
   return z.object({
     month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Choose a month.'),
     actualHours: hoursField('Enter the client timesheet hours.'),
-    supplierHours:
-      workerType === 'SupplierEmployee'
-        ? hoursField('Enter the supplier timesheet hours.')
-        : z.string().optional().or(z.literal('')),
-    deductionAmount: z
-      .string()
-      .optional()
-      .or(z.literal(''))
-      .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0), 'Cannot be negative.')
-      .refine((v) => !v || Number(v) <= 1_000_000, 'That looks too high — check the figure.'),
+    supplierHours: optionalHoursField,
+    deductionAmount: optionalMoneyField,
+    // Supplier-side counterpart to deductionAmount above (2026-09-30) — only
+    // ever shown/sent for a SupplierEmployee deployment, same bounds.
+    supplierDeductionAmount: optionalMoneyField,
+    supplierDeductionNote: optionalStr(500),
+    employeeAdditionalAmount: optionalMoneyField,
+    employeeAdditionalAmountNote: optionalStr(500),
     notes: optionalStr(500),
   });
 }
@@ -77,6 +105,10 @@ export const emptyMonthlyHoursForm = {
   actualHours: '',
   supplierHours: '',
   deductionAmount: '',
+  supplierDeductionAmount: '',
+  supplierDeductionNote: '',
+  employeeAdditionalAmount: '',
+  employeeAdditionalAmountNote: '',
   notes: '',
 };
 
@@ -97,6 +129,10 @@ export function monthlyHoursEntryToForm(entry) {
     actualHours: String(entry.actualHours ?? ''),
     supplierHours: entry.supplierHours != null ? String(entry.supplierHours) : '',
     deductionAmount: entry.deductionAmount ? String(entry.deductionAmount) : '',
+    supplierDeductionAmount: entry.supplierDeductionAmount ? String(entry.supplierDeductionAmount) : '',
+    supplierDeductionNote: entry.supplierDeductionNote ?? '',
+    employeeAdditionalAmount: entry.employeeAdditionalAmount ? String(entry.employeeAdditionalAmount) : '',
+    employeeAdditionalAmountNote: entry.employeeAdditionalAmountNote ?? '',
     notes: entry.notes ?? '',
   };
 }

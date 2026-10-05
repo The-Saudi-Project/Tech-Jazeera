@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-05T05:12:37.997Z",
+  "disposableDatabaseShutdownConfirmed": true,
+  "temporaryAuditBrowserTabClosed": true,
+  "ports": {
+    "5015": "not responding",
+    "5175": "not responding"
+  }
+}

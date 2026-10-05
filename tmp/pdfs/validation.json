@@ -1,0 +1,10 @@
+{
+  "pages": 40,
+  "expected_text_blocks": 399,
+  "unmatched_text_blocks": [],
+  "source_sha256": "980cccda77425c2ab41487c6d1ea4ce8659e59d704583512943e6493a0ee1e64",
+  "embedded_original_matches": true,
+  "image_count": 2,
+  "link_annotations": 155,
+  "output_bytes": 344829
+}

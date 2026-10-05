@@ -1,0 +1,596 @@
+{
+  "routes": 294,
+  "modules": 40,
+  "unmounted": [],
+  "mutationsWithoutRouteGate": [
+    {
+      "method": "POST",
+      "path": "/api/approvals/roles",
+      "handlers": [
+        "canManageApprovalHierarchy",
+        "validate({ body: createApprovalRoleSchema })",
+        "asyncHandler(approvalsController.createRole)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/approvals/roles/:id",
+      "handlers": [
+        "canManageApprovalHierarchy",
+        "validate({ params: approvalRoleIdParamSchema, body: updateApprovalRoleSchema })",
+        "asyncHandler(approvalsController.updateRole)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/approvals/workflows",
+      "handlers": [
+        "canManageApprovalHierarchy",
+        "validate({ body: createApprovalWorkflowSchema })",
+        "asyncHandler(approvalsController.createWorkflow)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/approvals/workflows/:id",
+      "handlers": [
+        "canManageApprovalHierarchy",
+        "validate({ params: approvalWorkflowIdParamSchema, body: updateApprovalWorkflowSchema })",
+        "asyncHandler(approvalsController.updateWorkflow)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "handlers": [
+        "loginLimiter",
+        "validate({ body: loginSchema })",
+        "asyncHandler(authController.login)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/refresh",
+      "handlers": [
+        "asyncHandler(authController.refresh)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "handlers": [
+        "asyncHandler(authController.logout)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/auth/password",
+      "handlers": [
+        "requireAuth",
+        "validate({ body: changePasswordSchema })",
+        "asyncHandler(authController.changePassword)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/auth/avatar",
+      "handlers": [
+        "requireAuth",
+        "uploadAvatarImage",
+        "asyncHandler(authController.uploadAvatar)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/auth/avatar",
+      "handlers": [
+        "requireAuth",
+        "asyncHandler(authController.removeAvatar)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/outsourced-employees",
+      "handlers": [
+        "canWrite",
+        "validate({ body: createOutsourcedEmployeeSchema })",
+        "asyncHandler(controller.create)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/outsourced-employees/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: outsourcedEmployeeIdParamSchema, body: updateOutsourcedEmployeeSchema })",
+        "asyncHandler(controller.update)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/outsourced-employees/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: outsourcedEmployeeIdParamSchema })",
+        "asyncHandler(controller.remove)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/outsourced-employees/:id/documents",
+      "handlers": [
+        "canWrite",
+        "validate({ params: outsourcedEmployeeIdParamSchema })",
+        "uploadSingle",
+        "validate({ body: outsourcedEmployeeDocumentBodySchema })",
+        "asyncHandler(controller.addDocument)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/outsourced-employees/:id/documents/:fileId",
+      "handlers": [
+        "canWrite",
+        "validate({ params: outsourcedEmployeeDocumentParamSchema })",
+        "asyncHandler(controller.removeDocument)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/eosb",
+      "handlers": [
+        "canWrite",
+        "validate({ body: createSettlementSchema })",
+        "asyncHandler(settlementController.create)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/eosb/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: settlementIdParamSchema })",
+        "asyncHandler(settlementController.remove)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/exit-documents/exit-reentry",
+      "handlers": [
+        "canWrite",
+        "validate({ body: submitExitReentrySchema })",
+        "asyncHandler(exitReentryController.submit)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/exit-documents/exit-reentry/:id/decide",
+      "handlers": [
+        "canWrite",
+        "validate({ params: exitReentryIdParamSchema, body: decideExitReentrySchema })",
+        "asyncHandler(exitReentryController.decide)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/exit-documents/certificates",
+      "handlers": [
+        "canWrite",
+        "validate({ body: submitCertificateSchema })",
+        "asyncHandler(certificateController.submit)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/exit-documents/certificates/:id/decide",
+      "handlers": [
+        "canWrite",
+        "validate({ params: certificateIdParamSchema, body: decideCertificateSchema })",
+        "asyncHandler(certificateController.decide)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/expenses",
+      "handlers": [
+        "canWrite",
+        "uploadSingle",
+        "validate({ body: createExpenseSchema })",
+        "asyncHandler(expenseController.create)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/expenses/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: expenseIdParamSchema, body: updateExpenseSchema })",
+        "asyncHandler(expenseController.update)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/expenses/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: expenseIdParamSchema })",
+        "asyncHandler(expenseController.remove)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/financial-requests/advances/:id/decide",
+      "handlers": [
+        "canDecideFinancialRequests",
+        "validate({ params: advanceIdParamSchema, body: decideAdvanceSchema })",
+        "asyncHandler(advanceController.decide)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/financial-requests/advances/:id/repayments",
+      "handlers": [
+        "canHandleMoney",
+        "validate({ params: advanceIdParamSchema, body: addRepaymentSchema })",
+        "asyncHandler(advanceController.addRepayment)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/financial-requests/reimbursements/:id/decide",
+      "handlers": [
+        "canDecideFinancialRequests",
+        "validate({ params: reimbursementIdParamSchema, body: decideReimbursementSchema })",
+        "asyncHandler(reimbursementController.decide)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/financial-requests/reimbursements/:id/pay",
+      "handlers": [
+        "canHandleMoney",
+        "validate({ params: reimbursementIdParamSchema })",
+        "asyncHandler(reimbursementController.markPaid)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/holidays",
+      "handlers": [
+        "canManageHolidays",
+        "validate({ body: createHolidaySchema })",
+        "asyncHandler(holidayController.create)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/holidays/:id",
+      "handlers": [
+        "canManageHolidays",
+        "validate({ params: holidayIdParamSchema, body: updateHolidaySchema })",
+        "asyncHandler(holidayController.update)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/holidays/:id",
+      "handlers": [
+        "canManageHolidays",
+        "validate({ params: holidayIdParamSchema })",
+        "asyncHandler(holidayController.remove)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/leave",
+      "handlers": [
+        "canWriteLeaveRequests",
+        "uploadSingle",
+        "validate({ body: submitLeaveRequestSchema })",
+        "asyncHandler(leaveController.submit)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/leave/:id/decide",
+      "handlers": [
+        "canWriteLeaveRequests",
+        "validate({ params: leaveRequestIdParamSchema, body: decideLeaveRequestSchema })",
+        "asyncHandler(leaveController.decide)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/c/:token/e",
+      "handlers": [
+        "publicEventLimiter",
+        "async (req, res) => {\r\n  res.status(204).end();\r\n\r\n  // Deliberately NOT wrapped in asyncHandler: the response has already gone\r\n  // out, so a failure here has nowhere to be reported except the log.\r\n  try {\r\n    const { token } = req.params;\r\n    if (!TOKEN_RE.test(token)) return;\r\n    const target = req.body?.target;\r\n    if (!NFC_CLICK_TARGETS.includes(target)) return;\r\n\r\n    const data = await getPublicCardByToken(token);\r\n    if (!data) return;\r\n    await recordTapEvent({ ref: data.ref, type: 'click', target, req });\r\n  } catch (err) {\r\n    logger.warn(`[nfc] click beacon failed: ${err.message}`);\r\n  }\r\n}"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/companies",
+      "handlers": [
+        "canWrite",
+        "validate({ body: createCompanySchema })",
+        "asyncHandler(nfc.createCompany)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/nfc/companies/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema, body: updateCompanySchema })",
+        "asyncHandler(nfc.updateCompany)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/nfc/companies/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "asyncHandler(nfc.deleteCompany)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/companies/:id/logo",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "uploadNfcImage",
+        "asyncHandler(nfc.uploadCompanyLogo)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/nfc/companies/:id/logo",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "asyncHandler(nfc.removeCompanyLogo)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/employees",
+      "handlers": [
+        "canWrite",
+        "validate({ body: createEmployeeSchema })",
+        "asyncHandler(nfc.createEmployee)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/nfc/employees/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema, body: updateEmployeeSchema })",
+        "asyncHandler(nfc.updateEmployee)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/nfc/employees/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "asyncHandler(nfc.deleteEmployee)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/employees/:id/photo",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "uploadNfcImage",
+        "asyncHandler(nfc.uploadEmployeePhoto)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/nfc/employees/:id/photo",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "asyncHandler(nfc.removeEmployeePhoto)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/batches",
+      "handlers": [
+        "canWrite",
+        "validate({ body: generateBatchSchema })",
+        "asyncHandler(nfc.generateBatch)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/nfc/cards/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema, body: updateCardSchema })",
+        "asyncHandler(nfc.updateCard)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/nfc/cards/:id",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "asyncHandler(nfc.deleteCard)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/cards/:id/assign",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema, body: assignCardSchema })",
+        "asyncHandler(nfc.assignCard)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/cards/:id/assign-company",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema, body: assignCardToCompanySchema })",
+        "asyncHandler(nfc.assignCardToCompany)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/cards/:id/unassign",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "asyncHandler(nfc.unassignCard)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/cards/:id/lost",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "asyncHandler(nfc.markLost)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/cards/:id/return",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "asyncHandler(nfc.markReturned)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/cards/:id/disable",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "asyncHandler(nfc.disableCard)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/nfc/cards/:id/rotate",
+      "handlers": [
+        "canWrite",
+        "validate({ params: idParamSchema })",
+        "asyncHandler(nfc.rotateToken)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/notifications/:id/read",
+      "handlers": [
+        "validate({ params: notificationIdParamSchema })",
+        "asyncHandler(notificationController.markRead)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/read-all",
+      "handlers": [
+        "asyncHandler(notificationController.markAllRead)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/subscribe",
+      "handlers": [
+        "validate({ body: subscribePushSchema })",
+        "asyncHandler(notificationController.subscribe)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/unsubscribe",
+      "handlers": [
+        "validate({ body: unsubscribePushSchema })",
+        "asyncHandler(notificationController.unsubscribe)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/ramadan-periods",
+      "handlers": [
+        "canManageRamadan",
+        "validate({ body: createRamadanPeriodSchema })",
+        "asyncHandler(ramadanPeriodController.create)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/ramadan-periods/:id",
+      "handlers": [
+        "canManageRamadan",
+        "validate({ params: ramadanPeriodIdParamSchema, body: updateRamadanPeriodSchema })",
+        "asyncHandler(ramadanPeriodController.update)"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/ramadan-periods/:id",
+      "handlers": [
+        "canManageRamadan",
+        "validate({ params: ramadanPeriodIdParamSchema })",
+        "asyncHandler(ramadanPeriodController.remove)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/staff-attendance/punch",
+      "handlers": [
+        "canSelfMark",
+        "validate({ body: selfMarkSchema })",
+        "asyncHandler(staffAttendanceController.punch)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/timesheets",
+      "handlers": [
+        "canWrite",
+        "validate({ body: submitTimesheetSchema })",
+        "asyncHandler(timesheetController.submit)"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/timesheets/:id/decide",
+      "handlers": [
+        "canWrite",
+        "validate({ params: timesheetIdParamSchema, body: decideTimesheetSchema })",
+        "asyncHandler(timesheetController.decide)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/timesheets/bulk-approve",
+      "handlers": [
+        "canWrite",
+        "validate({ body: bulkApproveTimesheetSchema })",
+        "asyncHandler(timesheetController.bulkApprove)"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/timesheets/monthly-report",
+      "handlers": [
+        "canRead",
+        "validate({ body: generateMonthlyReportSchema })",
+        "asyncHandler(timesheetController.generateMonthlyReport)"
+      ]
+    }
+  ]
+}

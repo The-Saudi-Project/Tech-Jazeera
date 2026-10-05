@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <title>Al Jazeera ERP</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <!-- PWA installability: manifest + icons + theme color. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#178386" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="AJ ERP" />
+
+    <!-- Set the theme class before first paint so there's no light->dark
+         flash. Kept a plain inline script (not a module) so it runs
+         synchronously, ahead of any CSS or React. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var dark = stored === 'dark';
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- P3-G: same reasoning as the theme script above — set dir/lang
+         before first paint so a returning Arabic-reading worker never sees
+         an LTR flash before React (and i18n/index.js) take over. -->
+    <script>
+      (function () {
+        try {
+          var lang = localStorage.getItem('language') || 'en';
+          document.documentElement.lang = lang;
+          document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-5qESBj1H.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/axios-BjCXa668.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-BwtYHKAP.js">
+    <link rel="modulepreload" crossorigin href="/assets/react-dom-CA8Vyhvs.js">
+    <link rel="modulepreload" crossorigin href="/assets/removable-D_tWLv7R.js">
+    <link rel="modulepreload" crossorigin href="/assets/useQuery-TfLy7vX9.js">
+    <link rel="modulepreload" crossorigin href="/assets/mutation-B1b85mI8.js">
+    <link rel="modulepreload" crossorigin href="/assets/preload-helper-BZ1Pz5am.js">
+    <link rel="modulepreload" crossorigin href="/assets/chunk-BV7QT456-B_J2WF9F.js">
+    <link rel="modulepreload" crossorigin href="/assets/Button-D57mtnQ1.js">
+    <link rel="modulepreload" crossorigin href="/assets/useTranslation-DoocvzNa.js">
+    <link rel="modulepreload" crossorigin href="/assets/Select-CZJQ1X1e.js">
+    <link rel="modulepreload" crossorigin href="/assets/companySettings.api-D8VIpgsa.js">
+    <link rel="modulepreload" crossorigin href="/assets/RouteFallback-BTJgiUcA.js">
+    <link rel="modulepreload" crossorigin href="/assets/Toast-pzlDIffX.js">
+    <link rel="modulepreload" crossorigin href="/assets/AuthContext-D6LPz7Vx.js">
+    <link rel="modulepreload" crossorigin href="/assets/EmptyState-B5ze2yDF.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-BVM-N2bs.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+

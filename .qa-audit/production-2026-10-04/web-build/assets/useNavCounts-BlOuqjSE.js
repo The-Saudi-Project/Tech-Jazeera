@@ -1,0 +1,1 @@
+import{t as e}from"./useQuery-Cute-EIz.js";import{r as t}from"./dashboard.api-BfqmxSIl.js";function n(){let{data:n}=e({queryKey:[`dashboard`,30],queryFn:()=>t(30),staleTime:6e4}),r={};if(n?.myPendingActions){for(let e of n.myPendingActions)if(e.url){let t=e.url.split(`?`)[0];r[e.url]=(r[e.url]||0)+e.count,t!==e.url&&(r[t]=(r[t]||0)+e.count)}}return r}export{n as t};

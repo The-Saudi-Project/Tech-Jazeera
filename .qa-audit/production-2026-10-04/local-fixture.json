@@ -1,0 +1,60 @@
+{
+  "uri": "mongodb://127.0.0.1:62807/crm_isolated_audit?replicaSet=testset",
+  "users": {
+    "Admin": {
+      "id": "6ac252cdf069a1e6c1c51fde",
+      "employee": null,
+      "email": "admin@audit.invalid"
+    },
+    "Manager": {
+      "id": "6ac252cef069a1e6c1c51fe9",
+      "employee": "6ac252cef069a1e6c1c51fe5",
+      "email": "manager@audit.invalid"
+    },
+    "HR": {
+      "id": "6ac252cef069a1e6c1c51fed",
+      "employee": "6ac252cef069a1e6c1c51feb",
+      "email": "hr@audit.invalid"
+    },
+    "Accounts": {
+      "id": "6ac252cef069a1e6c1c51ff1",
+      "employee": "6ac252cef069a1e6c1c51fef",
+      "email": "accounts@audit.invalid"
+    },
+    "Coordinator": {
+      "id": "6ac252cef069a1e6c1c51ff5",
+      "employee": "6ac252cef069a1e6c1c51ff3",
+      "email": "coordinator@audit.invalid"
+    },
+    "Executive": {
+      "id": "6ac252cef069a1e6c1c51ffa",
+      "employee": "6ac252cef069a1e6c1c51ff8",
+      "email": "executive@audit.invalid"
+    },
+    "Office Secretary": {
+      "id": "6ac252cef069a1e6c1c51ffe",
+      "employee": "6ac252cef069a1e6c1c51ffc",
+      "email": "officesecretary@audit.invalid"
+    },
+    "Staff": {
+      "id": "6ac252cef069a1e6c1c52003",
+      "employee": "6ac252cef069a1e6c1c52000",
+      "email": "staff@audit.invalid"
+    },
+    "Worker": {
+      "id": "6ac252cef069a1e6c1c52007",
+      "employee": "6ac252cef069a1e6c1c52005",
+      "email": "worker@audit.invalid"
+    },
+    "CoordinatorB": {
+      "id": "6ac252cef069a1e6c1c5200c",
+      "employee": "6ac252cef069a1e6c1c5200a",
+      "email": "coordinatorb@audit.invalid"
+    }
+  },
+  "password": "AuditOnly-Local-2026!",
+  "client": "6ac252cef069a1e6c1c52011",
+  "outsourced": "6ac252cef069a1e6c1c52013",
+  "outsourcedFile": "6ac252cef069a1e6c1c52014",
+  "foreignDocument": "6ac252cef069a1e6c1c52016"
+}

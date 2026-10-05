@@ -1,0 +1,148 @@
+[
+  {
+    "name": "worker-advance-submit",
+    "status": 201,
+    "message": "Advance request submitted.",
+    "data": {
+      "employee": "6ac252cef069a1e6c1c52005",
+      "amount": 100,
+      "reason": "QA",
+      "repaymentMonths": 1,
+      "status": "Pending",
+      "decidedBy": null,
+      "decidedAt": null,
+      "workflow": null,
+      "workflowName": null,
+      "currentStep": 0,
+      "_id": "6ac255020f6e94b0fd5a5111",
+      "repayments": [],
+      "createdAt": "2026-10-04T13:30:42.860Z",
+      "updatedAt": "2026-10-04T13:30:42.860Z",
+      "__v": 0,
+      "amountRepaid": 0,
+      "outstandingBalance": 100
+    }
+  },
+  {
+    "name": "foreign-worker-advance-cancel",
+    "status": 403,
+    "message": "You can only cancel your own advance requests."
+  },
+  {
+    "name": "foreign-coordinator-advance",
+    "status": 403,
+    "message": "You do not have permission to perform this action."
+  },
+  {
+    "name": "foreign-notification-read",
+    "status": 404,
+    "message": "Notification not found."
+  },
+  {
+    "name": "foreign-daily-update",
+    "status": 403,
+    "message": "You do not have permission to perform this action."
+  },
+  {
+    "name": "seed-requirement-stages",
+    "status": 409,
+    "message": "Stages already exist — the suggested set is only offered on an empty board."
+  },
+  {
+    "name": "foreign-requirement-read",
+    "status": 404,
+    "message": "That requirement was not found."
+  },
+  {
+    "name": "foreign-requirement-update",
+    "status": 403,
+    "message": "You do not have permission to perform this action."
+  },
+  {
+    "name": "monthly-target-query-amplification",
+    "clients": 12,
+    "months": 6,
+    "dbCalls": 276,
+    "ms": 311,
+    "callsByType": {
+      "deployments.find": 78,
+      "mobilisationtargets.find": 6,
+      "users.createIndex": 2,
+      "approvalworkflows.createIndex": 2,
+      "outsourcedemployees.createIndex": 2,
+      "employees.createIndex": 7,
+      "subcontractors.createIndex": 2,
+      "approvalroles.createIndex": 1,
+      "leaverequests.createIndex": 2,
+      "exitreentryrequests.createIndex": 2,
+      "certificaterequests.createIndex": 2,
+      "timesheets.createIndex": 2,
+      "salaryadvances.createIndex": 2,
+      "reimbursementclaims.createIndex": 2,
+      "auditlogs.createIndex": 1,
+      "pushsubscriptions.createIndex": 2,
+      "attendances.createIndex": 2,
+      "clientpayments.createIndex": 1,
+      "mobilisationsubmissionlocks.createIndex": 2,
+      "mobilisations.find": 78,
+      "expenses.createIndex": 3,
+      "refreshtokens.createIndex": 3,
+      "clientpayments.find": 72
+    }
+  },
+  {
+    "name": "attendance-date-boundaries",
+    "leapFebruary": 29,
+    "december": {
+      "from": "2026-12-01",
+      "to": "2026-12-31",
+      "days": [
+        "2026-12-01",
+        "2026-12-02",
+        "2026-12-03",
+        "2026-12-04",
+        "2026-12-05",
+        "2026-12-06",
+        "2026-12-07",
+        "2026-12-08",
+        "2026-12-09",
+        "2026-12-10",
+        "2026-12-11",
+        "2026-12-12",
+        "2026-12-13",
+        "2026-12-14",
+        "2026-12-15",
+        "2026-12-16",
+        "2026-12-17",
+        "2026-12-18",
+        "2026-12-19",
+        "2026-12-20",
+        "2026-12-21",
+        "2026-12-22",
+        "2026-12-23",
+        "2026-12-24",
+        "2026-12-25",
+        "2026-12-26",
+        "2026-12-27",
+        "2026-12-28",
+        "2026-12-29",
+        "2026-12-30",
+        "2026-12-31"
+      ]
+    },
+    "week": {
+      "from": "2026-12-26",
+      "to": "2027-01-01",
+      "days": [
+        "2026-12-26",
+        "2026-12-27",
+        "2026-12-28",
+        "2026-12-29",
+        "2026-12-30",
+        "2026-12-31",
+        "2027-01-01"
+      ]
+    },
+    "nextMonth": "2027-01-01"
+  }
+]

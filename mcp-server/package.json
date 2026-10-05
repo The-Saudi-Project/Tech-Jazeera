@@ -1,0 +1,22 @@
+{
+  "name": "crm-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP bridge exposing read-only tools over the Al Jazeera CRM API, for use with Claude Desktop / Cursor.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "crm"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "axios": "^1.20.0",
+    "dotenv": "^18.0.5",
+    "zod": "^4.6.5"
+  }
+}

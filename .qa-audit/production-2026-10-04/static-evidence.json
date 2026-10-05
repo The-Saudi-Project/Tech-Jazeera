@@ -1,0 +1,1117 @@
+{
+  "repos": [
+    {
+      "dir": "server",
+      "head": "c354b5a16d877beaab53a377c4f07bcd8c1d863f",
+      "commits": 174,
+      "tracked": 357,
+      "status": ""
+    },
+    {
+      "dir": "client",
+      "head": "a9d429fe783e91bc27c53925f62c3ed78e173c84",
+      "commits": 250,
+      "tracked": 459,
+      "status": ""
+    }
+  ],
+  "parsedFiles": 554,
+  "parseErrors": [],
+  "duplicateFunctions": [
+    [
+      {
+        "file": "server/src/modules/companySettings/companySettings.validation.js",
+        "line": 17,
+        "name": "isValidIban",
+        "length": 465
+      },
+      {
+        "file": "client/src/features/companySettings/companySettings.schema.js",
+        "line": 17,
+        "name": "isValidIban",
+        "length": 465
+      }
+    ],
+    [
+      {
+        "file": "server/src/modules/mobilisations/mobilisation.validation.js",
+        "line": 323,
+        "name": "(anonymous)",
+        "length": 384
+      },
+      {
+        "file": "client/src/features/mobilisations/mobilisations.schema.js",
+        "line": 251,
+        "name": "(anonymous)",
+        "length": 384
+      }
+    ],
+    [
+      {
+        "file": "client/src/features/deployments/pages/DeploymentListPage.jsx",
+        "line": 135,
+        "name": "(anonymous)",
+        "length": 320
+      },
+      {
+        "file": "client/src/features/mobilisations/pages/MobilisationListPage.jsx",
+        "line": 70,
+        "name": "(anonymous)",
+        "length": 320
+      }
+    ],
+    [
+      {
+        "file": "server/src/modules/employees/outsourcedEmployee.validation.js",
+        "line": 53,
+        "name": "(anonymous)",
+        "length": 207
+      },
+      {
+        "file": "server/src/modules/employees/outsourcedEmployee.validation.js",
+        "line": 62,
+        "name": "(anonymous)",
+        "length": 207
+      }
+    ],
+    [
+      {
+        "file": "client/src/app/pages/AdminToolsHubPage.jsx",
+        "line": 6,
+        "name": "AdminToolsHubPage",
+        "length": 199
+      },
+      {
+        "file": "client/src/app/pages/SalesHubPage.jsx",
+        "line": 6,
+        "name": "SalesHubPage",
+        "length": 199
+      },
+      {
+        "file": "client/src/app/pages/WorkforceHubPage.jsx",
+        "line": 6,
+        "name": "WorkforceHubPage",
+        "length": 199
+      }
+    ]
+  ],
+  "unusedExportCandidates": [
+    {
+      "file": "server/src/middleware/upload.js",
+      "line": 66,
+      "name": "DOCUMENT_DELIVERY_TYPE"
+    },
+    {
+      "file": "server/src/modules/assets/assetAssignment.model.js",
+      "line": 11,
+      "name": "ASSET_ASSIGNMENT_STATUSES"
+    },
+    {
+      "file": "server/src/modules/attendance/attendance.model.js",
+      "line": 34,
+      "name": "ATTENDANCE_SOURCES"
+    },
+    {
+      "file": "server/src/modules/attendance/attendance.model.js",
+      "line": 35,
+      "name": "ATTENDANCE_VERIFICATION_METHODS"
+    },
+    {
+      "file": "server/src/modules/deployments/clientPayment.model.js",
+      "line": 20,
+      "name": "CLIENT_PAYMENT_DECISION_STATUSES"
+    },
+    {
+      "file": "server/src/modules/deployments/deployment.model.js",
+      "line": 42,
+      "name": "MONTHLY_HOURS_STATUSES"
+    },
+    {
+      "file": "server/src/modules/deployments/deployment.model.js",
+      "line": 91,
+      "name": "DAILY_ENTRY_STATUSES"
+    },
+    {
+      "file": "server/src/modules/deployments/deployment.service.js",
+      "line": 1814,
+      "name": "deductionsForEmployeesMonth"
+    },
+    {
+      "file": "server/src/modules/deployments/deployment.service.js",
+      "line": 1851,
+      "name": "PROFIT_RATE_FIELDS"
+    },
+    {
+      "file": "server/src/modules/financialRequests/advance.service.js",
+      "line": 34,
+      "name": "computeOutstanding"
+    },
+    {
+      "file": "server/src/modules/financialRequests/reimbursement.controller.js",
+      "line": 54,
+      "name": "streamReceipt"
+    },
+    {
+      "file": "server/src/modules/leave/leave.controller.js",
+      "line": 64,
+      "name": "streamAttachment"
+    },
+    {
+      "file": "server/src/modules/mobilisations/mobilisation.service.js",
+      "line": 323,
+      "name": "activeMobilisationIqamas"
+    },
+    {
+      "file": "server/src/modules/nfc/nfc.qr.js",
+      "line": 65,
+      "name": "ensureQrSafeColour"
+    },
+    {
+      "file": "server/src/modules/nfc/nfc.service.js",
+      "line": 24,
+      "name": "mediaUrl"
+    },
+    {
+      "file": "server/src/modules/nfc/nfc.upload.js",
+      "line": 12,
+      "name": "NFC_MEDIA_DIR"
+    },
+    {
+      "file": "server/src/modules/nfc/nfc.visitor.js",
+      "line": 74,
+      "name": "countryFrom"
+    },
+    {
+      "file": "server/src/modules/nfc/nfc.visitor.js",
+      "line": 85,
+      "name": "deviceFrom"
+    },
+    {
+      "file": "server/src/modules/nfc/nfc.visitor.js",
+      "line": 96,
+      "name": "platformFrom"
+    },
+    {
+      "file": "server/src/modules/nfc/nfc.visitor.js",
+      "line": 111,
+      "name": "referrerHostFrom"
+    },
+    {
+      "file": "server/src/modules/nfc/nfc.visitor.js",
+      "line": 147,
+      "name": "visitorHash"
+    },
+    {
+      "file": "server/src/modules/nfc/nfcTapEvent.model.js",
+      "line": 27,
+      "name": "NFC_EVENT_TYPES"
+    },
+    {
+      "file": "server/src/modules/nfc/nfcTapEvent.model.js",
+      "line": 38,
+      "name": "RETENTION_DAYS"
+    },
+    {
+      "file": "server/src/modules/notifications/notification.model.js",
+      "line": 14,
+      "name": "NOTIFICATION_TYPES"
+    },
+    {
+      "file": "server/src/modules/requirements/requirement.model.js",
+      "line": 46,
+      "name": "CANDIDATE_STATUSES"
+    },
+    {
+      "file": "server/src/modules/users/user.validation.js",
+      "line": 16,
+      "name": "STAFF_ASSIGNABLE_ROLES"
+    },
+    {
+      "file": "server/src/utils/csv.js",
+      "line": 42,
+      "name": "csvRow"
+    },
+    {
+      "file": "server/src/utils/imageUpload.js",
+      "line": 7,
+      "name": "IMAGE_MIME_TYPES"
+    },
+    {
+      "file": "client/src/components/shared/BrandLogo.jsx",
+      "line": 13,
+      "name": "FALLBACK_BRAND_NAME"
+    },
+    {
+      "file": "client/src/features/attendance/attendance.dates.js",
+      "line": 9,
+      "name": "toDateKey"
+    },
+    {
+      "file": "client/src/features/companySettings/companySettings.schema.js",
+      "line": 51,
+      "name": "emptyCompanySettingsForm"
+    },
+    {
+      "file": "client/src/features/nfc/components/NfcAnalyticsBits.jsx",
+      "line": 13,
+      "name": "RANGES"
+    },
+    {
+      "file": "client/src/i18n/index.js",
+      "line": 36,
+      "name": "RTL_LANGUAGES"
+    },
+    {
+      "file": "client/src/i18n/index.js",
+      "line": 71,
+      "name": "applyDocumentDirection"
+    },
+    {
+      "file": "client/src/lib/auditActions.js",
+      "line": 12,
+      "name": "ACTION_LABELS"
+    },
+    {
+      "file": "client/src/lib/constants.js",
+      "line": 170,
+      "name": "PAYROLL_STATUS_VARIANT"
+    },
+    {
+      "file": "client/src/lib/utils.js",
+      "line": 127,
+      "name": "lineAmount"
+    }
+  ],
+  "sectionAccess": {
+    "serverKeys": [
+      "expenses",
+      "employeeCreate",
+      "companySettings",
+      "mobilisationsViewer",
+      "mobilisationsSelfMobilise",
+      "eosb",
+      "financialRequests",
+      "auditLog",
+      "timesheetProcessor",
+      "nfc",
+      "clientsManage",
+      "deploymentsHours",
+      "deploymentsHoursDecide",
+      "deploymentsInvoicing",
+      "deploymentsPaymentDecide",
+      "deploymentsRelease",
+      "deploymentsEdit",
+      "subcontractorsManage",
+      "attendanceRecords",
+      "attendanceSignInOut",
+      "attendanceOfficeLocation",
+      "documentsManage",
+      "assetsManage",
+      "ramadanManage",
+      "team",
+      "approvalHierarchy",
+      "leaveRequests",
+      "timesheetRequests",
+      "exitDocuments",
+      "holidays",
+      "dashboardProfit",
+      "reconciliation",
+      "dailyUpdatesOwn",
+      "dailyUpdatesTeam",
+      "requirementsOwn",
+      "requirementsTeam",
+      "requirementStages",
+      "mobilisationTargets"
+    ],
+    "groupKeys": [
+      "employeeCreate",
+      "attendanceRecords",
+      "attendanceSignInOut",
+      "attendanceOfficeLocation",
+      "leaveRequests",
+      "holidays",
+      "timesheetRequests",
+      "eosb",
+      "exitDocuments",
+      "ramadanManage",
+      "mobilisationsViewer",
+      "mobilisationsSelfMobilise",
+      "mobilisationTargets",
+      "deploymentsRelease",
+      "deploymentsHours",
+      "deploymentsHoursDecide",
+      "deploymentsInvoicing",
+      "deploymentsPaymentDecide",
+      "deploymentsEdit",
+      "clientsManage",
+      "subcontractorsManage",
+      "dailyUpdatesOwn",
+      "dailyUpdatesTeam",
+      "requirementsOwn",
+      "requirementsTeam",
+      "requirementStages",
+      "expenses",
+      "financialRequests",
+      "dashboardProfit",
+      "companySettings",
+      "documentsManage",
+      "assetsManage",
+      "team",
+      "approvalHierarchy",
+      "timesheetProcessor",
+      "nfc",
+      "auditLog",
+      "reconciliation"
+    ],
+    "missingInClientGroups": [],
+    "unknownClientGroupKeys": [],
+    "invalidCalls": [],
+    "calls": [
+      {
+        "file": "server/src/modules/approvals/approvals.routes.js",
+        "line": 46,
+        "call": "requireSectionAccess",
+        "key": "approvalHierarchy",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/approvals/approvals.routes.js",
+        "line": 47,
+        "call": "requireSectionAccess",
+        "key": "approvalHierarchy",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/assets/asset.routes.js",
+        "line": 35,
+        "call": "requireSectionAccess",
+        "key": "assetsManage",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/assets/asset.routes.js",
+        "line": 36,
+        "call": "requireSectionAccess",
+        "key": "assetsManage",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/attendance/attendance.routes.js",
+        "line": 31,
+        "call": "requireSectionAccess",
+        "key": "attendanceRecords",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/attendance/attendance.routes.js",
+        "line": 32,
+        "call": "requireSectionAccess",
+        "key": "attendanceRecords",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/attendance/attendance.routes.js",
+        "line": 63,
+        "call": "requireSectionAccess",
+        "key": "attendanceOfficeLocation",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/attendance/attendance.routes.js",
+        "line": 64,
+        "call": "requireSectionAccess",
+        "key": "attendanceOfficeLocation",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/audit/audit.routes.js",
+        "line": 18,
+        "call": "requireSectionAccess",
+        "key": "auditLog",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/clients/client.routes.js",
+        "line": 38,
+        "call": "requireSectionAccess",
+        "key": "clientsManage",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/clients/client.routes.js",
+        "line": 39,
+        "call": "requireSectionAccess",
+        "key": "clientsManage",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/companySettings/companySettings.controller.js",
+        "line": 16,
+        "call": "canAccessSection",
+        "key": "companySettings"
+      },
+      {
+        "file": "server/src/modules/companySettings/companySettings.controller.js",
+        "line": 21,
+        "call": "canAccessSection",
+        "key": "companySettings"
+      },
+      {
+        "file": "server/src/modules/dashboard/dashboard.service.js",
+        "line": 635,
+        "call": "canAccessSection",
+        "key": "dashboardProfit"
+      },
+      {
+        "file": "server/src/modules/dashboard/dashboard.service.js",
+        "line": 767,
+        "call": "canAccessSection",
+        "key": "mobilisationsViewer"
+      },
+      {
+        "file": "server/src/modules/deployments/clientPayment.service.js",
+        "line": 141,
+        "call": "canAccessSection",
+        "key": "deploymentsPaymentDecide"
+      },
+      {
+        "file": "server/src/modules/deployments/clientPayment.service.js",
+        "line": 161,
+        "call": "canAccessSection",
+        "key": "deploymentsHours"
+      },
+      {
+        "file": "server/src/modules/deployments/clientPayment.service.js",
+        "line": 202,
+        "call": "canAccessSection",
+        "key": "deploymentsPaymentDecide"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.routes.js",
+        "line": 76,
+        "call": "requireSectionAccess",
+        "key": "deploymentsRelease",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.routes.js",
+        "line": 77,
+        "call": "requireSectionAccess",
+        "key": "deploymentsHoursDecide",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.routes.js",
+        "line": 78,
+        "call": "requireSectionAccess",
+        "key": "deploymentsInvoicing",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.routes.js",
+        "line": 79,
+        "call": "requireSectionAccess",
+        "key": "deploymentsPaymentDecide",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.routes.js",
+        "line": 80,
+        "call": "requireSectionAccess",
+        "key": "deploymentsRelease",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.routes.js",
+        "line": 136,
+        "call": "requireSectionAccess",
+        "key": "deploymentsEdit",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 85,
+        "call": "canAccessSection",
+        "key": "deploymentsHoursDecide"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 308,
+        "call": "canAccessSection",
+        "key": "deploymentsEdit"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 359,
+        "call": "canAccessSection",
+        "key": "deploymentsHours"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 463,
+        "call": "canAccessSection",
+        "key": "deploymentsHoursDecide"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 489,
+        "call": "canAccessSection",
+        "key": "deploymentsHours"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 490,
+        "call": "canAccessSection",
+        "key": "deploymentsHoursDecide"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 740,
+        "call": "canAccessSection",
+        "key": "deploymentsInvoicing"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 935,
+        "call": "canAccessSection",
+        "key": "mobilisationsViewer"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 1017,
+        "call": "canAccessSection",
+        "key": "mobilisationsViewer"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 1018,
+        "call": "canAccessSection",
+        "key": "deploymentsHoursDecide"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 1104,
+        "call": "canAccessSection",
+        "key": "mobilisationsViewer"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 1113,
+        "call": "canAccessSection",
+        "key": "deploymentsHoursDecide"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 1149,
+        "call": "canAccessSection",
+        "key": "deploymentsRelease"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 1190,
+        "call": "canAccessSection",
+        "key": "deploymentsInvoicing"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 1191,
+        "call": "canAccessSection",
+        "key": "mobilisationsViewer"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 1551,
+        "call": "canAccessSection",
+        "key": "deploymentsHoursDecide"
+      },
+      {
+        "file": "server/src/modules/deployments/deployment.service.js",
+        "line": 1883,
+        "call": "canAccessSection",
+        "key": "deploymentsHoursDecide"
+      },
+      {
+        "file": "server/src/modules/documents/document.routes.js",
+        "line": 37,
+        "call": "requireSectionAccess",
+        "key": "documentsManage",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/documents/document.routes.js",
+        "line": 38,
+        "call": "requireSectionAccess",
+        "key": "documentsManage",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/employees/employee.routes.js",
+        "line": 48,
+        "call": "requireSectionAccess",
+        "key": "employeeCreate",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/employees/employee.routes.js",
+        "line": 59,
+        "call": "requireSectionAccess",
+        "key": "employeeCreate",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/employees/outsourcedEmployee.routes.js",
+        "line": 21,
+        "call": "requireSectionAccess",
+        "key": "employeeCreate",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/eosb/settlement.routes.js",
+        "line": 25,
+        "call": "requireSectionAccess",
+        "key": "eosb",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/eosb/settlement.routes.js",
+        "line": 26,
+        "call": "requireSectionAccess",
+        "key": "eosb",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/exitDocuments/certificate.service.js",
+        "line": 123,
+        "call": "canAccessSection",
+        "key": "exitDocuments"
+      },
+      {
+        "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+        "line": 48,
+        "call": "requireSectionAccess",
+        "key": "exitDocuments",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/exitDocuments/exitDocuments.routes.js",
+        "line": 49,
+        "call": "requireSectionAccess",
+        "key": "exitDocuments",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/exitDocuments/exitReentry.service.js",
+        "line": 133,
+        "call": "canAccessSection",
+        "key": "exitDocuments"
+      },
+      {
+        "file": "server/src/modules/expenses/expense.routes.js",
+        "line": 29,
+        "call": "requireSectionAccess",
+        "key": "expenses",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/expenses/expense.routes.js",
+        "line": 30,
+        "call": "requireSectionAccess",
+        "key": "expenses",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/financialRequests/advance.service.js",
+        "line": 152,
+        "call": "canAccessSection",
+        "key": "financialRequests"
+      },
+      {
+        "file": "server/src/modules/financialRequests/financialRequests.routes.js",
+        "line": 64,
+        "call": "requireSectionAccess",
+        "key": "financialRequests",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/financialRequests/reimbursement.service.js",
+        "line": 162,
+        "call": "canAccessSection",
+        "key": "financialRequests"
+      },
+      {
+        "file": "server/src/modules/holidays/holiday.routes.js",
+        "line": 26,
+        "call": "requireSectionAccess",
+        "key": "holidays",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/leave/leave.service.js",
+        "line": 513,
+        "call": "canAccessSection",
+        "key": "leaveRequests"
+      },
+      {
+        "file": "server/src/modules/leave/leaveRequest.routes.js",
+        "line": 34,
+        "call": "requireSectionAccess",
+        "key": "leaveRequests",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/leave/leaveRequest.routes.js",
+        "line": 35,
+        "call": "requireSectionAccess",
+        "key": "leaveRequests",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/mobilisations/mobilisation.service.js",
+        "line": 527,
+        "call": "canAccessSection",
+        "key": "mobilisationsSelfMobilise"
+      },
+      {
+        "file": "server/src/modules/mobilisationTargets/mobilisationTarget.service.js",
+        "line": 495,
+        "call": "canAccessSection",
+        "key": "mobilisationTargets"
+      },
+      {
+        "file": "server/src/modules/nfc/nfc.routes.js",
+        "line": 34,
+        "call": "requireSectionAccess",
+        "key": "nfc",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/nfc/nfc.routes.js",
+        "line": 35,
+        "call": "requireSectionAccess",
+        "key": "nfc",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/ramadan/ramadanPeriod.routes.js",
+        "line": 29,
+        "call": "requireSectionAccess",
+        "key": "ramadanManage",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/ramadan/ramadanPeriod.routes.js",
+        "line": 30,
+        "call": "requireSectionAccess",
+        "key": "ramadanManage",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/reconciliation/reconciliation.routes.js",
+        "line": 15,
+        "call": "requireSectionAccess",
+        "key": "reconciliation",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/requirements/requirement.routes.js",
+        "line": 41,
+        "call": "requireSectionAccess",
+        "key": "requirementStages",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/staffAttendance/staffAttendance.routes.js",
+        "line": 35,
+        "call": "requireSectionAccess",
+        "key": "attendanceSignInOut",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/staffAttendance/staffAttendance.routes.js",
+        "line": 36,
+        "call": "requireSectionAccess",
+        "key": "attendanceSignInOut",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/subcontractors/subcontractor.routes.js",
+        "line": 32,
+        "call": "requireSectionAccess",
+        "key": "subcontractorsManage",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/subcontractors/subcontractor.routes.js",
+        "line": 33,
+        "call": "requireSectionAccess",
+        "key": "subcontractorsManage",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/timesheetProcessor/timesheet.routes.js",
+        "line": 23,
+        "call": "requireSectionAccess",
+        "key": "timesheetProcessor"
+      },
+      {
+        "file": "server/src/modules/timesheets/timesheet.routes.js",
+        "line": 35,
+        "call": "requireSectionAccess",
+        "key": "timesheetRequests",
+        "level": "read"
+      },
+      {
+        "file": "server/src/modules/timesheets/timesheet.routes.js",
+        "line": 36,
+        "call": "requireSectionAccess",
+        "key": "timesheetRequests",
+        "level": "write"
+      },
+      {
+        "file": "server/src/modules/timesheets/timesheet.service.js",
+        "line": 220,
+        "call": "canAccessSection",
+        "key": "timesheetRequests"
+      },
+      {
+        "file": "server/src/modules/users/user.routes.js",
+        "line": 32,
+        "call": "requireSectionAccess",
+        "key": "team",
+        "level": "read"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 246,
+        "call": "guarded",
+        "key": "employeeCreate"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 247,
+        "call": "guardedWrite",
+        "key": "employeeCreate"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 248,
+        "call": "guarded",
+        "key": "employeeCreate"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 249,
+        "call": "guarded",
+        "key": "employeeCreate"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 256,
+        "call": "guarded",
+        "key": "clientsManage"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 257,
+        "call": "guardedWrite",
+        "key": "clientsManage"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 258,
+        "call": "guarded",
+        "key": "clientsManage"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 259,
+        "call": "guardedWrite",
+        "key": "clientsManage"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 263,
+        "call": "guarded",
+        "key": "deploymentsRelease"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 265,
+        "call": "guarded",
+        "key": "deploymentsRelease"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 267,
+        "call": "guarded",
+        "key": "deploymentsHoursDecide"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 268,
+        "call": "guarded",
+        "key": "deploymentsRelease"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 270,
+        "call": "guardedWrite",
+        "key": "mobilisationsSelfMobilise"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 283,
+        "call": "guarded",
+        "key": "subcontractorsManage"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 285,
+        "call": "guarded",
+        "key": "attendanceRecords"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 286,
+        "call": "guarded",
+        "key": "documentsManage"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 287,
+        "call": "guarded",
+        "key": "timesheetProcessor"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 288,
+        "call": "guarded",
+        "key": "team"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 290,
+        "call": "guarded",
+        "key": "leaveRequests"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 292,
+        "call": "guarded",
+        "key": "eosb"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 294,
+        "call": "guardedWrite",
+        "key": "eosb"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 295,
+        "call": "guarded",
+        "key": "eosb"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 297,
+        "call": "guarded",
+        "key": "assetsManage"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 298,
+        "call": "guarded",
+        "key": "exitDocuments"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 299,
+        "call": "guarded",
+        "key": "timesheetRequests"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 300,
+        "call": "guarded",
+        "key": "mobilisationTargets"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 316,
+        "call": "guarded",
+        "key": "deploymentsPaymentDecide"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 317,
+        "call": "guarded",
+        "key": "expenses"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 318,
+        "call": "guarded",
+        "key": "auditLog"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 319,
+        "call": "guarded",
+        "key": "reconciliation"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 327,
+        "call": "guarded",
+        "key": "approvalHierarchy"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 329,
+        "call": "guarded",
+        "key": "nfc"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 330,
+        "call": "guarded",
+        "key": "nfc"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 331,
+        "call": "guarded",
+        "key": "nfc"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 333,
+        "call": "guarded",
+        "key": "nfc"
+      },
+      {
+        "file": "client/src/app/router.jsx",
+        "line": 334,
+        "call": "guarded",
+        "key": "nfc"
+      }
+    ]
+  },
+  "secretCandidates": [
+    {
+      "scope": "working-tree",
+      "file": "server/.env.example",
+      "line": 15,
+      "type": "credential-mongo-uri",
+      "placeholder": true
+    },
+    {
+      "scope": "history",
+      "file": "server/.env.example",
+      "commit": "340ab8542d3464dd1dd5af821f8046c134bc32ea",
+      "type": "credential-mongo-uri",
+      "placeholder": true
+    }
+  ]
+}

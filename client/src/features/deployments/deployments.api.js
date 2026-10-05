@@ -149,3 +149,51 @@ export async function demobiliseDeployment(id, payload) {
   const { data } = await api.post(`/deployments/${id}/demobilise`, payload);
   return data.data;
 }
+
+/** Every Approved-but-not-yet-invoiced month on a SupplierEmployee/Freelancer
+ *  deployment — the subcontractor-side mirror of getReadyToInvoice. */
+export async function getReadyForSubInvoice() {
+  const { data } = await api.get('/deployments/ready-for-sub-invoice');
+  return data.data;
+}
+
+/** `data` must include invoiceNumber, invoiceDate, and optionally a `file`
+ *  (the subcontractor's invoice copy) — subcontractor-side mirror of sendInvoice. */
+export async function recordSubInvoice(deploymentId, entryId, data) {
+  const formData = new FormData();
+  if (data.invoiceNumber) formData.append('invoiceNumber', data.invoiceNumber);
+  if (data.invoiceDate) formData.append('invoiceDate', data.invoiceDate);
+  if (data.file) formData.append('file', data.file);
+  const res = await api.post(`/deployments/${deploymentId}/monthly-hours/${entryId}/sub-invoice`, formData);
+  return res.data.data;
+}
+
+/** Every subcontractor with at least one outstanding invoice. */
+export async function getSubPaymentsDue() {
+  const { data } = await api.get('/deployments/sub-payments-due');
+  return data.data;
+}
+
+export async function getPaidSubInvoices() {
+  const { data } = await api.get('/deployments/paid-sub-invoices');
+  return data.data;
+}
+
+/** One subcontractor's full billing picture — every invoice (paid or not)
+ *  plus their real payment history — for the drill-down. */
+export async function getSubcontractorPaymentDetail(subcontractorId) {
+  const { data } = await api.get(`/deployments/sub-payments-due/${subcontractorId}`);
+  return data.data;
+}
+
+/** Record one bulk payment this subcontractor received. `data: { amount, paymentReference?, paymentDate? }`. */
+export async function recordSubcontractorPayment(subcontractorId, data) {
+  const res = await api.post(`/deployments/sub-payments-due/${subcontractorId}/payments`, data);
+  return res.data.data;
+}
+
+/** Approve/Reject a Pending recorded subcontractor payment. `data: { decision, note }`. */
+export async function decideSubcontractorPayment(paymentId, data) {
+  const res = await api.patch(`/deployments/sub-payments/${paymentId}/decide`, data);
+  return res.data.data;
+}

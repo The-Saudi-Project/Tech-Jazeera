@@ -1,0 +1,1 @@
+import{n as e}from"./Toast-8rlLREMR.js";function t(){let t=e();return async function(e,{successMessage:n=`Copied.`,failureMessage:r=`Could not copy — select and copy it manually.`}={}){try{await navigator.clipboard.writeText(e),t.success(n)}catch{t.error(r)}}}export{t};

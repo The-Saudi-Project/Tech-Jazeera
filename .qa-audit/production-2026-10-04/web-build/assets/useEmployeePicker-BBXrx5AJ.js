@@ -1,0 +1,1 @@
+import{t as e}from"./useQuery-Dn73X_av.js";import{a as t}from"./employees.api-xOJQiygG.js";function n(n={}){return e({queryKey:[`employees`,`picker`],queryFn:()=>t({limit:100,sortBy:`fullName`,sortOrder:`asc`}),...n})}export{n as t};

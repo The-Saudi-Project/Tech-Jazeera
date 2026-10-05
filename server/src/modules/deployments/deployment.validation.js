@@ -94,6 +94,12 @@ export const monthlyHoursEntryParamSchema = z.object({ id, entryId: id });
 // subtracted through — capped at the same order of magnitude every other
 // money field in this app tops out at (e.g. quotation unitPrice).
 const deductionAmount = z.preprocess(emptyToUndef, z.coerce.number().min(0).max(1_000_000).optional());
+// The supplier-side counterpart (see deployment.model.js's own doc comment
+// on `supplierDeductionAmount`) — same bounds, only meaningful for a
+// SupplierEmployee deployment but accepted here regardless (the client form
+// simply never sends it for any other worker type).
+const supplierDeductionAmount = z.preprocess(emptyToUndef, z.coerce.number().min(0).max(1_000_000).optional());
+const supplierDeductionNote = optionalStr(500);
 
 // Reverted 2026-09-16 (the user's own ask) from the day-by-day grid back to
 // two typed totals, transcribed straight off the client's own paper/PDF
@@ -109,11 +115,18 @@ const deductionAmount = z.preprocess(emptyToUndef, z.coerce.number().min(0).max(
 // this app already uses for the days-worked-within-placement check.
 const supplierHours = z.preprocess(emptyToUndef, z.coerce.number().min(0).max(1000).optional());
 
+const employeeAdditionalAmount = z.preprocess(emptyToUndef, z.coerce.number().min(0).max(1_000_000).optional());
+const employeeAdditionalAmountNote = optionalStr(500);
+
 export const addMonthlyHoursSchema = z.object({
   month: monthStr,
   actualHours: z.coerce.number({ error: 'Enter the client timesheet hours.' }).min(0, 'Cannot be negative.').max(1000, 'That looks too high for one month — check the figure.'),
   supplierHours,
   deductionAmount,
+  supplierDeductionAmount,
+  supplierDeductionNote,
+  employeeAdditionalAmount,
+  employeeAdditionalAmountNote,
   notes: optionalStr(500),
 });
 
@@ -123,6 +136,10 @@ export const updateMonthlyHoursSchema = z.object({
   actualHours: z.coerce.number({ error: 'Enter the client timesheet hours.' }).min(0, 'Cannot be negative.').max(1000, 'That looks too high for one month — check the figure.'),
   supplierHours,
   deductionAmount,
+  supplierDeductionAmount,
+  supplierDeductionNote,
+  employeeAdditionalAmount,
+  employeeAdditionalAmountNote,
   notes: optionalStr(500),
 });
 
@@ -177,3 +194,24 @@ export const demobiliseDeploymentSchema = z.object({
   exitOutcome: strictOptionalBoolean,
   releaseNote: optionalStr(1000),
 });
+
+export const recordSubInvoiceSchema = z.object({
+  invoiceNumber: optionalStr(100),
+  invoiceDate: z.coerce.date({ error: 'Enter a valid date.' }).optional(),
+});
+
+export const subcontractorIdParamSchema = z.object({ subcontractorId: id });
+
+export const subcontractorPaymentIdParamSchema = z.object({ paymentId: id });
+
+export const recordSubcontractorPaymentSchema = z.object({
+  amount: z.coerce.number({ error: 'Enter the amount paid.' }).positive('Must be greater than zero.'),
+  paymentReference: optionalStr(100),
+  paymentDate: z.coerce.date({ error: 'Enter a valid payment date.' }).optional(),
+});
+
+export const decideSubcontractorPaymentSchema = z.object({
+  decision: z.enum(DECISIONS, { error: 'Choose Approved or Rejected.' }),
+  note: optionalStr(500),
+});
+

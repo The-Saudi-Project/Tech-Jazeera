@@ -1,0 +1,57 @@
+[
+  {
+    "name": "same-calendar-day-counted-twice",
+    "status": 201,
+    "data": {
+      "success": true,
+      "message": "Leave request submitted for review.",
+      "data": {
+        "employee": "6ac252cef069a1e6c1c52005",
+        "leaveType": "6ac253540f6e94b0fd5a5047",
+        "leaveTypeName": "QA timestamp manual",
+        "startDate": "2026-10-25T06:00:00.000Z",
+        "endDate": "2026-10-25T20:30:00.000Z",
+        "days": 2,
+        "status": "PendingReview",
+        "eligibility": {
+          "continuousServiceMonths": 33,
+          "entitlementDays": 0,
+          "usedDays": 0,
+          "remainingDays": 0,
+          "ruleApplied": "This leave type always requires manager review."
+        },
+        "acknowledgedByManager": false,
+        "decidedBy": null,
+        "decidedAt": null,
+        "workflow": null,
+        "workflowName": null,
+        "currentStep": 0,
+        "_id": "6ac256d20f6e94b0fd5a51f2",
+        "createdAt": "2026-10-04T13:38:26.550Z",
+        "updatedAt": "2026-10-04T13:38:26.550Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "spoofed-pdf-rejected",
+    "status": 400,
+    "data": {
+      "success": false,
+      "message": "This file does not appear to be a real PDF. Re-save it and try again."
+    }
+  },
+  {
+    "name": "oversized-json-status",
+    "status": 500,
+    "data": {
+      "success": false,
+      "message": "Something went wrong. Please try again."
+    }
+  },
+  {
+    "name": "traversal-public-media",
+    "status": 404,
+    "data": ""
+  }
+]

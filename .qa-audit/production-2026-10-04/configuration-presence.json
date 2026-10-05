@@ -1,0 +1,37 @@
+[
+  {
+    "file": "server/.env",
+    "fields": {
+      "MONGODB_URI": "set",
+      "JWT_ACCESS_SECRET": "set",
+      "JWT_REFRESH_SECRET": "set",
+      "VAPID_PUBLIC_KEY": "set",
+      "VAPID_PRIVATE_KEY": "set",
+      "SENTRY_DSN": "set"
+    }
+  },
+  {
+    "file": "server/.env.example",
+    "fields": {
+      "VAPID_PUBLIC_KEY": "empty",
+      "VAPID_PRIVATE_KEY": "empty",
+      "SENTRY_DSN": "empty"
+    }
+  },
+  {
+    "file": "client/.env",
+    "fields": {
+      "VITE_SENTRY_DSN": "set"
+    }
+  },
+  {
+    "file": "client/.env.example",
+    "fields": {
+      "VITE_SENTRY_DSN": "empty"
+    }
+  },
+  {
+    "file": "mcp-server/.env.example",
+    "fields": {}
+  }
+]

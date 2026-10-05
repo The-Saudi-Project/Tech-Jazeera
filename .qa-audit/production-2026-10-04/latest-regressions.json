@@ -1,0 +1,264 @@
+[
+  {
+    "name": "partial-patch-retains-documents",
+    "status": 200,
+    "data": {
+      "message": "Employee updated.",
+      "additionalDocuments": []
+    }
+  },
+  {
+    "name": "settlement-numeric-overflow",
+    "status": 201,
+    "data": {
+      "success": true,
+      "message": "Settlement computed.",
+      "data": {
+        "employee": "6ac252cef069a1e6c1c51fe5",
+        "employeeName": "Audit Manager",
+        "employeeCode": "AUDIT-MANAGER",
+        "joiningDate": "2024-01-01T00:00:00.000Z",
+        "exitDate": "2026-09-30T00:00:00.000Z",
+        "exitReason": "EndOfContract",
+        "monthlyWage": 4000,
+        "serviceYears": 2.67,
+        "eosbGross": null,
+        "reductionFactor": 1,
+        "eosbNet": null,
+        "unusedLeaveDays": 45,
+        "leaveEncashment": 6000,
+        "totalSettlement": null,
+        "computedBy": "6ac252cdf069a1e6c1c51fde",
+        "_id": "6ac2540f0f6e94b0fd5a509d",
+        "createdAt": "2026-10-04T13:26:39.007Z",
+        "updatedAt": "2026-10-04T13:26:39.007Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "stored-overflow-finite",
+    "exists": true,
+    "eosbGrossFinite": false,
+    "totalSettlementFinite": false
+  },
+  {
+    "name": "concurrent-settlement-0",
+    "status": 201,
+    "data": {
+      "success": true,
+      "message": "Settlement computed.",
+      "data": {
+        "employee": "6ac252cef069a1e6c1c51feb",
+        "employeeName": "Audit HR",
+        "employeeCode": "AUDIT-HR",
+        "joiningDate": "2024-01-01T00:00:00.000Z",
+        "exitDate": "2026-09-30T00:00:00.000Z",
+        "exitReason": "EndOfContract",
+        "monthlyWage": 4000,
+        "serviceYears": 2.67,
+        "eosbGross": 8000,
+        "reductionFactor": 1,
+        "eosbNet": 8000,
+        "unusedLeaveDays": 45,
+        "leaveEncashment": 6000,
+        "totalSettlement": 14000,
+        "computedBy": "6ac252cdf069a1e6c1c51fde",
+        "_id": "6ac2540f0f6e94b0fd5a50b7",
+        "createdAt": "2026-10-04T13:26:39.083Z",
+        "updatedAt": "2026-10-04T13:26:39.083Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "concurrent-settlement-1",
+    "status": 201,
+    "data": {
+      "success": true,
+      "message": "Settlement computed.",
+      "data": {
+        "employee": "6ac252cef069a1e6c1c51feb",
+        "employeeName": "Audit HR",
+        "employeeCode": "AUDIT-HR",
+        "joiningDate": "2024-01-01T00:00:00.000Z",
+        "exitDate": "2026-09-30T00:00:00.000Z",
+        "exitReason": "EndOfContract",
+        "monthlyWage": 4000,
+        "serviceYears": 2.67,
+        "eosbGross": 8000,
+        "reductionFactor": 1,
+        "eosbNet": 8000,
+        "unusedLeaveDays": 45,
+        "leaveEncashment": 6000,
+        "totalSettlement": 14000,
+        "computedBy": "6ac252cdf069a1e6c1c51fde",
+        "_id": "6ac2540f0f6e94b0fd5a50b9",
+        "createdAt": "2026-10-04T13:26:39.084Z",
+        "updatedAt": "2026-10-04T13:26:39.084Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "concurrent-settlement-2",
+    "status": 201,
+    "data": {
+      "success": true,
+      "message": "Settlement computed.",
+      "data": {
+        "employee": "6ac252cef069a1e6c1c51feb",
+        "employeeName": "Audit HR",
+        "employeeCode": "AUDIT-HR",
+        "joiningDate": "2024-01-01T00:00:00.000Z",
+        "exitDate": "2026-09-30T00:00:00.000Z",
+        "exitReason": "EndOfContract",
+        "monthlyWage": 4000,
+        "serviceYears": 2.67,
+        "eosbGross": 8000,
+        "reductionFactor": 1,
+        "eosbNet": 8000,
+        "unusedLeaveDays": 45,
+        "leaveEncashment": 6000,
+        "totalSettlement": 14000,
+        "computedBy": "6ac252cdf069a1e6c1c51fde",
+        "_id": "6ac2540f0f6e94b0fd5a50c0",
+        "createdAt": "2026-10-04T13:26:39.094Z",
+        "updatedAt": "2026-10-04T13:26:39.094Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "concurrent-settlement-3",
+    "status": 201,
+    "data": {
+      "success": true,
+      "message": "Settlement computed.",
+      "data": {
+        "employee": "6ac252cef069a1e6c1c51feb",
+        "employeeName": "Audit HR",
+        "employeeCode": "AUDIT-HR",
+        "joiningDate": "2024-01-01T00:00:00.000Z",
+        "exitDate": "2026-09-30T00:00:00.000Z",
+        "exitReason": "EndOfContract",
+        "monthlyWage": 4000,
+        "serviceYears": 2.67,
+        "eosbGross": 8000,
+        "reductionFactor": 1,
+        "eosbNet": 8000,
+        "unusedLeaveDays": 45,
+        "leaveEncashment": 6000,
+        "totalSettlement": 14000,
+        "computedBy": "6ac252cdf069a1e6c1c51fde",
+        "_id": "6ac2540f0f6e94b0fd5a50c2",
+        "createdAt": "2026-10-04T13:26:39.097Z",
+        "updatedAt": "2026-10-04T13:26:39.097Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "concurrent-settlement-4",
+    "status": 201,
+    "data": {
+      "success": true,
+      "message": "Settlement computed.",
+      "data": {
+        "employee": "6ac252cef069a1e6c1c51feb",
+        "employeeName": "Audit HR",
+        "employeeCode": "AUDIT-HR",
+        "joiningDate": "2024-01-01T00:00:00.000Z",
+        "exitDate": "2026-09-30T00:00:00.000Z",
+        "exitReason": "EndOfContract",
+        "monthlyWage": 4000,
+        "serviceYears": 2.67,
+        "eosbGross": 8000,
+        "reductionFactor": 1,
+        "eosbNet": 8000,
+        "unusedLeaveDays": 45,
+        "leaveEncashment": 6000,
+        "totalSettlement": 14000,
+        "computedBy": "6ac252cdf069a1e6c1c51fde",
+        "_id": "6ac2540f0f6e94b0fd5a50c6",
+        "createdAt": "2026-10-04T13:26:39.101Z",
+        "updatedAt": "2026-10-04T13:26:39.101Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "settlement-duplicates-count",
+    "count": 5
+  },
+  {
+    "name": "weak-password-login",
+    "status": 200,
+    "data": {
+      "message": "Logged in.",
+      "user": {
+        "id": "6ac252cef069a1e6c1c51ff1",
+        "name": "Audit Accounts",
+        "email": "accounts@audit.invalid",
+        "role": "Accounts",
+        "avatarUrl": null,
+        "forcePasswordChange": true,
+        "sectionAccess": {
+          "read": [],
+          "write": []
+        },
+        "essEligible": true
+      }
+    }
+  },
+  {
+    "name": "forced-password-still-authorized",
+    "status": 200,
+    "data": {
+      "success": true,
+      "message": "Your profile.",
+      "data": {
+        "_id": "6ac252cef069a1e6c1c51fef",
+        "employeeId": "AUDIT-ACCOUNTS",
+        "fullName": "Audit Accounts",
+        "type": "Own",
+        "joiningDate": "2024-01-01T00:00:00.000Z",
+        "employmentEndDate": null,
+        "designation": "Audit fixture",
+        "salary": 4000,
+        "basicSalary": null,
+        "housingAllowance": null,
+        "transportAllowance": null,
+        "expectedDailyHours": null,
+        "weeklyOffDay": 5,
+        "currentClient": null,
+        "currentSite": null,
+        "subcontractor": null,
+        "coordinator": null,
+        "manager": null,
+        "approvalWorkflow": null,
+        "createdBy": null,
+        "status": "Active",
+        "additionalDocuments": [],
+        "createdAt": "2026-10-04T13:21:18.133Z",
+        "updatedAt": "2026-10-04T13:23:18.325Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "eosb-policy-comparison",
+    "twoYears": {
+      "serviceYears": 2,
+      "eosbGross": 8000,
+      "reductionFactor": 1,
+      "eosbNet": 8000
+    },
+    "tenYears": {
+      "serviceYears": 10,
+      "eosbGross": 8000,
+      "reductionFactor": 1,
+      "eosbNet": 8000
+    }
+  }
+]

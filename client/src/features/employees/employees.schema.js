@@ -57,8 +57,15 @@ export const employeeFormSchema = z
     iqama: documentSchema,
     medical: documentSchema,
     drivingLicense: documentSchema,
+    additionalDocuments: z.array(z.object({
+      name: z.string().trim().min(1, 'Name is required'),
+      number: optional,
+      expiry: z.string()
+    })).default([]),
 
     joiningDate: z.string().optional().or(z.literal('')),
+    contractStartDate: z.string().optional().or(z.literal('')),
+    contractEndDate: z.string().optional().or(z.literal('')),
     designation: z.string().trim().min(2, 'Designation is required.').max(60),
     department: optional,
     salary: z
@@ -115,7 +122,14 @@ const emptyDocument = { number: '', expiry: '' };
 export const emptyEmployeeForm = {
   employeeId: '',
   fullName: '',
-  type: 'Outsourced',
+  // 2026-09-30, the user's own ask: this module only ever creates a real
+  // 'Own' (internal staff) employee now — a Freelancer or a subcontractor's
+  // worker is added through the Outsourced Employees module instead, which
+  // already captures their Iqama/nationality/rate and supports the same
+  // autofill-by-Iqama lookup Mobilisation itself uses. EmployeeForm hides the
+  // type selector entirely on create (see its own isEdit prop) — this is now
+  // the only value a brand-new record here can ever have.
+  type: 'Own',
   nationality: '',
   mobile: '',
   email: '',
@@ -124,7 +138,10 @@ export const emptyEmployeeForm = {
   iqama: emptyDocument,
   medical: emptyDocument,
   drivingLicense: emptyDocument,
+  additionalDocuments: [],
   joiningDate: '',
+  contractStartDate: '',
+  contractEndDate: '',
   designation: '',
   department: '',
   salary: '',
@@ -157,7 +174,10 @@ export function employeeToForm(employee) {
     iqama: doc(employee.iqama),
     medical: doc(employee.medical),
     drivingLicense: doc(employee.drivingLicense),
+    additionalDocuments: (employee.additionalDocuments || []).map(d => ({ name: d.name, number: d.number || '', expiry: toDateInput(d.expiry) })),
     joiningDate: toDateInput(employee.joiningDate),
+    contractStartDate: toDateInput(employee.contractStartDate),
+    contractEndDate: toDateInput(employee.contractEndDate),
     designation: employee.designation,
     department: employee.department ?? '',
     salary: employee.salary != null ? String(employee.salary) : '',

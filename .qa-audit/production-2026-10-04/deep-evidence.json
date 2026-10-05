@@ -1,0 +1,227 @@
+[
+  {
+    "name": "payslips-missing-route",
+    "status": 404,
+    "ms": 25,
+    "data": {
+      "success": false,
+      "message": "Route not found: GET /api/me/payslips"
+    }
+  },
+  {
+    "name": "admin-timesheet-approved",
+    "status": 200,
+    "ms": 31,
+    "data": {
+      "success": true,
+      "message": "Timesheet approved.",
+      "data": {
+        "_id": "6ac2534f0f6e94b0fd5a4b2b",
+        "employee": "6ac252cef069a1e6c1c52005",
+        "periodStart": "2026-09-19T00:00:00.000Z",
+        "periodEnd": "2026-09-25T00:00:00.000Z",
+        "totalHours": 0,
+        "daysPresent": 0,
+        "daysAbsent": 0,
+        "daysLeaveOrSick": 0,
+        "daysOff": 0,
+        "overtimeHours": 0,
+        "recordedDays": 0,
+        "status": "Approved",
+        "decidedBy": "6ac252cdf069a1e6c1c51fde",
+        "decidedAt": "2026-10-04T13:23:32.790Z",
+        "workflow": null,
+        "workflowName": null,
+        "currentStep": 0,
+        "createdAt": "2026-10-04T13:23:27.746Z",
+        "updatedAt": "2026-10-04T13:23:32.790Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "date-test-policy",
+    "status": 201,
+    "ms": 18,
+    "data": {
+      "success": true,
+      "message": "Leave type created.",
+      "data": {
+        "name": "QA timestamp manual",
+        "recurrence": "Manual",
+        "daysPerYear": null,
+        "tierYears": null,
+        "tierDaysPerYear": null,
+        "cycleYears": null,
+        "daysPerCycle": null,
+        "sickPayTiers": null,
+        "minServiceMonths": 0,
+        "maxDaysPerRequest": null,
+        "isPaid": true,
+        "isActive": true,
+        "_id": "6ac253540f6e94b0fd5a5047",
+        "createdAt": "2026-10-04T13:23:32.820Z",
+        "updatedAt": "2026-10-04T13:23:32.820Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "two-calendar-dates-counted-one",
+    "status": 201,
+    "ms": 41,
+    "data": {
+      "success": true,
+      "message": "Leave request submitted for review.",
+      "data": {
+        "employee": "6ac252cef069a1e6c1c52005",
+        "leaveType": "6ac253540f6e94b0fd5a5047",
+        "leaveTypeName": "QA timestamp manual",
+        "startDate": "2026-10-20T23:59:00.000Z",
+        "endDate": "2026-10-21T00:01:00.000Z",
+        "days": 1,
+        "status": "PendingReview",
+        "eligibility": {
+          "continuousServiceMonths": 33,
+          "entitlementDays": 0,
+          "usedDays": 0,
+          "remainingDays": 0,
+          "ruleApplied": "This leave type always requires manager review."
+        },
+        "acknowledgedByManager": false,
+        "decidedBy": null,
+        "decidedAt": null,
+        "workflow": null,
+        "workflowName": null,
+        "currentStep": 0,
+        "_id": "6ac253540f6e94b0fd5a5053",
+        "createdAt": "2026-10-04T13:23:32.846Z",
+        "updatedAt": "2026-10-04T13:23:32.846Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "annual-test-policy",
+    "status": 201,
+    "ms": 17,
+    "data": {
+      "success": true,
+      "message": "Leave type created.",
+      "data": {
+        "name": "QA yearly boundaries",
+        "recurrence": "Annual",
+        "daysPerYear": 2,
+        "tierYears": null,
+        "tierDaysPerYear": null,
+        "cycleYears": null,
+        "daysPerCycle": null,
+        "sickPayTiers": null,
+        "minServiceMonths": 0,
+        "maxDaysPerRequest": null,
+        "isPaid": true,
+        "isActive": true,
+        "_id": "6ac253540f6e94b0fd5a5065",
+        "createdAt": "2026-10-04T13:23:32.877Z",
+        "updatedAt": "2026-10-04T13:23:32.877Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "future-leave-2027",
+    "status": 201,
+    "ms": 32,
+    "data": {
+      "success": true,
+      "message": "Leave request approved.",
+      "data": {
+        "employee": "6ac252cef069a1e6c1c52000",
+        "leaveType": "6ac253540f6e94b0fd5a5065",
+        "leaveTypeName": "QA yearly boundaries",
+        "startDate": "2027-06-01T00:00:00.000Z",
+        "endDate": "2027-06-02T00:00:00.000Z",
+        "days": 2,
+        "status": "AutoApproved",
+        "eligibility": {
+          "continuousServiceMonths": 33,
+          "entitlementDays": 2,
+          "usedDays": 0,
+          "remainingDays": 2,
+          "ruleApplied": "Annual leave: 2 days/year, 0 used since Thu Jan 01 2026."
+        },
+        "acknowledgedByManager": false,
+        "decidedBy": null,
+        "decidedAt": null,
+        "workflow": null,
+        "workflowName": null,
+        "currentStep": 0,
+        "_id": "6ac253540f6e94b0fd5a5071",
+        "createdAt": "2026-10-04T13:23:32.906Z",
+        "updatedAt": "2026-10-04T13:23:32.906Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "future-leave-2028",
+    "status": 201,
+    "ms": 43,
+    "data": {
+      "success": true,
+      "message": "Leave request submitted for review.",
+      "data": {
+        "employee": "6ac252cef069a1e6c1c52000",
+        "leaveType": "6ac253540f6e94b0fd5a5065",
+        "leaveTypeName": "QA yearly boundaries",
+        "startDate": "2028-06-01T00:00:00.000Z",
+        "endDate": "2028-06-02T00:00:00.000Z",
+        "days": 2,
+        "status": "PendingReview",
+        "eligibility": {
+          "continuousServiceMonths": 33,
+          "entitlementDays": 2,
+          "usedDays": 2,
+          "remainingDays": 0,
+          "ruleApplied": "Annual leave: 2 days/year, 2 used since Thu Jan 01 2026."
+        },
+        "acknowledgedByManager": false,
+        "decidedBy": null,
+        "decidedAt": null,
+        "workflow": null,
+        "workflowName": null,
+        "currentStep": 0,
+        "_id": "6ac253540f6e94b0fd5a507f",
+        "createdAt": "2026-10-04T13:23:32.939Z",
+        "updatedAt": "2026-10-04T13:23:32.939Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "unbounded-outsourced-list",
+    "status": 200,
+    "ms": 58,
+    "data": {
+      "returnedRecords": 1201
+    }
+  },
+  {
+    "name": "outsourced-search-explain",
+    "nReturned": 100,
+    "totalDocsExamined": 100,
+    "totalKeysExamined": 101,
+    "executionTimeMillis": 0
+  },
+  {
+    "name": "worker-private-file-inprocess-cdn-stub",
+    "status": 200,
+    "body": "PRIVATE SYNTHETIC FILE CONTENT",
+    "signedTarget": "res.cloudinary.com"
+  },
+  {
+    "name": "axios-no-timeout",
+    "timeout": 0,
+    "stateAfter1200ms": "pending"
+  }
+]

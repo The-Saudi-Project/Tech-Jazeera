@@ -1,0 +1,1 @@
+import{g as e,n as t}from"./utils-BEBG-bG_.js";var n=e(),r=`C:/Users/JARVIS/Desktop/Al Jazeera CRM/client/src/components/ui/Skeleton.jsx`;function i({className:e}){return(0,n.jsxDEV)(`div`,{className:t(`animate-pulse rounded-md bg-muted/20`,e)},void 0,!1,{fileName:r,lineNumber:8,columnNumber:10},this)}export{i as t};

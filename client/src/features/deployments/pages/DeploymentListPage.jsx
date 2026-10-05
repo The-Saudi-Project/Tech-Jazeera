@@ -50,6 +50,57 @@ import DeploymentOverviewModal from '../components/DeploymentOverviewModal.jsx';
 
 const STATUS_VARIANT = { Active: 'success', Ended: 'default' };
 
+function monthStrOf(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function addMonthsToStr(monthStr, n) {
+  const [y, m] = monthStr.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return monthStrOf(d);
+}
+function previousMonthStr() {
+  return addMonthsToStr(monthStrOf(new Date()), -1);
+}
+function maxEligibleMonthFor(deployment) {
+  if (deployment.status === 'Ended' && deployment.endDate) {
+    return monthStrOf(deployment.endDate);
+  }
+  return previousMonthStr();
+}
+function getMissingMonthsCount(deployment) {
+  if (!deployment.startDate) return 0;
+  const start = monthStrOf(deployment.startDate);
+  const maxEligible = maxEligibleMonthFor(deployment);
+  if (start > maxEligible) return 0;
+  
+  const entered = new Set((deployment.monthlyHours || []).map((m) => m.month));
+  let count = 0;
+  let candidate = start;
+  while (candidate <= maxEligible) {
+    if (!entered.has(candidate)) count++;
+    candidate = addMonthsToStr(candidate, 1);
+  }
+  return count;
+}
+
+// 2026-09-30, the user's own ask: an Ascending choice should survive a page
+// refresh and moving around the app, but reset back to the default Descending
+// once the tab/browser actually closes — sessionStorage is exactly that
+// lifetime, unlike localStorage (survives closing) or plain state (doesn't
+// survive a refresh). Wrapped in try/catch — a private window or blocked
+// site data can make sessionStorage throw on read/write, and this is a
+// no-op-safe personal preference, not state anything else depends on.
+const SORT_ORDER_STORAGE_KEY = 'deployments-sort-order';
+function readStoredSortOrder() {
+  try {
+    const stored = sessionStorage.getItem(SORT_ORDER_STORAGE_KEY);
+    return stored === 'asc' || stored === 'desc' ? stored : 'desc';
+  } catch {
+    return 'desc';
+  }
+}
+
 const SORT_FIELDS = [
   { value: 'startDate', label: 'Start date' },
   { value: 'workerName', label: 'Worker' },
@@ -92,15 +143,24 @@ export default function DeploymentListPage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [sortPanelOpen]);
 
-  const [params, setParams] = useState({
+  const [params, setParams] = useState(() => ({
     page: 1,
     limit: 20,
     status: 'Active',
     client: '',
     site: '',
     sortBy: 'startDate',
-    sortOrder: 'desc',
-  });
+    sortOrder: readStoredSortOrder(),
+  }));
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(SORT_ORDER_STORAGE_KEY, params.sortOrder);
+    } catch {
+      // Private window / blocked site data — a lost preference for this tab
+      // only, not worth surfacing to the user.
+    }
+  }, [params.sortOrder]);
 
   // Clients for the filter dropdown (also confirms whether any client exists).
   const { data: clientData, isError: clientsError } = useQuery({
@@ -183,12 +243,25 @@ export default function DeploymentListPage() {
     {
       key: 'status',
       header: t('staffDeployments.list.columns.status'),
-      render: (d) => (
-        <Badge variant={STATUS_VARIANT[d.status]}>
-          {t(`staffDeployments.status.${d.status}`, d.status)}
-          {d.endReason ? ` · ${t(`staffDeployments.reasons.${d.endReason}`, d.endReason)}` : ''}
-        </Badge>
-      ),
+      render: (d) => {
+        const missingCount = getMissingMonthsCount(d);
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant={STATUS_VARIANT[d.status]}>
+              {t(`staffDeployments.status.${d.status}`, d.status)}
+              {d.endReason ? ` · ${t(`staffDeployments.reasons.${d.endReason}`, d.endReason)}` : ''}
+            </Badge>
+            {missingCount > 0 && (
+              <span 
+                className="flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-danger px-1 text-[9px] font-bold leading-none text-white shadow-sm"
+                title={`${missingCount} timesheet month${missingCount > 1 ? 's' : ''} pending entry`}
+              >
+                {missingCount}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
   ];
 

@@ -1,0 +1,1 @@
+var e={unassigned:{label:`Unassigned`,variant:`default`},active:{label:`Active`,variant:`success`},lost:{label:`Lost`,variant:`danger`},returned:{label:`Returned`,variant:`warning`},disabled:{label:`Disabled`,variant:`default`}},t=Object.keys(e);export{e as n,t};

@@ -1,0 +1,1 @@
+import{m as e}from"./mobilisations.api-CXYwsZPo.js";export{e as listCoordinatorCandidates};

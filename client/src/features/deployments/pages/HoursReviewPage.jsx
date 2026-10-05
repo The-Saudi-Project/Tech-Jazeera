@@ -30,6 +30,16 @@ import Textarea from '../../../components/ui/Textarea.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
 
+/** "42 @ 10.00/hr", or just the raw hours when no rate is known yet, or '—'
+ *  when the hours themselves aren't entered — shared by the row-grid and the
+ *  decide-modal's client/supplier hours tiles (2026-10-03, a real
+ *  code-review finding: this was copy-pasted 4 times across the two). */
+function formatHoursWithRate(hours, rate) {
+  if (hours == null) return '—';
+  if (rate == null) return hours;
+  return `${hours} @ ${formatMoney(rate)}/hr`;
+}
+
 /** A single data tile inside the approve/reject confirmation modal */
 function StatTile({ label, value, valueClass = '' }) {
   return (
@@ -202,13 +212,21 @@ export default function HoursReviewPage() {
               <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
                 {[
                   { label: t('staffDeployments.hoursReview.columns.contractHours'), value: row.contractHours },
-                  { label: t('staffDeployments.hoursReview.columns.clientTimesheet'), value: row.actualHours },
+                  {
+                    label: t('staffDeployments.hoursReview.columns.clientTimesheet'),
+                    value: formatHoursWithRate(row.actualHours, row.clientRate),
+                  },
                   ...(row.workerType === 'SupplierEmployee'
-                    ? [{ label: t('staffDeployments.hoursReview.columns.supplierTimesheet'), value: row.supplierHours ?? '—' }]
+                    ? [{
+                        label: t('staffDeployments.hoursReview.columns.supplierTimesheet'),
+                        value: formatHoursWithRate(row.supplierHours, row.subcontractorRate),
+                      }]
                     : []),
                   { label: t('staffDeployments.hoursReview.columns.otHours'), value: row.otHours },
                   ...(row.otAmount != null ? [{ label: t('staffDeployments.hoursReview.columns.otAmount'), value: formatMoney(row.otAmount) }] : []),
+                  ...((row.profitBreakdown?.otCalculations ?? 0) > 0 ? [{ label: t('staffDeployments.hoursReview.columns.workerOtPay'), value: formatMoney(row.profitBreakdown.otCalculations), valueClass: 'text-danger' }] : []),
                   ...(row.deductionAmount > 0 ? [{ label: t('staffDeployments.hoursReview.columns.deduction'), value: formatMoney(row.deductionAmount), valueClass: 'text-danger' }] : []),
+                  ...(row.employeeAdditionalAmount > 0 ? [{ label: t('staffDeployments.detail.columns.employeeAdditionalAmount'), value: formatMoney(row.employeeAdditionalAmount), valueClass: 'text-danger' }] : []),
                   ...(row.revenue != null ? [{ label: t('staffDeployments.hoursReview.columns.invoiceAmount'), value: formatMoney(row.revenue) }] : []),
                   ...(row.profit != null ? [{
                       label: t('staffDeployments.hoursReview.columns.netProfit'),
@@ -270,13 +288,26 @@ export default function HoursReviewPage() {
             {/* Hours summary grid */}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <StatTile label={t('staffDeployments.hoursReview.columns.contractHours')} value={decidingRow.contractHours} />
-              <StatTile label={t('staffDeployments.hoursReview.columns.clientTimesheet')} value={decidingRow.actualHours} />
+              <StatTile
+                label={t('staffDeployments.hoursReview.columns.clientTimesheet')}
+                value={formatHoursWithRate(decidingRow.actualHours, decidingRow.clientRate)}
+              />
               {decidingRow.workerType === 'SupplierEmployee' && (
-                <StatTile label={t('staffDeployments.hoursReview.columns.supplierTimesheet')} value={decidingRow.supplierHours ?? '—'} />
+                <StatTile
+                  label={t('staffDeployments.hoursReview.columns.supplierTimesheet')}
+                  value={formatHoursWithRate(decidingRow.supplierHours, decidingRow.subcontractorRate)}
+                />
               )}
               <StatTile label={t('staffDeployments.hoursReview.columns.otHours')} value={decidingRow.otHours} />
               {decidingRow.otAmount != null && (
                 <StatTile label={t('staffDeployments.hoursReview.columns.otAmount')} value={formatMoney(decidingRow.otAmount)} />
+              )}
+              {(decidingRow.profitBreakdown?.otCalculations ?? 0) > 0 && (
+                <StatTile
+                  label={t('staffDeployments.hoursReview.columns.workerOtPay')}
+                  value={formatMoney(decidingRow.profitBreakdown.otCalculations)}
+                  valueClass="text-danger"
+                />
               )}
               {decidingRow.deductionAmount > 0 && (
                 <StatTile
@@ -370,10 +401,23 @@ export default function HoursReviewPage() {
 
               <div className="my-2 border-b border-border"></div>
 
-              {breakdownRow.workerType === 'SupplierEmployee' && breakdownRow.profitBreakdown?.subContractorInvoiceAmount > 0 && (
+              {breakdownRow.workerType === 'SupplierEmployee' && breakdownRow.profitBreakdown?.subContractorInvoiceAmount !== 0 && (
                 <div className="flex justify-between">
                   <span className="text-muted">{t('staffDeployments.hoursReview.breakdown.subContractorInvoiceAmount')}</span>
-                  <span className="font-medium tabular-nums text-danger">-{formatMoney(breakdownRow.profitBreakdown?.subContractorInvoiceAmount)}</span>
+                  {/* Can go negative (2026-09-30, the user's own ask) when a
+                      supplier deduction exceeds the raw rate×hours amount —
+                      that's money we KEEP, not spend, so it flips to a "+"
+                      green line here instead of the usual "-" red one. */}
+                  <span className={`font-medium tabular-nums ${breakdownRow.profitBreakdown.subContractorInvoiceAmount > 0 ? 'text-danger' : 'text-success'}`}>
+                    {breakdownRow.profitBreakdown.subContractorInvoiceAmount > 0 ? '-' : '+'}
+                    {formatMoney(Math.abs(breakdownRow.profitBreakdown.subContractorInvoiceAmount))}
+                  </span>
+                </div>
+              )}
+              {breakdownRow.workerType === 'SupplierEmployee' && breakdownRow.profitBreakdown?.expenseSubCommission > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted">{t('staffDeployments.hoursReview.breakdown.subCommission')}</span>
+                  <span className="font-medium tabular-nums text-danger">-{formatMoney(breakdownRow.profitBreakdown?.expenseSubCommission)}</span>
                 </div>
               )}
               {breakdownRow.profitBreakdown?.otCalculations > 0 && (
@@ -410,6 +454,18 @@ export default function HoursReviewPage() {
                 <div className="flex justify-between">
                   <span className="text-muted">{t('staffDeployments.hoursReview.breakdown.mobilisationCost')}</span>
                   <span className="font-medium tabular-nums text-danger">-{formatMoney(breakdownRow.profitBreakdown?.expenseMobilisationCost)}</span>
+                </div>
+              )}
+              {breakdownRow.profitBreakdown?.expenseEmployeeSalary > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted">{t('staffDeployments.hoursReview.breakdown.employeeSalary')}</span>
+                  <span className="font-medium tabular-nums text-danger">-{formatMoney(breakdownRow.profitBreakdown?.expenseEmployeeSalary)}</span>
+                </div>
+              )}
+              {breakdownRow.profitBreakdown?.expenseEmployeeAdditional > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted">{t('staffDeployments.hoursReview.breakdown.employeeAdditionalAmount')}</span>
+                  <span className="font-medium tabular-nums text-danger">-{formatMoney(breakdownRow.profitBreakdown?.expenseEmployeeAdditional)}</span>
                 </div>
               )}
 

@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/me/documents",
+    "state": "Browser tab: 1, Title: \"Al Jazeera ERP\", URL: \"http://127.0.0.1:5175/me/documents\".\n1 AXWebArea Al Jazeera ERP, URL: 127.0.0.1:5175/me/documents\n\t2 container root\n\t\t3 container Loading\n\nThe focused UI element is 1 AXWebArea Al Jazeera ERP, URL: 127.0.0.1:5175/me/documents"
+  },
+  {
+    "path": "/me/attendance",
+    "state": "Browser tab: 1, Title: \"Al Jazeera ERP\", URL: \"http://127.0.0.1:5175/me/attendance\".\n1 AXWebArea Al Jazeera ERP, URL: 127.0.0.1:5175/me/attendance\n\t2 container root\n\t\t3 container Loading\n\nThe focused UI element is 1 AXWebArea Al Jazeera ERP, URL: 127.0.0.1:5175/me/attendance"
+  },
+  {
+    "path": "/me/leave",
+    "state": "Browser tab: 1, Title: \"Al Jazeera ERP\", URL: \"http://127.0.0.1:5175/me/leave\".\n1 AXWebArea Al Jazeera ERP, URL: 127.0.0.1:5175/me/leave\n\t2 container root\n\t\t3 container Loading\n\nThe focused UI element is 1 AXWebArea Al Jazeera ERP, URL: 127.0.0.1:5175/me/leave"
+  },
+  {
+    "path": "/me/requests",
+    "state": "Browser tab: 1, Title: \"Al Jazeera ERP\", URL: \"http://127.0.0.1:5175/me/requests\".\n1 AXWebArea Al Jazeera ERP, URL: 127.0.0.1:5175/me/requests\n\t2 container root\n\t\t3 container Loading\n\nThe focused UI element is 1 AXWebArea Al Jazeera ERP, URL: 127.0.0.1:5175/me/requests"
+  },
+  {
+    "path": "/me/exit-documents",
+    "state": "Browser tab: 1, Title: \"Al Jazeera ERP\", URL: \"http://127.0.0.1:5175/me/exit-documents\".\n1 AXWebArea Al Jazeera ERP, URL: 127.0.0.1:5175/me/exit-documents\n\t2 container root\n\t\t3 container Loading\n\nThe focused UI element is 1 AXWebArea Al Jazeera ERP, URL: 127.0.0.1:5175/me/exit-documents"
+  }
+]

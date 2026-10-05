@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-05T05:11:15.973Z",
+  "repos": [
+    {
+      "repo": "server",
+      "head": "c354b5a16d877beaab53a377c4f07bcd8c1d863f",
+      "status": "M src/modules/employees/employee.model.js\n M src/modules/employees/employee.validation.js\n M src/modules/eosb/settlement.model.js\n M src/modules/eosb/settlement.service.js"
+    },
+    {
+      "repo": "client",
+      "head": "a9d429fe783e91bc27c53925f62c3ed78e173c84",
+      "status": "M src/features/attendance/pages/AttendancePage.jsx\n M src/features/attendance/pages/AttendanceSummaryPage.jsx\n M src/features/employees/components/EmployeeForm.jsx\n M src/features/employees/employees.schema.js\n M src/features/employees/pages/EmployeeProfilePage.jsx\n M src/features/eosb/pages/SettlementNewPage.jsx\n M src/lib/constants.js"
+    }
+  ]
+}

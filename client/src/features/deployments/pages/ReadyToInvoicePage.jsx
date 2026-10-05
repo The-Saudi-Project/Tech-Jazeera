@@ -13,19 +13,28 @@ import Input from '../../../components/ui/Input.jsx';
 import Modal from '../../../components/ui/Modal.jsx';
 import Skeleton from '../../../components/ui/Skeleton.jsx';
 import EmptyState from '../../../components/ui/EmptyState.jsx';
+import MonthlyEntryBreakdownPanel from '../components/MonthlyEntryBreakdown.jsx';
 
-function DetailRow({ label, value, valueClass = '' }) {
-  return (
-    <div className="flex items-center justify-between py-1.5 border-b border-border/40 last:border-0">
-      <span className="text-xs text-muted">{label}</span>
-      <span className={`text-xs font-medium text-text ${valueClass}`}>{value}</span>
-    </div>
-  );
+/** The earliest a real invoice for `monthStr` ('YYYY-MM') could exist: the
+ *  1st of the FOLLOWING month — the month has to actually finish, with a
+ *  real client timesheet entered and its hours approved, before an invoice
+ *  date for it makes sense (2026-10-03, a real user-reported gap: nothing
+ *  stopped picking a date before the invoiced month had even started).
+ *  Mirrors the server's own check in deployment.service.js's sendInvoice —
+ *  this is just the immediate UI feedback, not the real enforcement. */
+function earliestInvoiceDateFor(monthStr) {
+  const [year, month] = monthStr.split('-').map(Number);
+  // Built as plain string arithmetic, deliberately not via Date/toISOString
+  // — going through a Date object converts through the browser's local
+  // timezone, which can land on the wrong calendar day (this company is
+  // UTC+3, where local midnight on the 1st is still the last evening of
+  // the prior day in UTC).
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  return `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
 }
 
 function ReadyToInvoiceRow({ row, isOpen, onToggle, onSendInvoice, t, navigate }) {
-  const isSupplier = row.workerType === 'SupplierEmployee';
-
   return (
     <>
       <tr
@@ -75,65 +84,21 @@ function ReadyToInvoiceRow({ row, isOpen, onToggle, onSendInvoice, t, navigate }
       {isOpen && (
         <tr>
           <td colSpan={6} className="px-4 pb-3">
-            <div className="rounded-xl border border-border/60 bg-surface/70 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-sm">
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-muted mb-2">Client</p>
-                <div className="space-y-0">
-                  <DetailRow label="Client Rate / hr" value={row.clientRate != null ? formatMoney(row.clientRate) : '—'} />
-                  <DetailRow label="Client Commission / hr" value={row.clientCommission != null ? formatMoney(row.clientCommission) : '—'} />
-                  <DetailRow label="Invoice Amount" value={formatMoney(row.revenue)} valueClass="text-primary" />
-                </div>
+            <MonthlyEntryBreakdownPanel row={row} formatMoney={formatMoney}>
+              <div className="mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/deployments/${row.deploymentId}`);
+                  }}
+                >
+                  View Deployment Details
+                </Button>
               </div>
-
-              {isSupplier && (
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wider text-muted mb-2">Subcontractor</p>
-                  <div className="space-y-0">
-                    <DetailRow label="Sub Rate / hr" value={row.subcontractorRate != null ? formatMoney(row.subcontractorRate) : '—'} />
-                    <DetailRow label="Sub Commission / hr" value={row.subcontractorCommission != null ? formatMoney(row.subcontractorCommission) : '—'} />
-                    <DetailRow label="Sub Invoice" value={formatMoney(row.breakdown?.subContractorInvoiceAmount ?? 0)} valueClass="text-danger" />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-muted mb-2">Expenses</p>
-                <div className="space-y-0">
-                  {(row.fta ?? 0) > 0 && <DetailRow label="FTA" value={formatMoney(row.fta)} />}
-                  {(row.allowance ?? 0) > 0 && <DetailRow label="Allowance" value={formatMoney(row.allowance)} />}
-                  {(row.deductionAmount ?? 0) > 0 && <DetailRow label="Deduction" value={formatMoney(row.deductionAmount)} />}
-                  {(row.mobilisationCost ?? 0) > 0 && <DetailRow label="Mob. Cost" value={formatMoney(row.mobilisationCost)} />}
-                  {(row.breakdown?.otCalculations ?? 0) > 0 && <DetailRow label="OT Cost" value={formatMoney(row.breakdown.otCalculations)} />}
-                  <DetailRow label="Total Expenses" value={formatMoney(row.expenses ?? 0)} valueClass="text-danger" />
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-muted mb-2">Summary</p>
-                <div className="space-y-0">
-                  <DetailRow label="Actual Hours" value={row.actualHours ?? '—'} />
-                  {(row.otHours ?? 0) > 0 && <DetailRow label="OT Hours" value={row.otHours} />}
-                  <DetailRow
-                    label="Net Profit"
-                    value={formatMoney(row.profit ?? 0)}
-                    valueClass={(row.profit ?? 0) >= 0 ? 'text-success' : 'text-danger'}
-                  />
-                  <div className="mt-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-center"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/deployments/${row.deploymentId}`);
-                      }}
-                    >
-                      View Deployment Details
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </MonthlyEntryBreakdownPanel>
           </td>
         </tr>
       )}
@@ -148,8 +113,8 @@ export default function ReadyToInvoicePage() {
   const queryClient = useQueryClient();
 
   const [invoicingEntry, setInvoicingEntry] = useState(null);
-  const [invoiceNumberInput, setInvoiceNumberInput] = useState('');
-  const [invoiceDateInput, setInvoiceDateInput] = useState('');
+  const [invoiceNumberInput, setInvoiceNumberInput] = useState('AJSCO-');
+  const [invoiceDateInput, setInvoiceDateInput] = useState(() => new Date().toISOString().split('T')[0]);
   const [invoiceFile, setInvoiceFile] = useState(null);
   const invoiceFileInputRef = useRef(null);
   
@@ -171,8 +136,8 @@ export default function ReadyToInvoicePage() {
   }, [data, search]);
 
   function resetInvoiceForm() {
-    setInvoiceNumberInput('');
-    setInvoiceDateInput('');
+    setInvoiceNumberInput('AJSCO-');
+    setInvoiceDateInput(new Date().toISOString().split('T')[0]);
     setInvoiceFile(null);
     if (invoiceFileInputRef.current) invoiceFileInputRef.current.value = '';
   }
@@ -202,7 +167,7 @@ export default function ReadyToInvoicePage() {
   const toggleRow = (id) => setOpenRowId((prev) => (prev === id ? null : id));
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-[1600px] space-y-6">
       <PageHeader
         title={t('staffDeployments.readyToInvoice.pageTitle', 'Ready to invoice')}
         description={t('staffDeployments.readyToInvoice.pageDescription', 'Every approved month waiting on a client invoice, oldest first.')}
@@ -270,7 +235,10 @@ export default function ReadyToInvoicePage() {
         }}
         title={invoicingEntry ? t('staffDeployments.detail.sendInvoiceModalTitle', { month: invoicingEntry.month }) : ''}
       >
-        {invoicingEntry && (
+        {invoicingEntry && (() => {
+          const minInvoiceDate = earliestInvoiceDateFor(invoicingEntry.month);
+          const invoiceDateTooEarly = Boolean(invoiceDateInput) && invoiceDateInput < minInvoiceDate;
+          return (
           <div className="space-y-4">
             <p className="text-sm text-muted">{t('staffDeployments.detail.sendInvoiceModalMessage')}</p>
             <Input
@@ -281,11 +249,13 @@ export default function ReadyToInvoicePage() {
             <Input
               label={t('staffDeployments.detail.invoiceDateLabel')}
               type="date"
+              min={minInvoiceDate}
               value={invoiceDateInput}
               onChange={(e) => setInvoiceDateInput(e.target.value)}
+              error={invoiceDateTooEarly ? t('staffDeployments.detail.invoiceDateTooEarly', { month: invoicingEntry.month }) : undefined}
             />
             <div>
-              <label className="mb-1.5 block text-sm font-medium">{t('staffDeployments.detail.invoiceFileLabel')}</label>
+              <label className="mb-1.5 block text-sm font-medium">{t('staffDeployments.detail.invoiceFileLabel').replace(' *', '')}</label>
               <input
                 ref={invoiceFileInputRef}
                 type="file"
@@ -315,12 +285,12 @@ export default function ReadyToInvoicePage() {
               <Button
                 type="button"
                 isLoading={sendInvoiceMutation.isPending}
-                disabled={!invoiceNumberInput.trim() || !invoiceDateInput || !invoiceFile}
+                disabled={!invoiceNumberInput.trim() || !invoiceDateInput || invoiceDateTooEarly}
                 onClick={() => {
                   const fd = new FormData();
                   fd.append('invoiceNumber', invoiceNumberInput.trim());
                   fd.append('invoiceDate', invoiceDateInput);
-                  fd.append('file', invoiceFile);
+                  if (invoiceFile) fd.append('file', invoiceFile);
                   sendInvoiceMutation.mutate({ deploymentId: invoicingEntry.deploymentId, entryId: invoicingEntry.entryId, formData: fd });
                 }}
               >
@@ -328,7 +298,8 @@ export default function ReadyToInvoicePage() {
               </Button>
             </div>
           </div>
-        )}
+          );
+        })()}
       </Modal>
     </div>
   );

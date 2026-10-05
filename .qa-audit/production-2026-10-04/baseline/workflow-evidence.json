@@ -1,0 +1,719 @@
+{
+  "checks": [
+    {
+      "name": "coordinator-own-employee",
+      "method": "GET",
+      "url": "/api/employees/6ac1dd1ed505fff717711362",
+      "role": "Coordinator",
+      "status": 200,
+      "data": {
+        "success": true,
+        "message": "Employee.",
+        "data": {
+          "_id": "6ac1dd1ed505fff717711362",
+          "employeeId": "AUDIT-WORKER",
+          "fullName": "Audit Worker",
+          "type": "Own",
+          "joiningDate": "2024-01-01T00:00:00.000Z",
+          "designation": "Audit fixture",
+          "salary": 4000,
+          "basicSalary": null,
+          "housingAllowance": null,
+          "transportAllowance": null,
+          "expectedDailyHours": null,
+          "weeklyOffDay": 5,
+          "currentClient": null,
+          "currentSite": null,
+          "subcontractor": null,
+          "coordinator": {
+            "_id": "6ac1dd1ed505fff717711353",
+            "name": "Audit Coordinator",
+            "email": "coordinator@audit.invalid"
+          },
+          "manager": null,
+          "approvalWorkflow": null,
+          "createdBy": null,
+          "status": "Active",
+          "createdAt": "2026-10-04T04:59:10.647Z",
+          "updatedAt": "2026-10-04T05:02:10.451Z",
+          "__v": 0,
+          "login": {
+            "id": "6ac1dd1ed505fff717711364",
+            "email": "worker@audit.invalid",
+            "role": "Worker",
+            "isActive": true
+          }
+        }
+      }
+    },
+    {
+      "name": "coordinator-foreign-employee",
+      "method": "GET",
+      "url": "/api/employees/6ac1dd1ed505fff71771135e",
+      "role": "Coordinator",
+      "status": 403,
+      "data": {
+        "success": false,
+        "message": "You do not have access to this employee."
+      }
+    },
+    {
+      "name": "coordinator-foreign-document",
+      "method": "GET",
+      "url": "/api/documents/6ac1dd1ed505fff717711373/file",
+      "role": "Coordinator",
+      "status": 403,
+      "data": {
+        "success": false,
+        "message": "You do not have access to this employee."
+      }
+    },
+    {
+      "name": "manual-leave-type-create",
+      "method": "POST",
+      "url": "/api/leave-types",
+      "role": "Admin",
+      "status": 201,
+      "data": {
+        "success": true,
+        "message": "Leave type created.",
+        "data": {
+          "name": "Isolated Manual QA",
+          "recurrence": "Manual",
+          "daysPerYear": null,
+          "tierYears": null,
+          "tierDaysPerYear": null,
+          "cycleYears": null,
+          "daysPerCycle": null,
+          "sickPayTiers": null,
+          "minServiceMonths": 0,
+          "maxDaysPerRequest": null,
+          "isPaid": true,
+          "isActive": true,
+          "_id": "6ac1e0d2fa362001288a920a",
+          "createdAt": "2026-10-04T05:14:58.006Z",
+          "updatedAt": "2026-10-04T05:14:58.006Z",
+          "__v": 0
+        }
+      }
+    },
+    {
+      "name": "worker-leave-submit",
+      "method": "POST",
+      "url": "/api/me/leave",
+      "role": "Worker",
+      "status": 201,
+      "data": {
+        "success": true,
+        "message": "Leave request submitted for review.",
+        "data": {
+          "employee": "6ac1dd1ed505fff717711362",
+          "leaveType": "6ac1e0d2fa362001288a920a",
+          "leaveTypeName": "Isolated Manual QA",
+          "startDate": "2026-11-01T00:00:00.000Z",
+          "endDate": "2026-11-02T00:00:00.000Z",
+          "days": 2,
+          "status": "PendingReview",
+          "eligibility": {
+            "continuousServiceMonths": 33,
+            "entitlementDays": 0,
+            "usedDays": 0,
+            "remainingDays": 0,
+            "ruleApplied": "This leave type always requires manager review."
+          },
+          "acknowledgedByManager": false,
+          "decidedBy": null,
+          "decidedAt": null,
+          "workflow": null,
+          "workflowName": null,
+          "currentStep": 0,
+          "_id": "6ac1e0d2fa362001288a9216",
+          "createdAt": "2026-10-04T05:14:58.049Z",
+          "updatedAt": "2026-10-04T05:14:58.049Z",
+          "__v": 0
+        }
+      }
+    },
+    {
+      "name": "foreign-coordinator-leave-decision",
+      "method": "PATCH",
+      "url": "/api/leave/6ac1e0d2fa362001288a9216/decide",
+      "role": "CoordinatorB",
+      "status": 403,
+      "data": {
+        "success": false,
+        "message": "You do not have access to this employee."
+      }
+    },
+    {
+      "name": "own-coordinator-leave-decision",
+      "method": "PATCH",
+      "url": "/api/leave/6ac1e0d2fa362001288a9216/decide",
+      "role": "Coordinator",
+      "status": 200,
+      "data": {
+        "success": true,
+        "message": "Leave request approved.",
+        "data": {
+          "_id": "6ac1e0d2fa362001288a9216",
+          "employee": "6ac1dd1ed505fff717711362",
+          "leaveType": "6ac1e0d2fa362001288a920a",
+          "leaveTypeName": "Isolated Manual QA",
+          "startDate": "2026-11-01T00:00:00.000Z",
+          "endDate": "2026-11-02T00:00:00.000Z",
+          "days": 2,
+          "status": "Approved",
+          "eligibility": {
+            "continuousServiceMonths": 33,
+            "entitlementDays": 0,
+            "usedDays": 0,
+            "remainingDays": 0,
+            "ruleApplied": "This leave type always requires manager review."
+          },
+          "acknowledgedByManager": false,
+          "decidedBy": "6ac1dd1ed505fff717711353",
+          "decidedAt": "2026-10-04T05:14:58.112Z",
+          "workflow": null,
+          "workflowName": null,
+          "currentStep": 0,
+          "createdAt": "2026-10-04T05:14:58.049Z",
+          "updatedAt": "2026-10-04T05:14:58.112Z",
+          "__v": 0
+        }
+      }
+    },
+    {
+      "name": "other-worker-cancel",
+      "method": "PATCH",
+      "url": "/api/me/leave/6ac1e0d2fa362001288a9216/cancel",
+      "role": "Staff",
+      "status": 403,
+      "data": {
+        "success": false,
+        "message": "You can only cancel your own leave requests."
+      }
+    },
+    {
+      "name": "invalid-leave-type-change",
+      "method": "PATCH",
+      "url": "/api/leave-types/6ac1e0d2fa362001288a920a",
+      "role": "Admin",
+      "status": 200,
+      "data": {
+        "success": true,
+        "message": "Leave type updated.",
+        "data": {
+          "_id": "6ac1e0d2fa362001288a920a",
+          "name": "Isolated Manual QA",
+          "recurrence": "Sick",
+          "daysPerYear": null,
+          "tierYears": null,
+          "tierDaysPerYear": null,
+          "cycleYears": null,
+          "daysPerCycle": null,
+          "sickPayTiers": null,
+          "minServiceMonths": 0,
+          "maxDaysPerRequest": null,
+          "isPaid": true,
+          "isActive": true,
+          "createdAt": "2026-10-04T05:14:58.006Z",
+          "updatedAt": "2026-10-04T05:14:58.147Z",
+          "__v": 0
+        }
+      }
+    },
+    {
+      "name": "submit-malformed-sick-policy",
+      "method": "POST",
+      "url": "/api/me/leave",
+      "role": "Worker",
+      "status": 500,
+      "data": {
+        "success": false,
+        "message": "Something went wrong. Please try again."
+      }
+    },
+    {
+      "name": "worker-timesheet-submit",
+      "method": "POST",
+      "url": "/api/me/timesheets",
+      "role": "Worker",
+      "status": 201,
+      "data": {
+        "success": true,
+        "message": "Timesheet submitted.",
+        "data": {
+          "employee": "6ac1dd1ed505fff717711362",
+          "periodStart": "2026-09-19T00:00:00.000Z",
+          "periodEnd": "2026-09-25T00:00:00.000Z",
+          "totalHours": 0,
+          "daysPresent": 0,
+          "daysAbsent": 0,
+          "daysLeaveOrSick": 0,
+          "daysOff": 0,
+          "overtimeHours": 0,
+          "recordedDays": 0,
+          "status": "Submitted",
+          "decidedBy": null,
+          "decidedAt": null,
+          "workflow": null,
+          "workflowName": null,
+          "currentStep": 0,
+          "_id": "6ac1e0d2fa362001288a924d",
+          "createdAt": "2026-10-04T05:14:58.217Z",
+          "updatedAt": "2026-10-04T05:14:58.217Z",
+          "__v": 0
+        }
+      }
+    },
+    {
+      "name": "foreign-timesheet-decision",
+      "method": "PATCH",
+      "url": "/api/timesheets/6ac1e0d2fa362001288a924d/decide",
+      "role": "CoordinatorB",
+      "status": 403,
+      "data": {
+        "success": false,
+        "message": "You do not have permission to perform this action."
+      }
+    },
+    {
+      "name": "own-timesheet-decision",
+      "method": "PATCH",
+      "url": "/api/timesheets/6ac1e0d2fa362001288a924d/decide",
+      "role": "Coordinator",
+      "status": 403,
+      "data": {
+        "success": false,
+        "message": "You do not have permission to perform this action."
+      }
+    },
+    {
+      "name": "duplicate-timesheet",
+      "method": "POST",
+      "url": "/api/me/timesheets",
+      "role": "Worker",
+      "status": 409,
+      "data": {
+        "success": false,
+        "message": "This week's timesheet is already submitted."
+      }
+    },
+    {
+      "name": "mobilisation-create",
+      "method": "POST",
+      "url": "/api/mobilisations",
+      "role": "Admin",
+      "status": 201,
+      "data": {
+        "success": true,
+        "message": "Mobilisation created.",
+        "data": {
+          "serialNumber": "MOB-0001",
+          "workerType": "Employee",
+          "worker": "6ac1dd1ed505fff717711362",
+          "workerName": "Audit Worker",
+          "iqamaNumber": null,
+          "nationality": null,
+          "phone": null,
+          "jobTitle": "QA test",
+          "client": "6ac1dd1ed505fff71771136e",
+          "clientName": "Audit Client",
+          "site": null,
+          "clientRate": 25,
+          "clientCommission": 0,
+          "fta": 0,
+          "ftaType": null,
+          "allowance": 0,
+          "allowanceRemark": null,
+          "requiredTimesheetHours": 200,
+          "mobilisationCost": 0,
+          "hasSubcontractor": false,
+          "subcontractor": null,
+          "subcontractorName": null,
+          "subcontractorRate": 0,
+          "subcontractorCommission": 0,
+          "profitPerHour": 25,
+          "profitPerMonth": 5000,
+          "mobilisationDate": "2026-09-01T00:00:00.000Z",
+          "checkoutDate": null,
+          "otClientRate": 30,
+          "otEmployeeRate": 20,
+          "otProfitPerHour": 10,
+          "currentStepEnteredAt": null,
+          "requirement": null,
+          "requirementCandidate": null,
+          "coordinators": [
+            {
+              "user": "6ac1dd1ed505fff717711336",
+              "isPrimary": true,
+              "confirmed": true,
+              "confirmedAt": "2026-10-04T05:14:58.317Z",
+              "sharePercent": null
+            }
+          ],
+          "clientQuotation": null,
+          "clientQuotationDate": null,
+          "clientPO": null,
+          "clientPODate": null,
+          "subQuotation": null,
+          "subQuotationDate": null,
+          "subPO": null,
+          "subPODate": null,
+          "status": "Draft",
+          "createdBy": "6ac1dd1ed505fff717711336",
+          "decidedBy": null,
+          "decidedAt": null,
+          "rejectionTarget": null,
+          "archived": false,
+          "archivedAt": null,
+          "archivedBy": null,
+          "workflow": null,
+          "workflowName": null,
+          "currentStep": 0,
+          "_id": "6ac1e0d2fa362001288a926f",
+          "documents": [],
+          "createdAt": "2026-10-04T05:14:58.329Z",
+          "updatedAt": "2026-10-04T05:14:58.329Z",
+          "__v": 0
+        }
+      }
+    },
+    {
+      "name": "mobilisation-submit",
+      "method": "POST",
+      "url": "/api/mobilisations/6ac1e0d2fa362001288a926f/submit",
+      "role": "Admin",
+      "status": 200,
+      "data": {
+        "success": true,
+        "message": "Mobilisation submitted for review.",
+        "data": {
+          "_id": "6ac1e0d2fa362001288a926f",
+          "serialNumber": "MOB-0001",
+          "workerType": "Employee",
+          "worker": "6ac1dd1ed505fff717711362",
+          "workerName": "Audit Worker",
+          "iqamaNumber": null,
+          "nationality": null,
+          "phone": null,
+          "jobTitle": "QA test",
+          "client": "6ac1dd1ed505fff71771136e",
+          "clientName": "Audit Client",
+          "site": null,
+          "clientRate": 25,
+          "clientCommission": 0,
+          "fta": 0,
+          "ftaType": null,
+          "allowance": 0,
+          "allowanceRemark": null,
+          "requiredTimesheetHours": 200,
+          "mobilisationCost": 0,
+          "hasSubcontractor": false,
+          "subcontractor": null,
+          "subcontractorName": null,
+          "subcontractorRate": 0,
+          "subcontractorCommission": 0,
+          "profitPerHour": 25,
+          "profitPerMonth": 5000,
+          "mobilisationDate": "2026-09-01T00:00:00.000Z",
+          "checkoutDate": null,
+          "otClientRate": 30,
+          "otEmployeeRate": 20,
+          "otProfitPerHour": 10,
+          "currentStepEnteredAt": "2026-10-04T05:14:58.351Z",
+          "requirement": null,
+          "requirementCandidate": null,
+          "coordinators": [
+            {
+              "user": "6ac1dd1ed505fff717711336",
+              "isPrimary": true,
+              "confirmed": true,
+              "confirmedAt": "2026-10-04T05:14:58.317Z",
+              "sharePercent": null
+            }
+          ],
+          "clientQuotation": null,
+          "clientQuotationDate": null,
+          "clientPO": null,
+          "clientPODate": null,
+          "subQuotation": null,
+          "subQuotationDate": null,
+          "subPO": null,
+          "subPODate": null,
+          "status": "PendingReview",
+          "createdBy": "6ac1dd1ed505fff717711336",
+          "decidedBy": null,
+          "decidedAt": null,
+          "rejectionTarget": null,
+          "archived": false,
+          "archivedAt": null,
+          "archivedBy": null,
+          "workflow": null,
+          "workflowName": null,
+          "currentStep": 0,
+          "documents": [],
+          "createdAt": "2026-10-04T05:14:58.329Z",
+          "updatedAt": "2026-10-04T05:14:58.352Z",
+          "__v": 0,
+          "decisionNote": null
+        }
+      }
+    },
+    {
+      "name": "mobilisation-approve",
+      "method": "PATCH",
+      "url": "/api/mobilisations/6ac1e0d2fa362001288a926f/decide",
+      "role": "Admin",
+      "status": 200,
+      "data": {
+        "success": true,
+        "message": "Mobilisation approved.",
+        "data": {
+          "_id": "6ac1e0d2fa362001288a926f",
+          "serialNumber": "MOB-0001",
+          "workerType": "Employee",
+          "worker": "6ac1dd1ed505fff717711362",
+          "workerName": "Audit Worker",
+          "iqamaNumber": null,
+          "nationality": null,
+          "phone": null,
+          "jobTitle": "QA test",
+          "client": "6ac1dd1ed505fff71771136e",
+          "clientName": "Audit Client",
+          "site": null,
+          "clientRate": 25,
+          "clientCommission": 0,
+          "fta": 0,
+          "ftaType": null,
+          "allowance": 0,
+          "allowanceRemark": null,
+          "requiredTimesheetHours": 200,
+          "mobilisationCost": 0,
+          "hasSubcontractor": false,
+          "subcontractor": null,
+          "subcontractorName": null,
+          "subcontractorRate": 0,
+          "subcontractorCommission": 0,
+          "profitPerHour": 25,
+          "profitPerMonth": 5000,
+          "mobilisationDate": "2026-09-01T00:00:00.000Z",
+          "checkoutDate": null,
+          "otClientRate": 30,
+          "otEmployeeRate": 20,
+          "otProfitPerHour": 10,
+          "currentStepEnteredAt": "2026-10-04T05:14:58.351Z",
+          "requirement": null,
+          "requirementCandidate": null,
+          "coordinators": [
+            {
+              "user": "6ac1dd1ed505fff717711336",
+              "isPrimary": true,
+              "confirmed": true,
+              "confirmedAt": "2026-10-04T05:14:58.317Z",
+              "sharePercent": null
+            }
+          ],
+          "clientQuotation": null,
+          "clientQuotationDate": null,
+          "clientPO": null,
+          "clientPODate": null,
+          "subQuotation": null,
+          "subQuotationDate": null,
+          "subPO": null,
+          "subPODate": null,
+          "status": "Approved",
+          "createdBy": "6ac1dd1ed505fff717711336",
+          "decidedBy": "6ac1dd1ed505fff717711336",
+          "decidedAt": "2026-10-04T05:14:58.385Z",
+          "rejectionTarget": null,
+          "archived": false,
+          "archivedAt": null,
+          "archivedBy": null,
+          "workflow": null,
+          "workflowName": null,
+          "currentStep": 0,
+          "documents": [],
+          "createdAt": "2026-10-04T05:14:58.329Z",
+          "updatedAt": "2026-10-04T05:14:58.385Z",
+          "__v": 0,
+          "decisionNote": null
+        }
+      }
+    },
+    {
+      "name": "deployments-list",
+      "method": "GET",
+      "url": "/api/deployments",
+      "role": "Admin",
+      "status": 200,
+      "data": {
+        "success": true,
+        "message": "Deployments.",
+        "data": {
+          "items": [
+            {
+              "_id": "6ac1e0d2fa362001288a9286",
+              "mobilisation": {
+                "_id": "6ac1e0d2fa362001288a926f",
+                "serialNumber": "MOB-0001",
+                "iqamaNumber": null,
+                "nationality": null,
+                "phone": null,
+                "jobTitle": "QA test",
+                "clientRate": 25,
+                "clientCommission": 0,
+                "fta": 0,
+                "ftaType": null,
+                "allowance": 0,
+                "allowanceRemark": null,
+                "mobilisationCost": 0,
+                "subcontractorRate": 0,
+                "subcontractorCommission": 0,
+                "profitPerHour": 25,
+                "profitPerMonth": 5000,
+                "checkoutDate": null,
+                "otClientRate": 30,
+                "otEmployeeRate": 20,
+                "otProfitPerHour": 10
+              },
+              "workerType": "Employee",
+              "worker": {
+                "_id": "6ac1dd1ed505fff717711362",
+                "employeeId": "AUDIT-WORKER",
+                "fullName": "Audit Worker"
+              },
+              "workerName": "Audit Worker",
+              "client": "6ac1dd1ed505fff71771136e",
+              "clientName": "Audit Client",
+              "site": null,
+              "subcontractor": null,
+              "subcontractorName": null,
+              "requiredTimesheetHours": 200,
+              "startDate": "2026-09-01T00:00:00.000Z",
+              "endDate": null,
+              "status": "Active",
+              "endReason": null,
+              "demobilisationOutcome": null,
+              "archived": false,
+              "archivedAt": null,
+              "archivedBy": null,
+              "monthlyHours": [],
+              "createdAt": "2026-10-04T05:14:58.409Z",
+              "updatedAt": "2026-10-04T05:14:58.409Z",
+              "__v": 0,
+              "recordedExpenses": 0
+            }
+          ],
+          "total": 1,
+          "page": 1,
+          "pages": 1
+        }
+      }
+    },
+    {
+      "name": "impossible-month-hours",
+      "method": "POST",
+      "url": "/api/deployments/6ac1e0d2fa362001288a9286/monthly-hours",
+      "role": "Admin",
+      "status": 400,
+      "data": {
+        "success": false,
+        "message": "Client timesheet hours (900h) exceeds what's physically possible for this deployment's 30 real placement day(s) in 2026-09 (max 540h at 18h/day)."
+      }
+    },
+    {
+      "name": "concurrent-hours-b",
+      "method": "POST",
+      "url": "/api/deployments/6ac1e0d2fa362001288a9286/monthly-hours",
+      "role": "Admin",
+      "status": 409,
+      "data": {
+        "success": false,
+        "message": "Hours for this month have already been entered — edit that entry instead."
+      }
+    },
+    {
+      "name": "concurrent-hours-a",
+      "method": "POST",
+      "url": "/api/deployments/6ac1e0d2fa362001288a9286/monthly-hours",
+      "role": "Admin",
+      "status": 201,
+      "data": {
+        "success": true,
+        "message": "Monthly hours recorded.",
+        "data": {
+          "_id": "6ac1e0d2fa362001288a9286",
+          "mobilisation": "6ac1e0d2fa362001288a926f",
+          "workerType": "Employee",
+          "worker": "6ac1dd1ed505fff717711362",
+          "workerName": "Audit Worker",
+          "client": "6ac1dd1ed505fff71771136e",
+          "clientName": "Audit Client",
+          "site": null,
+          "subcontractor": null,
+          "subcontractorName": null,
+          "requiredTimesheetHours": 200,
+          "startDate": "2026-09-01T00:00:00.000Z",
+          "endDate": null,
+          "status": "Active",
+          "endReason": null,
+          "demobilisationOutcome": null,
+          "archived": false,
+          "archivedAt": null,
+          "archivedBy": null,
+          "monthlyHours": [
+            {
+              "month": "2026-09",
+              "contractHours": 200,
+              "actualHours": 220,
+              "supplierHours": null,
+              "otHours": 20,
+              "otAmount": 600,
+              "deductionAmount": 0,
+              "supplierDeductionAmount": 0,
+              "supplierDeductionNote": null,
+              "employeeAdditionalAmount": 0,
+              "employeeAdditionalAmountNote": null,
+              "enteredBy": "6ac1dd1ed505fff717711336",
+              "status": "Pending",
+              "decidedBy": null,
+              "decidedAt": null,
+              "decisionNote": null,
+              "invoiceSentAt": null,
+              "invoiceSentBy": null,
+              "invoiceNumber": null,
+              "invoiceDate": null,
+              "invoiceFile": null,
+              "invoiceDueAt": null,
+              "_id": "6ac1e0d2fa362001288a9299",
+              "createdAt": "2026-10-04T05:14:58.468Z",
+              "updatedAt": "2026-10-04T05:14:58.468Z",
+              "dailyHours": [],
+              "enteredAt": "2026-10-04T05:14:58.469Z"
+            }
+          ],
+          "createdAt": "2026-10-04T05:14:58.409Z",
+          "updatedAt": "2026-10-04T05:14:58.468Z",
+          "__v": 0
+        }
+      }
+    },
+    {
+      "name": "foreign-deployment-read",
+      "method": "GET",
+      "url": "/api/deployments/6ac1e0d2fa362001288a9286",
+      "role": "CoordinatorB",
+      "status": 403,
+      "data": {
+        "success": false,
+        "message": "You do not have access to this employee."
+      }
+    }
+  ],
+  "rate": {
+    "total": 602,
+    "first429": 601,
+    "roleRequests": 201
+  }
+}

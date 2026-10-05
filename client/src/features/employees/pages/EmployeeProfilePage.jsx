@@ -167,6 +167,18 @@ export default function EmployeeProfilePage() {
             <ProfileField label={t('staffEmployees.profile.fields.mobile')}>{employee.mobile}</ProfileField>
             <ProfileField label={t('staffEmployees.profile.fields.email')}>{employee.email}</ProfileField>
             <ProfileField label={t('staffEmployees.profile.fields.joiningDate')}>{formatDate(employee.joiningDate)}</ProfileField>
+            {employee.contractStartDate && (
+              <ProfileField label="Contract Start Date">{formatDate(employee.contractStartDate)}</ProfileField>
+            )}
+            {employee.contractStartDate && (
+                <div>
+                  <dt className="text-xs text-muted">Contract Start Date</dt>
+                  <dd className="text-sm font-medium text-text">{formatDate(employee.contractStartDate)}</dd>
+                </div>
+              )}
+              {employee.contractEndDate && (
+              <ProfileField label="Contract End Date">{formatDate(employee.contractEndDate)}</ProfileField>
+            )}
             <ProfileField label={t('staffEmployees.profile.fields.department')}>{employee.department}</ProfileField>
             <ProfileField label={t('staffEmployees.profile.fields.salary')}>{employee.salary != null ? formatMoney(employee.salary) : null}</ProfileField>
             <ProfileField label={t('staffEmployees.profile.fields.accommodation')}>{employee.accommodation}</ProfileField>
@@ -224,6 +236,19 @@ export default function EmployeeProfilePage() {
                 </div>
               );
             })}
+            
+            {employee.additionalDocuments?.map((doc, index) => (
+              <div key={`additional-${index}`} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                <div>
+                  <p className="text-sm font-medium">{doc.name}</p>
+                  <p className="text-xs text-muted">
+                    {doc.number || t('staffEmployees.profile.noNumber')} ·{' '}
+                    {t('staffEmployees.profile.expires', { date: formatDate(doc.expiry) })}
+                  </p>
+                </div>
+                <ExpiryBadge date={doc.expiry} />
+              </div>
+            ))}
           </div>
         </Card>
 

@@ -1,0 +1,60 @@
+{
+  "uri": "mongodb://127.0.0.1:64180/crm_isolated_audit?replicaSet=testset",
+  "users": {
+    "Admin": {
+      "id": "6ac1dd1ed505fff717711336",
+      "employee": null,
+      "email": "admin@audit.invalid"
+    },
+    "Manager": {
+      "id": "6ac1dd1ed505fff717711343",
+      "employee": "6ac1dd1ed505fff71771133c",
+      "email": "manager@audit.invalid"
+    },
+    "HR": {
+      "id": "6ac1dd1ed505fff71771134a",
+      "employee": "6ac1dd1ed505fff717711348",
+      "email": "hr@audit.invalid"
+    },
+    "Accounts": {
+      "id": "6ac1dd1ed505fff71771134e",
+      "employee": "6ac1dd1ed505fff71771134c",
+      "email": "accounts@audit.invalid"
+    },
+    "Coordinator": {
+      "id": "6ac1dd1ed505fff717711353",
+      "employee": "6ac1dd1ed505fff717711351",
+      "email": "coordinator@audit.invalid"
+    },
+    "Executive": {
+      "id": "6ac1dd1ed505fff717711357",
+      "employee": "6ac1dd1ed505fff717711355",
+      "email": "executive@audit.invalid"
+    },
+    "Office Secretary": {
+      "id": "6ac1dd1ed505fff71771135c",
+      "employee": "6ac1dd1ed505fff717711359",
+      "email": "officesecretary@audit.invalid"
+    },
+    "Staff": {
+      "id": "6ac1dd1ed505fff717711360",
+      "employee": "6ac1dd1ed505fff71771135e",
+      "email": "staff@audit.invalid"
+    },
+    "Worker": {
+      "id": "6ac1dd1ed505fff717711364",
+      "employee": "6ac1dd1ed505fff717711362",
+      "email": "worker@audit.invalid"
+    },
+    "CoordinatorB": {
+      "id": "6ac1dd1ed505fff717711369",
+      "employee": "6ac1dd1ed505fff717711367",
+      "email": "coordinatorb@audit.invalid"
+    }
+  },
+  "password": "AuditOnly-Local-2026!",
+  "client": "6ac1dd1ed505fff71771136e",
+  "outsourced": "6ac1dd1ed505fff717711370",
+  "outsourcedFile": "6ac1dd1ed505fff717711371",
+  "foreignDocument": "6ac1dd1ed505fff717711373"
+}

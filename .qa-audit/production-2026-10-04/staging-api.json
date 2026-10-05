@@ -1,0 +1,14 @@
+[
+  {
+    "status": 200,
+    "body": "{\"success\":true,\"message\":\"OK\",\"data\":{\"status\":\"up\"}}",
+    "path": "/api/health",
+    "allowOrigin": "https://development.tech-jazeera-frontend.pages.dev"
+  },
+  {
+    "status": 400,
+    "body": "{\"success\":false,\"message\":\"Validation failed.\",\"details\":[{\"field\":\"email\",\"message\":\"Enter a valid email address.\"},{\"field\":\"password\",\"message\":\"Invalid input: expected string, received undefined\"}]}",
+    "path": "/api/auth/login",
+    "allowOrigin": "https://development.tech-jazeera-frontend.pages.dev"
+  }
+]

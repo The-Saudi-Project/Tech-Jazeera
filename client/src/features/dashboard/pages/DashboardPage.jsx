@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboard } from '../dashboard.api.js';
-import { getMyTarget, getMySemiAnnual } from '../../mobilisationTargets/mobilisationTargets.api.js';
+import { getMyTarget, getMyMonthlyWindow } from '../../mobilisationTargets/mobilisationTargets.api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { EXPIRY_WARNING_DAYS } from '../../../lib/constants.js';
 import PageHeader from '../../../components/shared/PageHeader.jsx';
@@ -29,7 +29,7 @@ import StatusBreakdown from '../components/StatusBreakdown.jsx';
 import ExpiringDocuments from '../components/ExpiringDocuments.jsx';
 import MyPendingActions from '../components/MyPendingActions.jsx';
 import MobilisationTargetCard from '../components/MobilisationTargetCard.jsx';
-import SemiAnnualTargetCard from '../components/SemiAnnualTargetCard.jsx';
+import MonthlyProgressWindowCard from '../components/MonthlyProgressWindowCard.jsx';
 import ManageTargetsModal from '../components/ManageTargetsModal.jsx';
 import StandbyAnalysisWidget from '../components/StandbyAnalysisWidget.jsx';
 import DailyAttendanceSummary from '../components/DailyAttendanceSummary.jsx';
@@ -98,9 +98,9 @@ export default function DashboardPage() {
     queryFn: () => getMyTarget(currentMonth),
     enabled: isCoordinator,
   });
-  const { data: mySemiAnnual } = useQuery({
-    queryKey: ['mob-target-semi-annual-my', currentMonth],
-    queryFn: () => getMySemiAnnual(currentMonth),
+  const { data: myMonthlyWindow } = useQuery({
+    queryKey: ['mob-target-monthly-window-my', currentMonth],
+    queryFn: () => getMyMonthlyWindow(currentMonth),
     enabled: isCoordinator,
   });
 
@@ -223,33 +223,38 @@ export default function DashboardPage() {
       {isCoordinator ? (
         <>
           {(activeSubcontractors != null || myTarget) && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*:last-child:nth-child(odd)]:lg:col-span-2">
               {activeSubcontractors != null && (
                 <DirectoryStatsWidget activeClients={stats.activeClients} activeSubcontractors={activeSubcontractors} />
               )}
               {myTarget && <MobilisationTargetCard target={myTarget} />}
             </div>
           )}
-          {mySemiAnnual && (
+          {myMonthlyWindow && (
             <div className="mt-6">
-              <SemiAnnualTargetCard data={mySemiAnnual} />
+              <MonthlyProgressWindowCard data={myMonthlyWindow} />
             </div>
           )}
-          {(pendingLeave != null || pendingExit != null || myRequirementsSummary != null) && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {(pendingLeave != null || pendingExit != null) && (
-                <HrComplianceWidget pendingLeave={pendingLeave} pendingExit={pendingExit} />
-              )}
-              {myRequirementsSummary != null && <MyRequirementsWidget summary={myRequirementsSummary} />}
-            </div>
-          )}
-          {attendanceSummary != null && <DailyAttendanceSummary summary={attendanceSummary} />}
-          {canSeeStandbyAnalysis && <StandbyAnalysisWidget />}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*:last-child:nth-child(odd)]:lg:col-span-2 mt-6">
+            {(pendingLeave != null || pendingExit != null) && (
+              <HrComplianceWidget pendingLeave={pendingLeave} pendingExit={pendingExit} />
+            )}
+            {myRequirementsSummary != null && <MyRequirementsWidget summary={myRequirementsSummary} />}
+            {mobilisationsByStatus != null && (
+              <StatusBreakdown
+                title={t('staffDashboard.myPipelineTitle')}
+                data={mobilisationsByStatus}
+                colors={{ Draft: 'default', Submitted: 'warning', Approved: 'primary', Deployed: 'success', Rejected: 'danger' }}
+              />
+            )}
+            {attendanceSummary != null && <DailyAttendanceSummary summary={attendanceSummary} />}
+            {canSeeStandbyAnalysis && <StandbyAnalysisWidget />}
+          </div>
         </>
       ) : (
         <>
           {(attendanceSummary != null || activeSubcontractors != null) && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*:last-child:nth-child(odd)]:lg:col-span-2">
               {attendanceSummary != null && (
                 <DailyAttendanceSummary summary={attendanceSummary} />
               )}
@@ -259,7 +264,7 @@ export default function DashboardPage() {
             </div>
           )}
           {(canSeeStandbyAnalysis || pendingLeave != null || pendingExit != null) && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*:last-child:nth-child(odd)]:lg:col-span-2">
               {canSeeStandbyAnalysis && <StandbyAnalysisWidget />}
               {(pendingLeave != null || pendingExit != null) && (
                 <HrComplianceWidget pendingLeave={pendingLeave} pendingExit={pendingExit} />
@@ -270,7 +275,7 @@ export default function DashboardPage() {
               never rendered for a Coordinator (their own pipeline is the
               isCoordinator-only StatusBreakdown further down). */}
           {mobilisationsByStatus != null && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*:last-child:nth-child(odd)]:lg:col-span-2">
               <CoordinatorLeaderboardWidget />
               <StatusBreakdown
                 title={t('staffDashboard.globalPipelineTitle')}
@@ -282,16 +287,7 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* The coordinator's own pipeline breakdown — full width, no 2-col grid
-          to pair it with (removed 2026-09-24 alongside Workforce by status,
-          which used to be the thing on the other side of this grid). */}
-      {isCoordinator && mobilisationsByStatus != null && (
-        <StatusBreakdown
-          title={t('staffDashboard.myPipelineTitle')}
-          data={mobilisationsByStatus}
-          colors={{ Draft: 'default', Submitted: 'warning', Approved: 'primary', Deployed: 'success', Rejected: 'danger' }}
-        />
-      )}
+      {/* The coordinator's own pipeline breakdown is now rendered inside the grid above */}
 
       {/* Alerts + activity — ExpiringDocuments always renders (it's a list
           built from independently-gated sources, naturally empty rather
@@ -304,7 +300,7 @@ export default function DashboardPage() {
           own rule above it. `recentActivity != null` alone already reflects
           the real grant; no separate role check belongs here. */}
       {recentActivity != null ? (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 [&>*:last-child:nth-child(odd)]:lg:col-span-2">
           <ExpiringDocuments items={expiringDocuments} thresholdDays={thresholdDays} onThresholdChange={changeThreshold} scopedToTeam={isCoordinator} />
           <SystemLogsWidget recentActivity={recentActivity} />
         </div>

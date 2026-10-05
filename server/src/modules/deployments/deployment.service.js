@@ -89,8 +89,9 @@ export async function getPendingHoursQueue(actor) {
   const deployments = await Deployment.find({
     'monthlyHours.status': 'Pending',
   })
-    .select('workerName clientName site workerType monthlyHours mobilisation')
+    .select('workerName clientName site workerType monthlyHours mobilisation worker')
     .populate('mobilisation')
+    .populate('worker', 'salary')
     .lean();
 
   const rows = [];
@@ -98,7 +99,7 @@ export async function getPendingHoursQueue(actor) {
     for (const entry of dep.monthlyHours) {
       if (entry.status !== 'Pending') continue;
       
-      const revExp = computeMonthlyRevenueAndExpenses(entry, dep.mobilisation, dep.monthlyHours);
+      const revExp = computeMonthlyRevenueAndExpenses(entry, dep.mobilisation, dep.monthlyHours, dep.worker);
       
       rows.push({
         deploymentId: dep._id,
@@ -111,9 +112,13 @@ export async function getPendingHoursQueue(actor) {
         contractHours: entry.contractHours,
         actualHours: entry.actualHours,
         supplierHours: entry.supplierHours,
+        clientRate: dep.mobilisation?.clientRate ?? null,
+        subcontractorRate: dep.mobilisation?.subcontractorRate ?? null,
         otHours: entry.otHours,
         otAmount: entry.otAmount,
         deductionAmount: entry.deductionAmount,
+        employeeAdditionalAmount: entry.employeeAdditionalAmount,
+        employeeAdditionalAmountNote: entry.employeeAdditionalAmountNote,
         notes: entry.notes,
         enteredAt: entry.createdAt,
         revenue: revExp ? revExp.revenue : null,
@@ -154,24 +159,80 @@ async function computeOtAmount(mobilisationId, otHours) {
   return money(otHours * (mobilisation?.otClientRate ?? 0));
 }
 
-/** OT hours — the real formula depends on worker type (2026-09-19, the
- *  user's own ask): a SupplierEmployee deployment has a real subcontractor
- *  keeping their OWN timesheet, which can legitimately differ from the
- *  client's (`actualHours`), so OT there is Client hours minus Supplier
- *  hours, floored at 0 (same safety net the original formula already had —
- *  never a negative OT figure). Employee/Freelancer have no such second
- *  timesheet at all, so they keep the original formula against the
- *  deployment's own contracted hours, unchanged. */
-function computeOtHours(workerType, actualHours, supplierHours, contractHours) {
-  if (workerType === 'SupplierEmployee') {
-    return Math.max(0, actualHours - (supplierHours ?? 0));
-  }
+/** OT hours billed to the CLIENT — always Client hours minus this
+ *  deployment's own contracted hours, floored at 0, for every worker type
+ *  alike (2026-10-01, the user's own correction, superseding the
+ *  2026-09-19 SupplierEmployee-specific formula below). The earlier formula
+ *  measured a SupplierEmployee's OT against the SUBCONTRACTOR's own
+ *  timesheet — which broke the moment subcontractor hours became an
+ *  optional, separately-entered follow-up step (see addMonthlyHours):
+ *  client OT can no longer depend on a number that might not exist yet.
+ *  What this company bills the client was always really about the client's
+ *  own timesheet vs. the client's own agreed hours anyway; the
+ *  subcontractor's real OT (what this company owes THEM extra) is now its
+ *  own, independent figure — see computeSupplierOtHours below. */
+function computeOtHours(actualHours, contractHours) {
   return Math.max(0, actualHours - contractHours);
+}
+
+/** OT hours this company owes the SUBCONTRACTOR extra for — independent of
+ *  the client-billed OT above (2026-10-01, the user's own ask: "we would do
+ *  time adjustment from client timesheet hours, so it won't be same for
+ *  sub contractor"). Measured against the same deployment contract-hours
+ *  baseline the client side uses (the user's own choice, put to them
+ *  directly, over inventing a second, separate subcontractor-contract-hours
+ *  field). `null` while the subcontractor's own timesheet hasn't been
+ *  entered yet (a real, expected interim state — see addMonthlyHours's own
+ *  doc comment on the two-step entry flow), never a guess. */
+function computeSupplierOtHours(supplierHours, contractHours) {
+  if (supplierHours == null) return null;
+  return Math.max(0, supplierHours - contractHours);
 }
 
 function monthStrOf(date) {
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+const HOURS_CAP_PER_DAY = 18; // physically the most anyone could work in a day
+
+/**
+ * How many of a calendar month's days actually fall within this deployment's
+ * real placement window — the full month for one it was active throughout,
+ * fewer for the month it started or (once Ended) the month it ended in.
+ * Feeds the "impossible hours" guard below: 18h/day × these days is the
+ * absolute ceiling for actualHours/supplierHours in that month, tighter than
+ * a flat month-agnostic cap for a placement that only covered part of the
+ * month (2026-09-30, the user's own ask, with their own worked example — a
+ * worker demobilised 15 August can't have claimed a full month's worth of
+ * hours for August). Mirrored client-side in deployments.schema.js for
+ * immediate feedback; this is the real, authoritative check.
+ */
+function realPlacementDaysInMonth(deployment, monthStr) {
+  const [year, month] = monthStr.split('-').map(Number);
+  const monthStart = new Date(Date.UTC(year, month - 1, 1));
+  const monthEnd = new Date(Date.UTC(year, month, 0)); // last real day of that month
+  const placementStart = new Date(deployment.startDate);
+  const placementEnd = deployment.endDate ? new Date(deployment.endDate) : monthEnd;
+  const effectiveStart = placementStart > monthStart ? placementStart : monthStart;
+  const effectiveEnd = placementEnd < monthEnd ? placementEnd : monthEnd;
+  const days = Math.floor((effectiveEnd - effectiveStart) / 86_400_000) + 1;
+  return Math.max(0, days);
+}
+
+/** Throws if `hours` exceeds what's physically possible for the real days
+ *  this deployment was actually placed in that month — see
+ *  realPlacementDaysInMonth's own doc comment. `label` names which figure
+ *  failed (client timesheet vs. supplier timesheet) in the error. */
+function assertPossibleHours(deployment, monthStr, hours, label) {
+  const days = realPlacementDaysInMonth(deployment, monthStr);
+  const max = HOURS_CAP_PER_DAY * days;
+  if (hours > max) {
+    throw new ApiError(
+      400,
+      `${label} (${hours}h) exceeds what's physically possible for this deployment's ${days} real placement day(s) in ${monthStr} (max ${max}h at ${HOURS_CAP_PER_DAY}h/day).`
+    );
+  }
 }
 
 /**
@@ -326,17 +387,22 @@ export async function addMonthlyHours(deploymentId, data, actor) {
   if (data.month < monthStrOf(deployment.startDate)) {
     throw new ApiError(400, 'This deployment had not started yet in that month.');
   }
-  // Supplier timesheet hours are required for a SupplierEmployee deployment
-  // (the new OT formula needs them) and simply not applicable otherwise —
-  // see computeOtHours/deployment.model.js's own doc comment.
-  if (deployment.workerType === 'SupplierEmployee' && data.supplierHours == null) {
-    throw new ApiError(400, 'Enter the supplier timesheet hours.');
+  // Supplier timesheet hours are now a real, optional follow-up step for a
+  // SupplierEmployee deployment (2026-10-01, the user's own ask) — entered
+  // once the coordinator submits the client's own timesheet and only later
+  // finds out (or confirms) what the subcontractor's own timesheet says, via
+  // a dedicated "Enter subcontractor hours" action (see
+  // DeploymentDetailPage.jsx). No longer required at creation; simply not
+  // applicable at all for Employee/Freelancer.
+  assertPossibleHours(deployment, data.month, data.actualHours, 'Client timesheet hours');
+  if (deployment.workerType === 'SupplierEmployee' && data.supplierHours != null) {
+    assertPossibleHours(deployment, data.month, data.supplierHours, 'Supplier timesheet hours');
   }
 
   const contractHours = deployment.requiredTimesheetHours ?? 0;
   const actualHours = data.actualHours;
-  const supplierHours = deployment.workerType === 'SupplierEmployee' ? data.supplierHours : null;
-  const otHours = computeOtHours(deployment.workerType, actualHours, supplierHours, contractHours);
+  const supplierHours = deployment.workerType === 'SupplierEmployee' ? (data.supplierHours ?? null) : null;
+  const otHours = computeOtHours(actualHours, contractHours);
   const otAmount = await computeOtAmount(deployment.mobilisation, otHours);
   const newEntry = {
     month: data.month,
@@ -346,6 +412,10 @@ export async function addMonthlyHours(deploymentId, data, actor) {
     otHours,
     otAmount,
     deductionAmount: data.deductionAmount ?? 0,
+    supplierDeductionAmount: data.supplierDeductionAmount ?? 0,
+    supplierDeductionNote: data.supplierDeductionNote || null,
+    employeeAdditionalAmount: data.employeeAdditionalAmount ?? 0,
+    employeeAdditionalAmountNote: data.employeeAdditionalAmountNote || null,
     notes: data.notes,
     enteredBy: actor.userId,
   };
@@ -431,8 +501,12 @@ export async function updateMonthlyHours(deploymentId, entryId, data, actor) {
   if (entry.status === 'Approved' && !isAdmin) {
     throw new ApiError(400, 'This month is already approved and can no longer be edited by non-administrators.');
   }
-  if (deployment.workerType === 'SupplierEmployee' && data.supplierHours == null) {
-    throw new ApiError(400, 'Enter the supplier timesheet hours.');
+  // No longer required — see addMonthlyHours's own doc comment on the
+  // two-step entry flow; an edit may leave the subcontractor's hours
+  // unset just as freely as the original add could.
+  assertPossibleHours(deployment, entry.month, data.actualHours, 'Client timesheet hours');
+  if (deployment.workerType === 'SupplierEmployee' && data.supplierHours != null) {
+    assertPossibleHours(deployment, entry.month, data.supplierHours, 'Supplier timesheet hours');
   }
   const wasRejected = entry.status === 'Rejected';
   const wasApproved = entry.status === 'Approved';
@@ -441,12 +515,13 @@ export async function updateMonthlyHours(deploymentId, entryId, data, actor) {
     supplierHours: entry.supplierHours,
     otAmount: entry.otAmount,
     deductionAmount: entry.deductionAmount,
+    supplierDeductionAmount: entry.supplierDeductionAmount,
     notes: entry.notes,
   };
   const previousEnteredBy = entry.enteredBy.toString();
 
   const actualHours = data.actualHours;
-  const supplierHours = deployment.workerType === 'SupplierEmployee' ? data.supplierHours : null;
+  const supplierHours = deployment.workerType === 'SupplierEmployee' ? (data.supplierHours ?? null) : null;
   // A legacy entry's own real dailyHours breakdown (see deployment.model.js)
   // stays visible exactly as originally entered UNTIL it's actually
   // corrected — the moment someone edits it, the new totals-only shape
@@ -456,9 +531,13 @@ export async function updateMonthlyHours(deploymentId, entryId, data, actor) {
   entry.dailyHours = [];
   entry.actualHours = actualHours;
   entry.supplierHours = supplierHours;
-  entry.otHours = computeOtHours(deployment.workerType, actualHours, supplierHours, entry.contractHours);
+  entry.otHours = computeOtHours(actualHours, entry.contractHours);
   entry.otAmount = await computeOtAmount(deployment.mobilisation, entry.otHours);
   entry.deductionAmount = data.deductionAmount ?? 0;
+  entry.supplierDeductionAmount = data.supplierDeductionAmount ?? 0;
+  entry.supplierDeductionNote = data.supplierDeductionNote || null;
+  entry.employeeAdditionalAmount = data.employeeAdditionalAmount ?? 0;
+  entry.employeeAdditionalAmountNote = data.employeeAdditionalAmountNote || null;
   entry.notes = data.notes;
   entry.enteredBy = actor.userId;
   entry.enteredAt = new Date();
@@ -486,6 +565,7 @@ export async function updateMonthlyHours(deploymentId, entryId, data, actor) {
         supplierHours: entry.supplierHours,
         otAmount: entry.otAmount,
         deductionAmount: entry.deductionAmount,
+        supplierDeductionAmount: entry.supplierDeductionAmount,
         notes: entry.notes,
       },
       otHours: entry.otHours,
@@ -594,19 +674,24 @@ export async function decideMonthlyHours(deploymentId, entryId, data, actor) {
   // clear this step.
   if (data.decision === 'Approved') {
     const clerks = await decidersOfDeploymentsInvoicing();
-    for (const userId of clerks) {
-      await notifyUser(userId, {
-        type: 'RequestStatus',
-        title: `${updatedEntry.month} hours ready to invoice for ${updated.workerName}`,
-        body: `${updated.clientName} — approved and ready for a client invoice.`,
-        url: `/deployments/${updated._id}`,
-      });
-    }
+    // 2026-10-03, a real code-review finding: fire these concurrently, same
+    // as the perf fix already applied to this file's other notification
+    // fan-outs — independent writes, no reason to await one at a time.
+    await Promise.all(
+      clerks.map((userId) =>
+        notifyUser(userId, {
+          type: 'RequestStatus',
+          title: `${updatedEntry.month} hours ready to invoice for ${updated.workerName}`,
+          body: `${updated.clientName} — approved and ready for a client invoice.`,
+          url: `/deployments/${updated._id}`,
+        })
+      )
+    );
   }
   return updated.toObject();
 }
 
-const INVOICE_DUE_DAYS = 50;
+
 
 /** Same shape, against 'deploymentsInvoicing' — the "Clerk" circle. */
 async function decidersOfDeploymentsInvoicing() {
@@ -633,6 +718,7 @@ async function paymentTrackingAudience(mobilisationId) {
 }
 
 function invoiceFileFromUpload(file) {
+  if (!file) return undefined;
   return {
     fileName: file.filename, // Cloudinary public_id, set by uploadSingle
     resourceType: 'raw',
@@ -653,7 +739,6 @@ function invoiceFileFromUpload(file) {
 export async function sendInvoice(deploymentId, entryId, data, file, actor) {
   const allowed = await canAccessSection('deploymentsInvoicing', actor);
   if (!allowed) throw new ApiError(403, 'You do not have permission to send a client invoice.');
-  if (!file) throw new ApiError(400, 'A copy of the invoice PDF is required.');
 
   const deployment = await Deployment.findById(deploymentId);
   if (!deployment) throw new ApiError(404, 'Deployment not found.');
@@ -666,9 +751,39 @@ export async function sendInvoice(deploymentId, entryId, data, file, actor) {
   if (entry.invoiceSentAt) {
     throw new ApiError(400, 'This month has already been invoiced.');
   }
+  // 2026-10-03, a real user-reported gap: nothing stopped picking an invoice
+  // date that predates the month it's for even finishing — before the
+  // client's own timesheet for that month could exist, let alone be entered
+  // and approved here. The earliest a real invoice for entry.month ('YYYY-MM')
+  // could exist is the 1st of the FOLLOWING month. Built with Date.UTC, not
+  // the server's local timezone — `data.invoiceDate` came from a plain
+  // 'YYYY-MM-DD' <input type="date">, which z.coerce.date() parses as UTC
+  // midnight, so this has to be constructed the same way or the comparison
+  // could be off by a day depending on the server's own TZ.
+  const [entryYear, entryMonthNum] = entry.month.split('-').map(Number);
+  const earliestInvoiceDate = new Date(Date.UTC(entryYear, entryMonthNum, 1)); // entryMonthNum is 1-based, so this IS month+1, 0-based
+  if (data.invoiceDate < earliestInvoiceDate) {
+    throw new ApiError(
+      400,
+      `${entry.month} hasn't finished yet — the invoice date can't be before ${earliestInvoiceDate.toISOString().slice(0, 10)}.`
+    );
+  }
+
+  // 2026-10-03, user requested: ensure no duplicate invoice numbers are used.
+  if (data.invoiceNumber) {
+    const existing = await Deployment.exists({
+      archived: { $ne: true },
+      'monthlyHours.invoiceNumber': data.invoiceNumber,
+    });
+    if (existing) {
+      throw new ApiError(400, `Invoice number ${data.invoiceNumber} has already been used.`);
+    }
+  }
 
   const now = new Date();
-  const invoiceDueAt = new Date(now.getTime() + INVOICE_DUE_DAYS * 86_400_000);
+  const clientDoc = await mongoose.model('Client').findById(deployment.client).lean();
+  const dueDays = clientDoc?.creditLimitDays ?? 50;
+  const invoiceDueAt = new Date(now.getTime() + dueDays * 86_400_000);
   // Atomic transition (2026-09-29, a real audit finding): the old
   // read-then-save let two concurrent "send invoice" submissions for the
   // same entry both pass the in-memory `invoiceSentAt` check above, and the
@@ -707,14 +822,18 @@ export async function sendInvoice(deploymentId, entryId, data, file, actor) {
   });
 
   const audience = await paymentTrackingAudience(updated.mobilisation);
-  for (const userId of audience) {
-    await notifyUser(userId, {
-      type: 'RequestStatus',
-      title: `Invoice ${data.invoiceNumber} sent for ${updated.workerName} (${updatedEntry.month})`,
-      body: `${updated.clientName} — payment due by ${updatedEntry.invoiceDueAt.toDateString()}.`,
-      url: `/deployments/payments-due`,
-    });
-  }
+  // 2026-10-03, a real code-review finding: same concurrency fix as
+  // decidersOfDeploymentsInvoicing's notify loop above.
+  await Promise.all(
+    audience.map((userId) =>
+      notifyUser(userId, {
+        type: 'RequestStatus',
+        title: `Invoice ${data.invoiceNumber} sent for ${updated.workerName} (${updatedEntry.month})`,
+        body: `${updated.clientName} — payment due by ${updatedEntry.invoiceDueAt.toDateString()}.`,
+        url: `/deployments/payments-due`,
+      })
+    )
+  );
   return updated.toObject();
 }
 
@@ -743,8 +862,9 @@ export async function getInvoiceFile(deploymentId, entryId, actor) {
  */
 async function gatherClientInvoicedItems(clientId) {
   const deployments = await Deployment.find({ client: clientId, archived: { $ne: true } })
-    .select('workerName subcontractorName monthlyHours mobilisation workerType')
+    .select('workerName subcontractorName monthlyHours mobilisation workerType worker')
     .populate('mobilisation', 'coordinators clientRate clientCommission subcontractorRate subcontractorCommission fta allowance mobilisationCost otClientRate otEmployeeRate workerType')
+    .populate('worker', 'salary')
     .lean();
 
   const items = [];
@@ -752,7 +872,7 @@ async function gatherClientInvoicedItems(clientId) {
     if (!dep.mobilisation) continue;
     for (const entry of dep.monthlyHours) {
       if (!entry.invoiceSentAt) continue;
-      const result = computeMonthlyRevenueAndExpenses(entry, dep.mobilisation, dep.monthlyHours);
+      const result = computeMonthlyRevenueAndExpenses(entry, dep.mobilisation, dep.monthlyHours, dep.worker);
       if (!result) continue;
       items.push({
         deploymentId: dep._id,
@@ -763,6 +883,7 @@ async function gatherClientInvoicedItems(clientId) {
         month: entry.month,
         invoiceNumber: entry.invoiceNumber,
         invoiceDate: entry.invoiceDate,
+        invoiceFile: entry.invoiceFile,
         invoiceSentAt: entry.invoiceSentAt,
         invoiceDueAt: entry.invoiceDueAt,
         revenue: result.revenue,
@@ -777,9 +898,12 @@ async function gatherClientInvoicedItems(clientId) {
         fta: dep.mobilisation.fta ?? null,
         allowance: dep.mobilisation.allowance ?? null,
         mobilisationCost: dep.mobilisation.mobilisationCost ?? null,
+        contractHours: entry.contractHours,
         actualHours: entry.actualHours,
+        supplierHours: entry.supplierHours,
         otHours: entry.otHours,
         deductionAmount: entry.deductionAmount ?? 0,
+        supplierDeductionNote: entry.supplierDeductionNote ?? null,
       });
     }
   }
@@ -830,40 +954,70 @@ export async function getClientsPaymentSummary(actor) {
     if (dep.subcontractorName) byClient.get(key).subcontractorNames.add(dep.subcontractorName);
   }
 
-  const rows = [];
-  for (const [, info] of byClient) {
-    const { perEntry } = await getClientAllocation(info.clientId);
-    const outstanding = perEntry.filter((e) => e.balanceDue > 0);
-    if (outstanding.length === 0) continue;
-    const oldestDueAt = outstanding.reduce(
-      (min, e) => (!min || new Date(e.invoiceDueAt) < new Date(min) ? e.invoiceDueAt : min),
-      null
-    );
-    rows.push({
-      clientId: info.clientId,
-      clientName: info.clientName,
-      subcontractorNames: [...info.subcontractorNames],
-      totalOutstanding: money(outstanding.reduce((sum, e) => sum + e.balanceDue, 0)),
-      outstandingCount: outstanding.length,
-      oldestDueAt,
-      daysRemaining: oldestDueAt ? Math.ceil((new Date(oldestDueAt).getTime() - Date.now()) / 86_400_000) : null,
-    });
-  }
+  // 2026-10-03, a real perf-audit finding: this is dashboard.service.js's
+  // own "Payments due soon" widget (via countPaymentsDueSoon below), hit on
+  // EVERY dashboard load — it was walking every distinct client's payment
+  // allocation one at a time with a sequential await, turning into an
+  // N-round-trip chain. Each client's allocation is independent, so fire
+  // them concurrently instead; the final sort below doesn't care what order
+  // they resolve in.
+  const rows = (
+    await Promise.all(
+      [...byClient.values()].map(async (info) => {
+        const { perEntry } = await getClientAllocation(info.clientId);
+        const outstanding = perEntry.filter((e) => e.balanceDue > 0);
+        if (outstanding.length === 0) return null;
+        const oldestDueAt = outstanding.reduce(
+          (min, e) => (!min || new Date(e.invoiceDueAt) < new Date(min) ? e.invoiceDueAt : min),
+          null
+        );
+        return {
+          clientId: info.clientId,
+          clientName: info.clientName,
+          subcontractorNames: [...info.subcontractorNames],
+          totalOutstanding: money(outstanding.reduce((sum, e) => sum + e.balanceDue, 0)),
+          outstandingCount: outstanding.length,
+          oldestDueAt,
+          daysRemaining: oldestDueAt ? Math.ceil((new Date(oldestDueAt).getTime() - Date.now()) / 86_400_000) : null,
+        };
+      })
+    )
+  ).filter(Boolean);
   return rows.sort((a, b) => (a.daysRemaining ?? Infinity) - (b.daysRemaining ?? Infinity));
 }
 
 /**
- * Returns a flat list of every invoice that has received at least one
- * payment — fully paid or still partial — across all clients the viewer is
- * entitled to see, each carrying its real `revenue` (invoice amount),
- * `amountAllocated` (paid so far) and `balanceDue`, so a client paying in
- * installments shows real progress here instead of only appearing once
- * settled in full. An invoice with zero allocation yet stays out of this
- * list — that's Payments Due's job. Uses the same visibility rules as
+ * Returns a flat list of every PAYMENT that has landed against an invoice —
+ * fully paid or still partial — across all clients the viewer is entitled
+ * to see. An invoice paid in two installments (2026-10-01, the user's own
+ * ask, over showing one lumped total: "if they pay 3000 then 2000, show
+ * these as two payments not a single one") appears here as TWO rows, not
+ * one — each carrying that one payment's own `amountAllocated` and the
+ * invoice's real running `balanceDue` immediately after it, so the history
+ * reads as an actual ledger. `revenue`/`breakdown`/every rate field stay the
+ * invoice's own real figures, identical and repeated on every row for that
+ * invoice — only `amountAllocated`/`balanceDue`/`fullyPaid` are PER-PAYMENT
+ * here (deliberately unlike every other consumer of allocateClientPayments,
+ * which all still want the invoice's cumulative totals, untouched by this).
+ * An invoice with zero allocation yet stays out of this list entirely —
+ * that's Payments Due's job. Uses the same visibility rules as
  * getClientsPaymentSummary.
  */
+/** Strips the two salary-derived expense lines from an invoiced item's
+ *  breakdown for a non-decider — same "never even send it" rule getDeployment
+ *  already applies to otAmount/mobilisation (2026-10-03, a real
+ *  security-review finding: these two lines flow unredacted through
+ *  gatherClientInvoicedItems to any viewer of Paid Invoices/Payments Due,
+ *  not just whoever holds deploymentsHoursDecide). */
+function stripEmployeeSalaryFromBreakdown(item) {
+  if (!item.breakdown) return item;
+  const { expenseEmployeeSalary, expenseEmployeeAdditional, ...restBreakdown } = item.breakdown;
+  return { ...item, breakdown: restBreakdown };
+}
+
 export async function getPaidInvoices(actor) {
   const canViewAll = await canAccessSection('mobilisationsViewer', actor, 'read');
+  const canSeeCommercial = await canAccessSection('deploymentsHoursDecide', actor, 'read');
 
   const deployments = await Deployment.find({
     archived: { $ne: true },
@@ -882,23 +1036,46 @@ export async function getPaidInvoices(actor) {
     if (!byClient.has(key)) byClient.set(key, { clientId: dep.client, clientName: dep.clientName, subcontractorName: dep.subcontractorName });
   }
 
-  const paidInvoices = [];
-  for (const [, info] of byClient) {
-    const { perEntry } = await getClientAllocation(info.clientId);
-    const paid = perEntry.filter((e) => e.amountAllocated > 0);
-    for (const p of paid) {
-      paidInvoices.push({
-        clientName: info.clientName,
-        subcontractorName: info.subcontractorName,
-        ...p,
-      });
-    }
-  }
-  
-  // Sort by invoiceDate descending, then by clientName
+  // 2026-10-03, a real perf-audit finding (same as getClientsPaymentSummary
+  // above): each client's allocation is independent, so fetch them
+  // concurrently instead of one at a time — the final sort below doesn't
+  // care what order they resolve in.
+  const paidInvoices = (
+    await Promise.all(
+      [...byClient.values()].map(async (info) => {
+        const { perEntry } = await getClientAllocation(info.clientId);
+        const paid = perEntry.filter((e) => e.amountAllocated > 0);
+        const rows = [];
+        for (const rawP of paid) {
+          const p = canSeeCommercial ? rawP : stripEmployeeSalaryFromBreakdown(rawP);
+          const { payments, ...invoiceFields } = p;
+          // One row per actual payment (oldest first) — a single-payment
+          // invoice produces exactly one row, unchanged from before this split.
+          for (const payment of payments) {
+            rows.push({
+              clientName: info.clientName,
+              subcontractorName: info.subcontractorName,
+              ...invoiceFields,
+              rowId: `${p.entryId}-${payment.paymentId}`,
+              amountAllocated: payment.amount,
+              balanceDue: payment.runningBalance,
+              fullyPaid: payment.runningBalance <= 0,
+              paymentId: payment.paymentId,
+              paymentDate: payment.paymentDate,
+              paymentReference: payment.paymentReference,
+            });
+          }
+        }
+        return rows;
+      })
+    )
+  ).flat();
+
+  // Sort by payment date descending (the real, user-facing ask — most
+  // recent payment event first), then by clientName.
   return paidInvoices.sort((a, b) => {
-    const dateA = a.invoiceDate ? new Date(a.invoiceDate).getTime() : 0;
-    const dateB = b.invoiceDate ? new Date(b.invoiceDate).getTime() : 0;
+    const dateA = a.paymentDate ? new Date(a.paymentDate).getTime() : 0;
+    const dateB = b.paymentDate ? new Date(b.paymentDate).getTime() : 0;
     if (dateA !== dateB) return dateB - dateA;
     return a.clientName.localeCompare(b.clientName);
   });
@@ -935,6 +1112,7 @@ export async function getClientPaymentDetail(clientId, actor) {
     const isMine = deployments.some((dep) => dep.mobilisation?.coordinators?.some((c) => c.user.toString() === actor.userId.toString()));
     if (!isMine) throw new ApiError(403, 'You do not have permission to view this client’s payments.');
   }
+  const canSeeCommercial = await canAccessSection('deploymentsHoursDecide', actor, 'read');
 
   const client = await Client.findById(clientId).select('companyName').lean();
   if (!client) throw new ApiError(404, 'Client not found.');
@@ -943,12 +1121,15 @@ export async function getClientPaymentDetail(clientId, actor) {
     getClientAllocation(clientId),
     getClientPaymentHistory(clientId),
   ]);
+  const invoices = (canSeeCommercial ? perEntry : perEntry.map(stripEmployeeSalaryFromBreakdown)).sort(
+    (a, b) => new Date(b.invoiceSentAt) - new Date(a.invoiceSentAt)
+  );
 
   return {
     clientId,
     clientName: client.companyName,
     creditBalance,
-    invoices: perEntry.sort((a, b) => new Date(b.invoiceSentAt) - new Date(a.invoiceSentAt)),
+    invoices,
     payments,
   };
 }
@@ -966,6 +1147,65 @@ export async function getClientPaymentDetail(clientId, actor) {
  * actually act on this queue. Sorted oldest-approved-first, so the month
  * that's been waiting longest leads.
  */
+export async function countDeploymentsMissingTimesheets(actor) {
+  if (actor.role !== 'Coordinator' && !(await canAccessSection('deploymentsRelease', actor, 'read'))) return 0;
+
+  const filter = { status: { $in: ['Active', 'Ended'] }, archived: { $ne: true } };
+  if (actor.role === 'Coordinator') {
+    const teamIds = await Employee.find({ coordinator: actor.userId }).distinct('_id');
+    filter.worker = { $in: teamIds };
+  }
+
+  const deployments = await Deployment.find(filter).select('status startDate endDate monthlyHours.month').lean();
+  let totalMissing = 0;
+
+  const monthStrOf = (date) => {
+    const d = new Date(date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const addMonthsToStr = (monthStr, n) => {
+    const [y, m] = monthStr.split('-').map(Number);
+    const d = new Date(y, m - 1 + n, 1);
+    return monthStrOf(d);
+  };
+  const previousMonthStr = () => addMonthsToStr(monthStrOf(new Date()), -1);
+  
+  const now = new Date();
+  
+  for (const d of deployments) {
+    if (!d.startDate) continue;
+    const start = monthStrOf(d.startDate);
+    const maxEligible = (d.status === 'Ended' && d.endDate) ? monthStrOf(d.endDate) : previousMonthStr();
+    if (start > maxEligible) continue;
+    
+    const entered = new Set((d.monthlyHours || []).map((m) => m.month));
+    let candidate = start;
+    while (candidate <= maxEligible) {
+      if (!entered.has(candidate)) {
+        // Candidate is YYYY-MM
+        const [y, m] = candidate.split('-').map(Number);
+        // Deadline is 28th of the FOLLOWING month
+        const deadlineDate = new Date(y, m, 28);
+        const notificationStart = new Date(deadlineDate);
+        notificationStart.setDate(deadlineDate.getDate() - 7); // 21st
+        
+        let visible = false;
+        if (['MM', 'FM', 'COO', 'Manager'].includes(actor.role)) {
+          if (now > deadlineDate) visible = true;
+        } else {
+          // Office Secretary, Coordinator, Admin, HR, etc.
+          if (now >= notificationStart) visible = true;
+        }
+        
+        if (visible) totalMissing++;
+      }
+      candidate = addMonthsToStr(candidate, 1);
+    }
+  }
+  
+  return totalMissing;
+}
+
 export async function getReadyToInvoice(actor) {
   const allowed =
     (await canAccessSection('deploymentsInvoicing', actor, 'read')) ||
@@ -976,8 +1216,9 @@ export async function getReadyToInvoice(actor) {
     archived: { $ne: true },
     monthlyHours: { $elemMatch: { status: 'Approved', invoiceSentAt: null } },
   })
-    .select('workerName clientName mobilisation monthlyHours workerType')
+    .select('workerName clientName mobilisation monthlyHours workerType worker')
     .populate('mobilisation', 'serialNumber clientRate clientCommission subcontractorRate subcontractorCommission fta allowance mobilisationCost otClientRate otEmployeeRate workerType')
+    .populate('worker', 'salary')
     .lean();
 
   const rows = [];
@@ -985,7 +1226,7 @@ export async function getReadyToInvoice(actor) {
     for (const entry of dep.monthlyHours) {
       if (entry.status !== 'Approved' || entry.invoiceSentAt) continue;
       
-      const revExp = computeMonthlyRevenueAndExpenses(entry, dep.mobilisation, dep.monthlyHours);
+      const revExp = computeMonthlyRevenueAndExpenses(entry, dep.mobilisation, dep.monthlyHours, dep.worker);
       
       rows.push({
         deploymentId: dep._id,
@@ -996,6 +1237,7 @@ export async function getReadyToInvoice(actor) {
         clientName: dep.clientName,
         month: entry.month,
         actualHours: entry.actualHours,
+        supplierHours: entry.supplierHours,
         otHours: entry.otHours,
         hoursApprovedAt: entry.decidedAt,
         revenue: revExp ? revExp.revenue : null,
@@ -1011,6 +1253,7 @@ export async function getReadyToInvoice(actor) {
         allowance: dep.mobilisation?.allowance ?? null,
         mobilisationCost: dep.mobilisation?.mobilisationCost ?? null,
         deductionAmount: entry.deductionAmount ?? 0,
+        supplierDeductionNote: entry.supplierDeductionNote ?? null,
       });
     }
   }
@@ -1403,17 +1646,57 @@ function firstApprovedEntryId(entries) {
  *
  *   revenue  = clientRate × contractHours + otClientRate × otHours — the pure
  *              amount billed to the client, never netted against any cost.
- *   expenses = clientCommission × contractHours
- *            + (SupplierEmployee only) (subcontractorRate + subcontractorCommission) × contractHours
+ *              `otHours` (2026-10-01, the user's own correction) is ALWAYS
+ *              Client hours − this deployment's own contract hours, for
+ *              every worker type alike — no longer measured against the
+ *              subcontractor's timesheet for SupplierEmployee, since that
+ *              timesheet is now a separate, optional follow-up entry that
+ *              might not exist yet (see addMonthlyHours's two-step flow).
+ *   expenses = clientCommission × actualHours (the full client timesheet,
+ *              OT included — 2026-10-01, the user's own correction; was
+ *              previously only the non-OT portion)
+ *            + (SupplierEmployee only) subcontractorRate × the subcontractor's
+ *              own FULL timesheet hours (no regular/OT split on this side —
+ *              2026-10-01, the user's own choice), net of this month's
+ *              supplierDeductionAmount ("Sub Invoice" — what this company
+ *              actually owes the subcontractor; can go negative if the
+ *              deduction exceeds the raw rate×hours amount)
+ *            + (SupplierEmployee only) subcontractorCommission × the same
+ *              full subcontractor hours — split out from Sub Invoice above
+ *              2026-09-30 (the user's own ask, so the rate and the
+ *              commission are each their own line)
  *            + fta + allowance
- *            + otEmployeeRate × otHours
- *            + entry.deductionAmount
+ *            + (SupplierEmployee only) otEmployeeRate × supplierOtHours — the
+ *              subcontractor's OWN overtime (their timesheet hours minus this
+ *              deployment's contract hours, 2026-10-01), decoupled from the
+ *              client-billed otHours above; 0 while the subcontractor's
+ *              timesheet hasn't been entered yet
+ *            + (Freelancer and Employee) otEmployeeRate × otHours — no second
+ *              timesheet exists for either, so this stays the single,
+ *              client-derived figure; 0 while otEmployeeRate is unset
+ *            + (Employee only) worker.salary — their fixed monthly pay,
+ *              netted as a real cost (2026-10-03, the user's own follow-up,
+ *              superseding the original "pay is fixed by contract, never
+ *              netted" rule below)
+ *            + (Employee only) entry.employeeAdditionalAmount — a manually
+ *              entered one-off amount for that month (e.g. a bonus), same
+ *              posture as entry.deductionAmount above
+ *            + entry.deductionAmount (the CLIENT-side deduction — see that
+ *              field's own doc comment; entry.supplierDeductionAmount is
+ *              already netted into Sub Invoice above, never added again here)
  *            + (this deployment's chronologically-first-Approved entry only) mobilisationCost
  *   profit   = revenue − expenses, always.
+ *
+ * 2026-10-03, the user's own follow-up: a real Employee now DOES get OT pay
+ * and real cost-netting through this per-deployment mechanism (otEmployeeRate
+ * × otHours, their salary, and any additional amount, all above) — the
+ * original 2026-09-30 rule ("no separate OT pay, pay is fixed by contract,
+ * never netted against any cost here") no longer holds.
  */
-export function computeMonthlyRevenueAndExpenses(entry, mobilisation, allEntries) {
+export function computeMonthlyRevenueAndExpenses(entry, mobilisation, allEntries, worker) {
   if (!mobilisation) return null;
   const isSupplier = mobilisation.workerType === 'SupplierEmployee';
+  const isEmployee = mobilisation.workerType === 'Employee';
 
   // The regular hours billed to the client is the total actual hours minus any OT hours.
   const regularClientHours = Math.max(0, entry.actualHours - entry.otHours);
@@ -1424,43 +1707,89 @@ export function computeMonthlyRevenueAndExpenses(entry, mobilisation, allEntries
 
   const revenue = clientInvoiceAmount;
 
-  // The regular hours billed by the subcontractor is simply their timesheet.
-  // For SupplierEmployee, OT is the difference between client timesheet and supplier timesheet,
-  // so the supplier timesheet hours themselves are entirely regular hours.
-  const regularSupplierHours = isSupplier ? (entry.supplierHours ?? 0) : 0;
-  const subSide = isSupplier ? (mobilisation.subcontractorRate ?? 0) + (mobilisation.subcontractorCommission ?? 0) : 0;
-  
-  const subContractorInvoiceAmount = isSupplier ? money(subSide * regularSupplierHours) : 0;
+  // Sub Invoice/Sub Commission apply to the subcontractor's FULL own
+  // timesheet (2026-10-01, the user's own choice — no regular/OT split on
+  // this side; the subcontractor's OT premium is its own separate line,
+  // otCalculations below, via supplierOtHours). `null` while the
+  // subcontractor's own timesheet hasn't been entered yet (a real, expected
+  // interim state now that it's a separate follow-up step — see
+  // addMonthlyHours) — treated as 0 here, never a guess.
+  const supplierHoursTotal = isSupplier ? (entry.supplierHours ?? 0) : 0;
+  const supplierOtHours = isSupplier ? computeSupplierOtHours(entry.supplierHours, entry.contractHours) : null;
+  // Sub Invoice = the rate-only portion of what we owe the subcontractor,
+  // net of this month's own adjustment/deduction against it (2026-09-30,
+  // the user's own ask: "supplier invoice is the amount we give them ...
+  // deducted from supplier invoice") — commission is its own separate line,
+  // expenseSubCommission below, no longer folded into this figure.
+  const supplierDeductionAmount = isSupplier ? money(entry.supplierDeductionAmount ?? 0) : 0;
+  const subContractorInvoiceAmount = isSupplier
+    ? money((mobilisation.subcontractorRate ?? 0) * supplierHoursTotal - supplierDeductionAmount)
+    : 0;
+  const expenseSubCommission = isSupplier
+    ? money((mobilisation.subcontractorCommission ?? 0) * supplierHoursTotal)
+    : 0;
 
   const isFirstApprovedEntry =
     Array.isArray(allEntries) && entry.status === 'Approved' && entry._id?.toString() === firstApprovedEntryId(allEntries);
   const mobilisationCostDeduction = isFirstApprovedEntry ? mobilisation.mobilisationCost ?? 0 : 0;
 
-  const expenseClientCommission = money((mobilisation.clientCommission ?? 0) * regularClientHours);
+  // 2026-10-01, the user's own correction: this is actualHours (the full
+  // client timesheet, OT included), not regularClientHours (actualHours
+  // minus OT) — unlike clientInvoiceAmount's revenue split above, the
+  // commission expense isn't itself divided into a separate OT rate.
+  const expenseClientCommission = money((mobilisation.clientCommission ?? 0) * entry.actualHours);
   const expenseFta = money(mobilisation.fta ?? 0);
   const expenseAllowance = money(mobilisation.allowance ?? 0);
-  const otCalculations = money((mobilisation.otEmployeeRate ?? 0) * entry.otHours);
+  // 2026-09-30, the user's own ask: a real Employee doesn't get separate OT
+  // pay through this per-deployment mechanism — their pay is fixed by their
+  // employment contract.
+  //
+  // 2026-10-03, the user's own follow-up: added `otEmployeeRate` to the
+  // mobilisation form for Employee type as well. When set, it represents the
+  // OT premium paid directly to the employee for OT hours (on top of the
+  // fixed salary already captured as expenseEmployeeSalary). If not set (0 or
+  // absent), the behaviour is unchanged — full OT client revenue flows to
+  // profit with no employee-side OT cost.
+  //
+  // For a SupplierEmployee, this is based on the subcontractor's OWN OT hours
+  // (supplierOtHours), never the client-billed otHours — the two are
+  // independent figures. Freelancer has no second timesheet, so it keeps using
+  // the single, client-derived otHours.
+  const otCalculations = isSupplier
+    ? money((mobilisation.otEmployeeRate ?? 0) * (supplierOtHours ?? 0))
+    : money((mobilisation.otEmployeeRate ?? 0) * entry.otHours);
   const expenseDeduction = money(entry.deductionAmount ?? 0);
   
+  const expenseEmployeeSalary = isEmployee ? money(worker?.salary ?? 0) : 0;
+  const expenseEmployeeAdditional = isEmployee ? money(entry.employeeAdditionalAmount ?? 0) : 0;
+
   const expenses = money(
     expenseClientCommission +
       subContractorInvoiceAmount +
+      expenseSubCommission +
       expenseFta +
       expenseAllowance +
       otCalculations +
       expenseDeduction +
-      mobilisationCostDeduction
+      mobilisationCostDeduction +
+      expenseEmployeeSalary +
+      expenseEmployeeAdditional
   );
 
   const breakdown = {
     clientInvoiceAmount,
     subContractorInvoiceAmount,
+    expenseSubCommission,
+    supplierDeductionAmount,
+    supplierOtHours,
     otCalculations,
     expenseClientCommission,
     expenseFta,
     expenseAllowance,
     expenseDeduction,
     expenseMobilisationCost: mobilisationCostDeduction,
+    expenseEmployeeSalary,
+    expenseEmployeeAdditional,
   };
 
   return { revenue, expenses, profit: money(revenue - expenses), breakdown };
@@ -1546,7 +1875,7 @@ export const PROFIT_RATE_FIELDS =
 
 export async function getDeployment(id, actor) {
   const deployment = await Deployment.findById(id)
-    .populate('worker', 'fullName employeeId')
+    .populate('worker', 'fullName employeeId salary')
     .populate('mobilisation', PROFIT_RATE_FIELDS)
     .lean();
   if (!deployment) throw new ApiError(404, 'Deployment not found.');
@@ -1594,8 +1923,20 @@ export async function getDeployment(id, actor) {
       // .revenue/.expenses added 2026-09-24 alongside .profit (unchanged) — for
       // the new per-Deployment Expenses section's own Revenue/Expenses/Profit
       // summary (see DeploymentDetailPage.jsx's own doc comment).
-      const revExp = computeMonthlyRevenueAndExpenses(entry, deployment.mobilisation, deployment.monthlyHours);
-      return { ...withBilling, profit: revExp ? revExp.profit : null, revenue: revExp ? revExp.revenue : null, expenses: revExp ? revExp.expenses : null };
+      const revExp = computeMonthlyRevenueAndExpenses(entry, deployment.mobilisation, deployment.monthlyHours, deployment.worker);
+      return {
+        ...withBilling,
+        profit: revExp ? revExp.profit : null,
+        revenue: revExp ? revExp.revenue : null,
+        expenses: revExp ? revExp.expenses : null,
+        // Added 2026-10-01 for the Expenses module's read-only "Deployment
+        // Costs" view (the user's own choice — live-computed, never
+        // persisted, so nothing here can double-count against the real
+        // Expense ledger) — same itemized object every other breakdown
+        // consumer already reads, just not previously exposed on this
+        // single-record endpoint.
+        breakdown: revExp ? revExp.breakdown : null,
+      };
     }
     const { otAmount, ...rest } = withBilling;
     return rest;
@@ -1614,8 +1955,19 @@ export async function getDeployment(id, actor) {
     deployment.totalProfit = withProfit.length ? money(withProfit.reduce((sum, e) => sum + e.profit, 0)) : null;
     deployment.totalRevenue = withProfit.length ? money(withProfit.reduce((sum, e) => sum + e.revenue, 0)) : null;
     deployment.totalExpenses = withProfit.length ? money(withProfit.reduce((sum, e) => sum + e.expenses, 0)) : null;
-  } else if (deployment.mobilisation) {
-    deployment.mobilisation = { _id: deployment.mobilisation._id, serialNumber: deployment.mobilisation.serialNumber };
+  } else {
+    if (deployment.mobilisation) {
+      deployment.mobilisation = { _id: deployment.mobilisation._id, serialNumber: deployment.mobilisation.serialNumber };
+    }
+    // 2026-10-03, a real security-review finding: `worker` is populated with
+    // `salary` above (needed by computeMonthlyRevenueAndExpenses, gated
+    // correctly inside the `canSeeCommercial` branch) but the raw populated
+    // object itself was never stripped for a non-decider — same "never even
+    // send it" rule as otAmount/mobilisation just above.
+    if (deployment.worker) {
+      const { salary, ...rest } = deployment.worker;
+      deployment.worker = rest;
+    }
   }
   return deployment;
 }
@@ -1714,8 +2066,9 @@ export async function getActualPerformanceSummary() {
 
   const [deployments, lastMonthExp, monthBeforeLastExp, thisYearExp, sameMonthsLastYearExp] = await Promise.all([
     Deployment.find({ monthlyHours: { $elemMatch: { status: 'Approved', month: { $in: [...relevantMonthKeys] } } } })
-      .select('client monthlyHours mobilisation')
+      .select('client monthlyHours mobilisation worker')
       .populate('mobilisation', PROFIT_RATE_FIELDS)
+      .populate('worker', 'salary')
       .lean(),
     sumDeploymentExpenses(monthDateBounds(lastMonth.year, lastMonth.month)),
     sumDeploymentExpenses(monthDateBounds(monthBeforeLast.year, monthBeforeLast.month)),
@@ -1758,7 +2111,7 @@ export async function getActualPerformanceSummary() {
     if (!dep.mobilisation) continue;
     for (const entry of dep.monthlyHours) {
       if (entry.status !== 'Approved' || !relevantMonthKeys.has(entry.month)) continue;
-      const result = computeMonthlyRevenueAndExpenses(entry, dep.mobilisation, dep.monthlyHours);
+      const result = computeMonthlyRevenueAndExpenses(entry, dep.mobilisation, dep.monthlyHours, dep.worker);
       if (!result) continue;
       const received = entry.invoiceSentAt ? allocatedByEntryId.get(entry._id.toString()) ?? 0 : 0;
       const ftaAndAllowance = result.breakdown.expenseFta + result.breakdown.expenseAllowance;

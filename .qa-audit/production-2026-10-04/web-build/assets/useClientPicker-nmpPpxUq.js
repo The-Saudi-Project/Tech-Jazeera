@@ -1,0 +1,1 @@
+import{t as e}from"./useQuery-Dn73X_av.js";import{a as t}from"./clients.api-COJsXBfi.js";function n(n={}){return e({queryKey:[`clients`,`picker`],queryFn:()=>t({limit:100,sortBy:`companyName`,sortOrder:`asc`}),...n})}export{n as t};

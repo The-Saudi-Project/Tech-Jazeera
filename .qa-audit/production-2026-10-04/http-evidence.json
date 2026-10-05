@@ -1,0 +1,267 @@
+[
+  {
+    "name": "worker-outsourced-list",
+    "method": "GET",
+    "url": "/api/outsourced-employees",
+    "role": "Worker",
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Outsourced employees retrieved.",
+      "data": [
+        {
+          "_id": "6ac252cef069a1e6c1c52013",
+          "name": "Private External Worker",
+          "workerType": "Freelancer",
+          "subcontractor": null,
+          "iqamaNumber": "AUDIT-OUT-PRIVATE",
+          "nationality": null,
+          "phone": "0000000000",
+          "email": null,
+          "agreedRate": 123,
+          "currency": "SAR",
+          "documents": [
+            {
+              "title": "Private fixture",
+              "fileName": "audit/private-file",
+              "resourceType": "raw",
+              "originalName": "audit-private.pdf",
+              "mimeType": "application/pdf",
+              "size": 20,
+              "expiryDate": null,
+              "uploadedBy": "6ac252cdf069a1e6c1c51fde",
+              "_id": "6ac252cef069a1e6c1c52014",
+              "uploadedAt": "2026-10-04T13:21:18.361Z"
+            }
+          ],
+          "notes": null,
+          "createdBy": "6ac252cdf069a1e6c1c51fde",
+          "createdAt": "2026-10-04T13:21:18.364Z",
+          "updatedAt": "2026-10-04T13:21:18.364Z",
+          "__v": 0
+        }
+      ]
+    }
+  },
+  {
+    "name": "worker-outsourced-detail",
+    "method": "GET",
+    "url": "/api/outsourced-employees/6ac252cef069a1e6c1c52013",
+    "role": "Worker",
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Outsourced employee retrieved.",
+      "data": {
+        "_id": "6ac252cef069a1e6c1c52013",
+        "name": "Private External Worker",
+        "workerType": "Freelancer",
+        "subcontractor": null,
+        "iqamaNumber": "AUDIT-OUT-PRIVATE",
+        "nationality": null,
+        "phone": "0000000000",
+        "email": null,
+        "agreedRate": 123,
+        "currency": "SAR",
+        "documents": [
+          {
+            "title": "Private fixture",
+            "fileName": "audit/private-file",
+            "resourceType": "raw",
+            "originalName": "audit-private.pdf",
+            "mimeType": "application/pdf",
+            "size": 20,
+            "expiryDate": null,
+            "uploadedBy": "6ac252cdf069a1e6c1c51fde",
+            "_id": "6ac252cef069a1e6c1c52014",
+            "uploadedAt": "2026-10-04T13:21:18.361Z"
+          }
+        ],
+        "notes": null,
+        "createdBy": "6ac252cdf069a1e6c1c51fde",
+        "createdAt": "2026-10-04T13:21:18.364Z",
+        "updatedAt": "2026-10-04T13:21:18.364Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "worker-employee-directory-denied",
+    "method": "GET",
+    "url": "/api/employees",
+    "role": "Worker",
+    "status": 403,
+    "body": {
+      "success": false,
+      "message": "You do not have permission to perform this action."
+    }
+  },
+  {
+    "name": "worker-foreign-document-denied",
+    "method": "GET",
+    "url": "/api/me/documents/6ac252cef069a1e6c1c52016/file",
+    "role": "Worker",
+    "status": 404,
+    "body": {
+      "success": false,
+      "message": "Document not found."
+    }
+  },
+  {
+    "name": "worker-mass-assignment",
+    "method": "PATCH",
+    "url": "/api/me",
+    "role": "Worker",
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Your profile has been updated.",
+      "data": {
+        "_id": "6ac252cef069a1e6c1c52005",
+        "employeeId": "AUDIT-WORKER",
+        "fullName": "Audit Worker",
+        "type": "Own",
+        "joiningDate": "2024-01-01T00:00:00.000Z",
+        "employmentEndDate": null,
+        "designation": "Audit fixture",
+        "salary": 4000,
+        "basicSalary": null,
+        "housingAllowance": null,
+        "transportAllowance": null,
+        "expectedDailyHours": null,
+        "weeklyOffDay": 5,
+        "currentClient": null,
+        "currentSite": null,
+        "subcontractor": null,
+        "coordinator": {
+          "_id": "6ac252cef069a1e6c1c51ff5",
+          "name": "Audit Coordinator",
+          "email": "coordinator@audit.invalid"
+        },
+        "manager": null,
+        "approvalWorkflow": null,
+        "createdBy": null,
+        "status": "Active",
+        "additionalDocuments": [],
+        "createdAt": "2026-10-04T13:21:18.244Z",
+        "updatedAt": "2026-10-04T13:23:11.356Z",
+        "__v": 0
+      }
+    }
+  },
+  {
+    "name": "outsourced-unvalidated-query",
+    "method": "GET",
+    "url": "/api/outsourced-employees?limit=999999&workerType[$ne]=Freelancer",
+    "role": "Worker",
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Outsourced employees retrieved.",
+      "data": []
+    }
+  },
+  {
+    "name": "outsourced-invalid-limit",
+    "method": "GET",
+    "url": "/api/outsourced-employees?limit=Infinity",
+    "role": "Admin",
+    "status": 200,
+    "body": {
+      "success": true,
+      "message": "Outsourced employees retrieved.",
+      "data": [
+        {
+          "_id": "6ac252cef069a1e6c1c52013",
+          "name": "Private External Worker",
+          "workerType": "Freelancer",
+          "subcontractor": null,
+          "iqamaNumber": "AUDIT-OUT-PRIVATE",
+          "nationality": null,
+          "phone": "0000000000",
+          "email": null,
+          "agreedRate": 123,
+          "currency": "SAR",
+          "documents": [
+            {
+              "title": "Private fixture",
+              "fileName": "audit/private-file",
+              "resourceType": "raw",
+              "originalName": "audit-private.pdf",
+              "mimeType": "application/pdf",
+              "size": 20,
+              "expiryDate": null,
+              "uploadedBy": "6ac252cdf069a1e6c1c51fde",
+              "_id": "6ac252cef069a1e6c1c52014",
+              "uploadedAt": "2026-10-04T13:21:18.361Z"
+            }
+          ],
+          "notes": null,
+          "createdBy": "6ac252cdf069a1e6c1c51fde",
+          "createdAt": "2026-10-04T13:21:18.364Z",
+          "updatedAt": "2026-10-04T13:21:18.364Z",
+          "__v": 0
+        }
+      ]
+    }
+  },
+  {
+    "name": "login-operator-injection",
+    "method": "POST",
+    "url": "/api/auth/login",
+    "role": null,
+    "status": 400,
+    "body": {
+      "success": false,
+      "message": "Validation failed.",
+      "details": [
+        {
+          "field": "email",
+          "message": "Enter a valid email address."
+        },
+        {
+          "field": "password",
+          "message": "Invalid input: expected string, received object"
+        }
+      ]
+    }
+  },
+  {
+    "name": "login-untrusted-origin",
+    "method": "POST",
+    "url": "/api/auth/login",
+    "role": null,
+    "status": 403,
+    "body": {
+      "success": false,
+      "message": "Request blocked."
+    }
+  },
+  {
+    "name": "real-http-login",
+    "status": 200,
+    "user": {
+      "id": "6ac252cef069a1e6c1c52007",
+      "name": "Audit Worker",
+      "email": "worker@audit.invalid",
+      "role": "Worker",
+      "avatarUrl": null,
+      "forcePasswordChange": false,
+      "sectionAccess": {
+        "read": [],
+        "write": []
+      },
+      "essEligible": true
+    },
+    "cookieAttributes": "refreshToken=[REDACTED]; Max-Age=604800; Path=/api/auth; Expires=Sun, 11 Oct 2026 13:23:11 GMT; HttpOnly; Secure; SameSite=None"
+  },
+  {
+    "name": "refresh-rotation",
+    "status": 200,
+    "newCookie": true
+  },
+  {
+    "name": "logout-refresh-rejected",
+    "status": 401
+  }
+]

@@ -90,7 +90,21 @@ const employeeSchema = new mongoose.Schema(
     medical: { type: documentSchema, default: () => ({}) },
     drivingLicense: { type: documentSchema, default: () => ({}) },
 
+    // Additional user-defined documents (e.g. certificates, passes)
+    additionalDocuments: {
+      type: [
+        {
+          name: { type: String, required: true, trim: true },
+          number: { type: String, trim: true },
+          expiry: { type: Date },
+        },
+      ],
+      default: [],
+    },
+
     joiningDate: { type: Date, required: requiredForWorkforce },
+    contractStartDate: { type: Date, default: null },
+    contractEndDate: { type: Date, default: null },
     designation: { type: String, required: true, trim: true },
     department: { type: String, trim: true },
     // Monthly salary in SAR. Number (not string) so M10 can aggregate costs.
@@ -187,5 +201,9 @@ employeeSchema.index({ coordinator: 1 });
 // attendance/deployment scoping (see employee.service.js listEmployees).
 employeeSchema.index({ manager: 1 });
 employeeSchema.index({ type: 1 });
+// Who's currently placed with a client (client profile's "Assigned Workers"
+// tab, the Standby List, and listEmployees' own `client`/`standby` filters)
+// — read/filtered on every one of those, with no supporting index until now.
+employeeSchema.index({ currentClient: 1 });
 
 export default mongoose.model('Employee', employeeSchema);

@@ -6,7 +6,7 @@
  */
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -47,7 +47,7 @@ function Section({ title, children }) {
   );
 }
 
-export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, submitting }) {
+export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, submitting, isEdit = false }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const toast = useToast();
@@ -74,6 +74,11 @@ export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, sub
     setValue,
     formState: { errors },
   } = useForm({ resolver: zodResolver(employeeFormSchema), defaultValues });
+
+  const { fields: additionalDocumentFields, append: appendDocument, remove: removeDocument } = useFieldArray({
+    control,
+    name: 'additionalDocuments'
+  });
 
   // Drives which fields below render as required — nationality/mobile/
   // joining date are compliance fields both workforce types need; salary is
@@ -141,20 +146,34 @@ export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, sub
         ]}
       />
       <Section title={t('staffEmployees.form.sections.employeeType')}>
-        <div className="sm:col-span-2">
-          <Select label={`${t('staffEmployees.form.type')} *`} error={errors.type?.message} {...register('type')}>
-            {selectableTypes.map((ty) => (
-              <option key={ty} value={ty}>
-                {t(`common.employeeType.${ty}`, EMPLOYEE_TYPE_LABELS[ty])}
-              </option>
-            ))}
-          </Select>
-          <p className="mt-1 text-xs text-muted">
-            {type === 'Own' && t('staffEmployees.form.typeHintOwn')}
-            {type === 'Outsourced' && t('staffEmployees.form.typeHintOutsourced')}
-            {type === 'Subcontracted' && t('staffEmployees.form.typeHintSubcontracted')}
-          </p>
-        </div>
+        {isEdit ? (
+          <div className="sm:col-span-2">
+            <Select label={`${t('staffEmployees.form.type')} *`} error={errors.type?.message} {...register('type')}>
+              {selectableTypes.map((ty) => (
+                <option key={ty} value={ty}>
+                  {t(`common.employeeType.${ty}`, EMPLOYEE_TYPE_LABELS[ty])}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs text-muted">
+              {type === 'Own' && t('staffEmployees.form.typeHintOwn')}
+              {type === 'Outsourced' && t('staffEmployees.form.typeHintOutsourced')}
+              {type === 'Subcontracted' && t('staffEmployees.form.typeHintSubcontracted')}
+            </p>
+          </div>
+        ) : (
+          // This module only ever adds a real 'Own' (internal staff) employee
+          // now (2026-09-30, the user's own ask) — a Freelancer or a
+          // subcontractor's worker goes through the Outsourced Employees
+          // module instead. No selector to show; `type` stays a fixed 'Own'
+          // in emptyEmployeeForm. An EXISTING Outsourced/Subcontracted record
+          // is untouched — `isEdit` keeps the full selector for it above, so
+          // nothing already in the system is hidden or force-migrated.
+          <div className="sm:col-span-2">
+            <p className="text-sm font-medium text-text">{t('common.employeeType.Own', EMPLOYEE_TYPE_LABELS.Own)}</p>
+            <p className="mt-1 text-xs text-muted">{t('staffEmployees.form.typeHintOwn')}</p>
+          </div>
+        )}
         {type === 'Subcontracted' && (
           <div className="sm:col-span-2">
             <Select label={`${t('staffEmployees.form.subcontractor')} *`} error={errors.subcontractor?.message} {...register('subcontractor')}>
@@ -202,6 +221,18 @@ export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, sub
           type="date"
           error={errors.joiningDate?.message}
           {...register('joiningDate')}
+        />
+        <Input
+          label={t('staffEmployees.form.contractStartDate', 'Contract Start Date')}
+          type="date"
+          error={errors.contractStartDate?.message}
+          {...register('contractStartDate')}
+        />
+        <Input
+          label={t('staffEmployees.form.contractEndDate', 'Contract End Date')}
+          type="date"
+          error={errors.contractEndDate?.message}
+          {...register('contractEndDate')}
         />
         <Input label={`${t('staffEmployees.form.designation')} *`} placeholder="Electrician" error={errors.designation?.message} {...register('designation')} />
         <Input label={t('staffEmployees.form.department')} placeholder="Maintenance" error={errors.department?.message} {...register('department')} />
@@ -301,6 +332,52 @@ export default function EmployeeForm({ defaultValues, onSubmit, submitLabel, sub
               </div>
             );
           })}
+        </div>
+
+        {/* Additional Documents section */}
+        <div className="mt-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Additional Documents</h3>
+            <Button variant="secondary" size="sm" onClick={() => appendDocument({ name: '', number: '', expiry: '' })}>
+              Add Document
+            </Button>
+          </div>
+          <div className="space-y-4">
+            {additionalDocumentFields.map((field, index) => (
+              <div key={field.id} className="relative rounded-md border border-border p-4">
+                <button
+                  type="button"
+                  onClick={() => removeDocument(index)}
+                  className="absolute right-2 top-2 text-muted hover:text-red-500"
+                  aria-label="Remove Document"
+                >
+                  &times;
+                </button>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Input
+                    label="Document Name *"
+                    placeholder="e.g. Health Insurance"
+                    error={errors.additionalDocuments?.[index]?.name?.message}
+                    {...register(`additionalDocuments.${index}.name`)}
+                  />
+                  <Input
+                    label="Document Number"
+                    error={errors.additionalDocuments?.[index]?.number?.message}
+                    {...register(`additionalDocuments.${index}.number`)}
+                  />
+                  <Input
+                    label="Expiry Date"
+                    type="date"
+                    error={errors.additionalDocuments?.[index]?.expiry?.message}
+                    {...register(`additionalDocuments.${index}.expiry`)}
+                  />
+                </div>
+              </div>
+            ))}
+            {additionalDocumentFields.length === 0 && (
+              <p className="text-sm text-muted">No additional documents added.</p>
+            )}
+          </div>
         </div>
       </Card>
 

@@ -56,6 +56,7 @@ const ICON = {
   activity: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
   hierarchy:
     'M3.375 19.5h6a1.125 1.125 0 001.125-1.125v-6a1.125 1.125 0 00-1.125-1.125h-6A1.125 1.125 0 002.25 12.375v6c0 .621.504 1.125 1.125 1.125zM3.375 6.75h6a1.125 1.125 0 001.125-1.125v-3a1.125 1.125 0 00-1.125-1.125h-6A1.125 1.125 0 002.25 2.625v3c0 .621.504 1.125 1.125 1.125zM13.5 19.5h6a1.125 1.125 0 001.125-1.125v-3a1.125 1.125 0 00-1.125-1.125h-6a1.125 1.125 0 00-1.125 1.125v3c0 .621.504 1.125 1.125 1.125zM13.5 6.75h6a1.125 1.125 0 001.125-1.125v-3A1.125 1.125 0 0019.5 1.5h-6a1.125 1.125 0 00-1.125 1.125v3c0 .621.504 1.125 1.125 1.125z',
+  trendingUp: 'M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941',
 };
 
 export const DASHBOARD_ITEM = { to: '/', label: 'Dashboard', labelKey: 'staffNav.dashboard', icon: ICON.dashboard };
@@ -110,6 +111,7 @@ export const NAV_GROUPS = [
       { to: '/timesheets', label: 'Timesheets', icon: ICON.list, sectionKey: 'timesheetRequests', description: 'Weekly hours, submitted for approval.', labelKey: 'staffNav.workforce.timesheets.label', descriptionKey: 'staffNav.workforce.timesheets.description' },
       { to: '/eosb', label: 'End of Service', icon: ICON.eosb, sectionKey: 'eosb', description: 'EOSB settlements on exit.', labelKey: 'staffNav.workforce.eosb.label', descriptionKey: 'staffNav.workforce.eosb.description' },
       { to: '/exit-documents', label: 'Exit & Documents', icon: ICON.exit, sectionKey: 'exitDocuments', description: 'Re-entry visas, certificates.', labelKey: 'staffNav.workforce.exitDocuments.label', descriptionKey: 'staffNav.workforce.exitDocuments.description' },
+      { to: '/targets', label: 'Targets', icon: ICON.trendingUp, sectionKey: 'mobilisationTargets', coordinatorBypass: true, description: 'Monthly targets and performance tracking.', labelKey: 'staffNav.workforce.targets.label', descriptionKey: 'staffNav.workforce.targets.description' },
     ],
   },
   {
@@ -131,6 +133,7 @@ export const NAV_GROUPS = [
       { to: '/subcontractors', label: 'Subcontractors', icon: ICON.building, sectionKey: 'subcontractorsManage', description: 'Companies a mobilisation is sometimes routed through.', labelKey: 'staffNav.sales.subcontractors.label', descriptionKey: 'staffNav.sales.subcontractors.description' },
       { to: '/daily-updates', label: 'Daily Updates', icon: ICON.list, sectionKey: ['dailyUpdatesOwn', 'dailyUpdatesTeam'], description: "Coordinators' day-to-day tasks and work log.", labelKey: 'staffNav.sales.dailyUpdates.label', descriptionKey: 'staffNav.sales.dailyUpdates.description' },
       { to: '/requirements', label: 'Requirements', icon: ICON.hierarchy, sectionKey: ['requirementsOwn', 'requirementsTeam'], description: 'Client requirements moving from first request to mobilised.', labelKey: 'staffNav.sales.requirements.label', descriptionKey: 'staffNav.sales.requirements.description' },
+      { to: '/requirements/lost', label: 'Lost Leads', icon: ICON.activity, sectionKey: ['requirementsOwn', 'requirementsTeam'], description: 'Requirements that were closed without converting.', labelKey: 'staffNav.sales.lostLeads.label', descriptionKey: 'staffNav.sales.lostLeads.description' },
     ],
   },
   {
@@ -153,7 +156,10 @@ export const NAV_GROUPS = [
       // above already uses.
       { to: '/financial/ready-to-invoice', label: 'Ready to Invoice', icon: ICON.invoice, description: 'Approved months waiting on a client invoice.', labelKey: 'staffNav.financial.readyToInvoice.label', descriptionKey: 'staffNav.financial.readyToInvoice.description' },
       { to: '/financial/payments-due', label: 'Payments Due', icon: ICON.list, description: 'Invoiced client payments awaiting collection.', labelKey: 'staffNav.financial.paymentsDue.label', descriptionKey: 'staffNav.financial.paymentsDue.description' },
-      { to: '/financial/paid-invoices', label: 'Paid Invoices', icon: ICON.check, description: 'History of all fully-paid client invoices.', labelKey: 'staffNav.financial.paidInvoices.label', descriptionKey: 'staffNav.financial.paidInvoices.description' },
+      { to: '/financial/paid-invoices', label: 'Received invoices', icon: ICON.check, description: 'Invoice payment history — full and partial.', labelKey: 'staffNav.financial.paidInvoices.label', descriptionKey: 'staffNav.financial.paidInvoices.description' },
+      { to: '/financial/ready-for-sub-invoice', label: 'Sub invoices received', icon: ICON.invoice, description: 'Approved months waiting on a subcontractor invoice.', labelKey: 'staffNav.financial.readyForSubInvoice.label', descriptionKey: 'staffNav.financial.readyForSubInvoice.description' },
+      { to: '/financial/sub-payments-due', label: 'Sub Payments Due', icon: ICON.list, description: 'Invoiced subcontractor payments awaiting clearance.', labelKey: 'staffNav.financial.subPaymentsDue.label', descriptionKey: 'staffNav.financial.subPaymentsDue.description' },
+      { to: '/financial/paid-sub-invoices', label: 'Paid Sub Invoices', icon: ICON.check, description: 'Subcontractor payment history — full and partial.', labelKey: 'staffNav.financial.paidSubInvoices.label', descriptionKey: 'staffNav.financial.paidSubInvoices.description' },
       // No static roles gate — access is the admin-configurable Section
       // Access mechanism (see docs/SECTION-ACCESS-notes.md); visible to
       // every staff role that reaches this hub, page 403s if not granted —

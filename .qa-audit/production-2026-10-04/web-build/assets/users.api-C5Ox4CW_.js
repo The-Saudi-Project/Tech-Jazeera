@@ -1,0 +1,1 @@
+import{t as e}from"./axios-nI7oD8FS.js";async function t(t){let{data:n}=await e.get(`/users`,{params:t});return n.data}async function n(t,n){let{data:r}=await e.patch(`/users/${t}`,n);return r.data}async function r(t){let{data:n}=await e.post(`/users/${t}/reset-password`);return n.data}async function i(t){await e.delete(`/users/${t}`)}export{n as i,t as n,r,i as t};

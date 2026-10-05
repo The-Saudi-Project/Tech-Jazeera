@@ -65,6 +65,9 @@ const PaymentsDuePage = lazy(() => import('../features/deployments/pages/Payment
 const PaymentsReviewPage = lazy(() => import('../features/deployments/pages/PaymentsReviewPage.jsx'));
 const ReadyToInvoicePage = lazy(() => import('../features/deployments/pages/ReadyToInvoicePage.jsx'));
 const PaidInvoicesPage = lazy(() => import('../features/deployments/pages/PaidInvoicesPage.jsx'));
+const ReadyForSubInvoicePage = lazy(() => import('../features/deployments/pages/ReadyForSubInvoicePage.jsx'));
+const SubcontractorPaymentsDuePage = lazy(() => import('../features/deployments/pages/SubcontractorPaymentsDuePage.jsx'));
+const PaidSubcontractorInvoicesPage = lazy(() => import('../features/deployments/pages/PaidSubcontractorInvoicesPage.jsx'));
 const MobilisationListPage = lazy(() => import('../features/mobilisations/pages/MobilisationListPage.jsx'));
 const MobilisationNewPage = lazy(() => import('../features/mobilisations/pages/MobilisationNewPage.jsx'));
 const MobilisationDetailPage = lazy(() => import('../features/mobilisations/pages/MobilisationDetailPage.jsx'));
@@ -94,12 +97,14 @@ const FinancialRequestsPage = lazy(() => import('../features/financialRequests/p
 const AssetListPage = lazy(() => import('../features/assets/pages/AssetListPage.jsx'));
 const ExitDocumentsPage = lazy(() => import('../features/exitDocuments/pages/ExitDocumentsPage.jsx'));
 const TimesheetsPage = lazy(() => import('../features/timesheets/pages/TimesheetsPage.jsx'));
+const TargetsListPage = lazy(() => import('../features/mobilisationTargets/pages/TargetsListPage.jsx'));
 
 const ExpenseListPage = lazy(() => import('../features/expenses/pages/ExpenseListPage.jsx'));
 const AuditLogPage = lazy(() => import('../features/audit/pages/AuditLogPage.jsx'));
 const ReconciliationPage = lazy(() => import('../features/reconciliation/pages/ReconciliationPage.jsx'));
 const DailyUpdatesPage = lazy(() => import('../features/dailyUpdates/pages/DailyUpdatesPage.jsx'));
 const RequirementsBoardPage = lazy(() => import('../features/requirements/pages/RequirementsBoardPage.jsx'));
+const LostRequirementsPage = lazy(() => import('../features/requirements/pages/LostRequirementsPage.jsx'));
 const LocationsSettingsPage = lazy(() => import('../features/locations/pages/LocationsSettingsPage.jsx'));
 const ApprovalsPage = lazy(() => import('../features/approvals/pages/ApprovalsPage.jsx'));
 const ApprovalLogPage = lazy(() => import('../features/approvals/pages/ApprovalLogPage.jsx'));
@@ -198,8 +203,8 @@ function WorkerRouter() {
  *  Financial Requests (list/submit stays on the broader
  *  requireStaffOrExecutive floor, unchanged), Company Settings/Approval Log
  *  (already have their own dynamic in-page 403 handling). */
-const guarded = (sectionKey, element, officeSecretaryBypass) => (
-  <RequireSectionRead sectionKey={sectionKey} officeSecretaryBypass={officeSecretaryBypass}>
+const guarded = (sectionKey, element, officeSecretaryBypass, coordinatorBypass) => (
+  <RequireSectionRead sectionKey={sectionKey} officeSecretaryBypass={officeSecretaryBypass} coordinatorBypass={coordinatorBypass}>
     {element}
   </RequireSectionRead>
 );
@@ -295,6 +300,7 @@ export const router = createBrowserRouter([
               { path: '/assets', element: guarded('assetsManage', <AssetListPage />) },
               { path: '/exit-documents', element: guarded('exitDocuments', <ExitDocumentsPage />) },
               { path: '/timesheets', element: guarded('timesheetRequests', <TimesheetsPage />) },
+              { path: '/targets', element: guarded('mobilisationTargets', <TargetsListPage />, false, true) },
 
               // Client billing — the internal tracking layer on top of
               // Deployment.monthlyHours (2026-09-27, moved out of the
@@ -310,6 +316,9 @@ export const router = createBrowserRouter([
               { path: '/financial/ready-to-invoice', element: guarded(['deploymentsInvoicing', 'mobilisationsViewer'], <ReadyToInvoicePage />) },
               { path: '/financial/payments-due', element: <PaymentsDuePage /> },
               { path: '/financial/paid-invoices', element: <PaidInvoicesPage /> },
+              { path: '/financial/ready-for-sub-invoice', element: <ReadyForSubInvoicePage /> },
+              { path: '/financial/sub-payments-due', element: <SubcontractorPaymentsDuePage /> },
+              { path: '/financial/paid-sub-invoices', element: <PaidSubcontractorInvoicesPage /> },
               { path: '/financial/payments-review', element: guarded('deploymentsPaymentDecide', <PaymentsReviewPage />) },
               { path: '/expenses', element: guarded('expenses', <ExpenseListPage />) },
               { path: '/security-log', element: guarded('auditLog', <AuditLogPage />) },
@@ -320,6 +329,7 @@ export const router = createBrowserRouter([
               // Same two-key shape; `requirementStages` (who edits the columns) is
               // deliberately not an entry key — it only unlocks a button on the board.
               { path: '/requirements', element: guarded(['requirementsOwn', 'requirementsTeam'], <RequirementsBoardPage />) },
+              { path: '/requirements/lost', element: guarded(['requirementsOwn', 'requirementsTeam'], <LostRequirementsPage />) },
               { path: '/approvals', element: guarded('approvalHierarchy', <ApprovalsPage />) },
               { path: '/approvals/log', element: <ApprovalLogPage /> },
               { path: '/nfc', element: guarded('nfc', <NfcCompanyListPage />) },

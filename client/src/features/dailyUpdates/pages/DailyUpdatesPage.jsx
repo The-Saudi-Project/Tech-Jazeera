@@ -9,6 +9,7 @@
  * of its own — mirroring dailyUpdate.service.js, which is the real enforcement.
  */
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { listCoordinators } from '../dailyUpdates.api.js';
@@ -20,6 +21,7 @@ import LogPanel from '../components/LogPanel.jsx';
 
 export default function DailyUpdatesPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const read = user.sectionAccess ?? [];
@@ -56,12 +58,14 @@ export default function DailyUpdatesPage() {
   const [tab, setTab] = useTabParam(tabs, 'tasks');
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <PageHeader title={t('staffDailyUpdates.pageTitle')} description={t('staffDailyUpdates.pageDescription')} />
-      <div className="mb-4">
-        <PickerLoadWarning failed={[{ label: 'the coordinator list', isError: coordinatorsError }]} />
+    <div>
+      <PageHeader title={t('staffDailyUpdates.pageTitle')} description={t('staffDailyUpdates.pageDescription')} onBack={() => navigate(-1)} />
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-4">
+          <PickerLoadWarning failed={[{ label: 'the coordinator list', isError: coordinatorsError }]} />
+        </div>
+        <Tabs tabs={tabs} value={tab} onChange={setTab} />
       </div>
-      <Tabs tabs={tabs} value={tab} onChange={setTab} />
     </div>
   );
 }

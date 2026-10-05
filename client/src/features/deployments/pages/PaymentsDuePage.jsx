@@ -22,7 +22,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getPaymentsDue, getClientPaymentDetail, recordClientPayment } from '../deployments.api.js';
+import { getPaymentsDue, getClientPaymentDetail, recordClientPayment, downloadInvoiceFile, getPendingPaymentsQueue } from '../deployments.api.js';
 import { formatDate, formatMoney, apiMessage } from '../../../lib/utils.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { useToast } from '../../../components/ui/Toast.jsx';
@@ -64,6 +64,13 @@ export default function PaymentsDuePage() {
     queryKey: ['deployments', 'payments-due'],
     queryFn: getPaymentsDue,
   });
+
+  const { data: pendingQueue } = useQuery({
+    queryKey: ['deployments', 'pending-payments'],
+    queryFn: getPendingPaymentsQueue,
+    enabled: canDecidePayment,
+  });
+  const pendingCount = pendingQueue?.length || 0;
 
   const { data: detail, isPending: detailPending } = useQuery({
     queryKey: ['deployments', 'payments-due', openClientId],
@@ -134,7 +141,7 @@ export default function PaymentsDuePage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-[1600px] space-y-6">
       <PageHeader
         title={t('staffDeployments.paymentsDue.pageTitle')}
         description={t('staffDeployments.paymentsDue.pageDescription')}
@@ -142,7 +149,12 @@ export default function PaymentsDuePage() {
         actions={
           canDecidePayment ? (
             <Button size="sm" variant="primary" onClick={() => navigate('/financial/payments-review')} className="relative">
-              Review Pending Payments
+              {t('staffDeployments.paymentsDue.reviewPendingButton', 'Review Pending Payments')}
+              {pendingCount > 0 && (
+                <span className="ml-2 rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wide">
+                  {pendingCount}
+                </span>
+              )}
             </Button>
           ) : null
         }
@@ -205,6 +217,7 @@ export default function PaymentsDuePage() {
                       <th className="px-3 py-2">{t('staffDeployments.paymentsDue.columns.worker')}</th>
                       <th className="px-3 py-2">{t('staffDeployments.paymentsDue.columns.month')}</th>
                       <th className="px-3 py-2">{t('staffDeployments.paymentsDue.columns.invoice')}</th>
+                      <th className="px-3 py-2">{t('staffDeployments.paymentsDue.columns.invoiceAmount', 'Invoice Amount')}</th>
                       <th className="px-3 py-2">{t('staffDeployments.paymentsDue.columns.allocated')}</th>
                       <th className="px-3 py-2">{t('staffDeployments.paymentsDue.columns.balance')}</th>
                     </tr>
@@ -215,9 +228,29 @@ export default function PaymentsDuePage() {
                         <td className="px-3 py-2">{inv.workerName}</td>
                         <td className="px-3 py-2">{inv.month}</td>
                         <td className="px-3 py-2">
-                          {inv.invoiceNumber ?? '—'}
-                          {inv.invoiceDate && <span className="block text-xs text-muted">{formatDate(inv.invoiceDate)}</span>}
+                          <div className="flex items-center gap-2">
+                            <div>
+                              {inv.invoiceNumber ?? '—'}
+                              {inv.invoiceDate && <span className="block text-xs text-muted">{formatDate(inv.invoiceDate)}</span>}
+                            </div>
+                            {inv.invoiceFile && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  downloadInvoiceFile(inv.deploymentId, inv.entryId, inv.invoiceFile.originalName);
+                                }}
+                                className="rounded-full p-1.5 text-muted hover:bg-border/60 hover:text-primary transition-colors"
+                                title={t('staffDeployments.detail.downloadInvoiceButton', 'Download invoice')}
+                              >
+                                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                  <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v7.69l2.72-2.72a.75.75 0 111.06 1.06l-4 4a.75.75 0 01-1.06 0l-4-4a.75.75 0 111.06-1.06l2.72 2.72V3.75A.75.75 0 0110 3zm-6 10a.75.75 0 01.75.75v1.5c0 .414.336.75.75.75h9a.75.75 0 00.75-.75v-1.5a.75.75 0 111.5 0v1.5A2.25 2.25 0 0114.5 18h-9A2.25 2.25 0 013 15.75v-1.5A.75.75 0 014 13z" clipRule="evenodd" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </td>
+                        <td className="px-3 py-2">{formatMoney(inv.revenue)}</td>
                         <td className="px-3 py-2">{formatMoney(inv.amountAllocated)}</td>
                         <td className="px-3 py-2">
                           {inv.fullyPaid ? (

@@ -134,15 +134,28 @@ const monthlyHoursSchema = new mongoose.Schema(
     // The SUBCONTRACTOR's own timesheet hours for this same month — added
     // 2026-09-19, the user's own ask: a real subcontractor keeps their own
     // record, which can legitimately differ from what the client's
-    // timesheet shows (`actualHours` above). Only meaningful (and required —
-    // see deployment.service.js's addMonthlyHours) for a SupplierEmployee
-    // deployment, since only that type has a real subcontractor; stays null
-    // and unused for Employee/Freelancer, which keep the original
-    // contractHours-based OT formula below.
+    // timesheet shows (`actualHours` above). Only meaningful for a
+    // SupplierEmployee deployment, since only that type has a real
+    // subcontractor; stays null and unused for Employee/Freelancer.
+    // OPTIONAL as of 2026-10-01 (the user's own ask) — a real two-step
+    // workflow: the client's own timesheet is entered and submitted first,
+    // and the subcontractor's own timesheet is a separate, later follow-up
+    // (see DeploymentDetailPage.jsx's "Enter subcontractor hours" action)
+    // once it's actually known, rather than a blocking requirement at
+    // creation. `null` is a real, expected interim state, not an error —
+    // every subcontractor-derived figure (Sub Invoice, Sub Commission, the
+    // subcontractor's own OT) is simply 0 until this is filled in; the
+    // client side (revenue, client-billed OT) is entirely unaffected either
+    // way — see computeMonthlyRevenueAndExpenses's own doc comment.
     supplierHours: { type: Number, min: 0, default: null },
-    // server-computed (deployment.service.js's computeOtHours) — SupplierEmployee:
-    // max(0, actualHours - supplierHours); Employee/Freelancer, unchanged:
-    // max(0, actualHours - contractHours).
+    // server-computed (deployment.service.js's computeOtHours) — ALWAYS
+    // max(0, actualHours - contractHours), for every worker type alike
+    // (2026-10-01, the user's own correction — previously SupplierEmployee
+    // measured this against supplierHours instead, which broke the moment
+    // that became an optional, separately-entered follow-up: client-billed
+    // OT can never depend on a number that might not exist yet). The
+    // subcontractor's OWN overtime is a separate, independent concept now —
+    // see computeMonthlyRevenueAndExpenses's own doc comment.
     otHours: { type: Number, required: true, min: 0 },
     otAmount: { type: Number, default: 0, min: 0 }, // server-computed = otHours × Mobilisation.otClientRate — see module doc comment
     // A deduction the CLIENT applied on their own timesheet (their most
@@ -165,6 +178,23 @@ const monthlyHoursSchema = new mongoose.Schema(
     // unapproved (possibly disputed) figure must never silently reduce a
     // real paycheck.
     deductionAmount: { type: Number, default: 0, min: 0 },
+    // The SUPPLIER-side counterpart to `deductionAmount` above (2026-09-30,
+    // the user's own ask) — an adjustment subtracted from what this company
+    // owes the subcontractor for this month (a dispute, a correction, a
+    // penalty this company applies going the other direction), not from
+    // what the client owes us. Only meaningful for a SupplierEmployee
+    // deployment (there's no subcontractor invoice otherwise); manually
+    // entered by whoever enters hours, same "she already knows the number"
+    // posture as `deductionAmount`, so not commercial-gated either — see
+    // computeMonthlyRevenueAndExpenses's own doc comment for exactly how
+    // this nets into the Sub Invoice figure (it can legitimately push that
+    // figure negative, which is why the UI colors it dynamically).
+    supplierDeductionAmount: { type: Number, default: 0, min: 0 },
+    supplierDeductionNote: { type: String, trim: true, maxlength: 500, default: null },
+    // 2026-10-03: Add an option for additional amount to be paid for own employees,
+    // e.g. for OT or other reasons.
+    employeeAdditionalAmount: { type: Number, default: 0, min: 0 },
+    employeeAdditionalAmountNote: { type: String, trim: true, maxlength: 500, default: null },
     notes: { type: String, trim: true, maxlength: 500 },
     enteredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     enteredAt: { type: Date, default: Date.now },
@@ -213,6 +243,28 @@ const monthlyHoursSchema = new mongoose.Schema(
     // length never silently reopens/recloses an already-sent invoice's due
     // date. Read by the overdue background job (deploymentPayment.job.js).
     invoiceDueAt: { type: Date, default: null },
+
+    // --- Subcontractor Invoice lifecycle ---
+    // Mirrors the client billing lifecycle above, but for the invoice WE receive
+    // from a Subcontractor for a SupplierEmployee.
+    subcontractorInvoiceReceivedAt: { type: Date, default: null },
+    subcontractorInvoiceReceivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    subcontractorInvoiceNumber: { type: String, trim: true, default: null },
+    subcontractorInvoiceDate: { type: Date, default: null },
+    subcontractorInvoiceFile: {
+      type: new mongoose.Schema(
+        {
+          fileName: { type: String, required: true },
+          resourceType: { type: String, required: true },
+          originalName: { type: String, required: true },
+          mimeType: { type: String, required: true },
+          size: { type: Number, required: true },
+        },
+        { _id: false }
+      ),
+      default: null,
+    },
+    subcontractorInvoiceDueAt: { type: Date, default: null },
 
     // 2026-09-27 follow-up, the user's own correction: a client doesn't pay
     // per worker — they send ONE bulk payment a month covering everyone
